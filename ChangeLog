@@ -1,3 +1,34 @@
+2005-02-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.3
+
+2005-02-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* README:
+
+	updated README with instructions for building rpms and notes about
+	python version compatibility.
+
+2005-02-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	updated project url
+
+2005-02-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	Fixed minor exception bug.
+
+2005-02-14  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2005-02-14  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/__init__.py:
