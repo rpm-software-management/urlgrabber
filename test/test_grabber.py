@@ -243,7 +243,7 @@ class RegetTests(TestCase):
 # reliable ftp server
 
 if __name__ == '__main__':
-    grabber.DEBUG = 1
+    grabber.DEBUG = 0
     runner = unittest.TextTestRunner(descriptions=1,verbosity=2)
     runner.run(suite())
      

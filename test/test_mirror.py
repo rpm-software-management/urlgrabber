@@ -26,24 +26,16 @@ from urlgrabber.grabber import URLGrabber, URLGrabError
 import urlgrabber.mirror
 from urlgrabber.mirror import MirrorGroup
 
+from base_test_code import *
+
 def suite():
-    return unittest.TestSuite((
-        unittest.makeSuite(BasicTests,'test'),
-        unittest.makeSuite(BadMirrorTests,'test'),
-        unittest.makeSuite(FailoverTests,'test'),
-        ))
+    classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests]
+    return unittest.TestSuite(makeSuites(classlist))
 
-reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
-base_url = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/mirror/'
-mirrors  = ['m1', 'm2', 'm3']
-files    = ['test1.txt', 'test2.txt']
-bmirrors = ['broken']
-bfiles   = ['broken.txt']
-
-class BasicTests(unittest.TestCase):
+class BasicTests(UGTestCase):
     def setUp(self):
         self.g  = URLGrabber()
-        fullmirrors = [base_url + m + '/' for m in mirrors]
+        fullmirrors = [base_mirror_url + m + '/' for m in good_mirrors]
         self.mg = MirrorGroup(self.g, fullmirrors)
 
     def test_simple_grab(self):
@@ -58,10 +50,27 @@ class BasicTests(unittest.TestCase):
 
         self.assertEqual(contents, reference_data)
 
-class BadMirrorTests(unittest.TestCase):
+class CallbackTests(UGTestCase):
     def setUp(self):
         self.g  = URLGrabber()
-        fullmirrors = [base_url + m + '/' for m in bmirrors]
+        fullmirrors = [base_mirror_url + m + '/' for m in \
+                       (bad_mirrors + good_mirrors)]
+        self.mg = MirrorGroup(self.g, fullmirrors)
+    
+    def test_failure_callback(self):
+        "test that MG executes the failure callback correctly"
+        tricky_list = []
+        def failure_callback(e, tl): tl.append(str(e))
+        self.mg.failure_callback = failure_callback, (tricky_list, ), {}
+        data = self.mg.urlread('reference')
+        self.assert_(data == reference_data)
+        self.assertEquals(tricky_list,
+                          ['[Errno 4] IOError: HTTP Error 403: Forbidden'])
+
+class BadMirrorTests(UGTestCase):
+    def setUp(self):
+        self.g  = URLGrabber()
+        fullmirrors = [base_mirror_url + m + '/' for m in bad_mirrors]
         self.mg = MirrorGroup(self.g, fullmirrors)
 
     def test_simple_grab(self):
@@ -70,10 +79,11 @@ class BadMirrorTests(unittest.TestCase):
         url = 'reference'
         self.assertRaises(URLGrabError, self.mg.urlgrab, url, filename)
 
-class FailoverTests(unittest.TestCase):
+class FailoverTests(UGTestCase):
     def setUp(self):
         self.g  = URLGrabber()
-        fullmirrors = [base_url + m + '/' for m in bmirrors + mirrors]
+        fullmirrors = [base_mirror_url + m + '/' for m in \
+                       (bad_mirrors + good_mirrors)]
         self.mg = MirrorGroup(self.g, fullmirrors)
 
     def test_simple_grab(self):
