@@ -388,7 +388,7 @@ class URLGrabber:
             elif not os.path.isfile(path):
                 raise URLGrabError(3, 
                               _('Not a normal file: %s') % (path, ))
-            else:
+            elif not opts.range:
                 return path
         
         def retryfunc(opts, url, filename):
