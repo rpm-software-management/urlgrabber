@@ -23,7 +23,8 @@ import os
 from unittest import TestCase, TestSuite
 
 import urlgrabber.grabber as grabber
-from urlgrabber.grabber import URLGrabber, urlgrab, urlopen, urlread
+from urlgrabber.grabber import URLGrabber, URLGrabError, \
+     urlgrab, urlopen, urlread
 from urlgrabber.progress import text_progress_meter
 
 def suite():
@@ -192,7 +193,8 @@ class RegetTests(TestCase):
         except: pass
 
     def test_bad_reget_type(self):
-        self.grabber.urlgrab(short_ref_http, self.filename, reget='junk')
+        self.assertRaises(URLGrabError, self.grabber.urlgrab,
+                          short_ref_http, self.filename, reget='junk')
 
     def _make_half_zero_file(self):
         fo = open(self.filename, 'w')
