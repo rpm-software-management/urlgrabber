@@ -459,10 +459,8 @@ class URLGrabber:
         path = os.path.normpath(path)
         if '@' in host and auth_handler and scheme in ['http', 'https']:
             try:
-                # should we be using urllib.splituser and 
-                # splitpasswd instead?
-                user_password, host = string.split(host, '@', 1)
-                user, password = string.split(user_password, ':', 1)
+                user_password, host = urllib2.splituser(host)
+                user, password = urllib2.splitpasswd(user_password)
             except ValueError, e:
                 raise URLGrabError(1, _('Bad URL: %s') % url)
             if DEBUG: print 'adding HTTP auth: %s, %s' % (user, password)
