@@ -22,7 +22,7 @@ import rfc822
 
 try:    
     from cStringIO import StringIO
-except: 
+except ImportError, msg: 
     from StringIO import StringIO
 
 class RangeError(IOError):
