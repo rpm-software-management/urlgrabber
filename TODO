@@ -8,8 +8,6 @@ ALPHA:
       would support this for their options, too)
 
   * opener
-    - (both) try and reduce the number of opener creations - try and
-      use an instance-level opener for most fetches.
     - ???? can we make it possible to include (or exclude) custom
       handlers in the openers?
 
