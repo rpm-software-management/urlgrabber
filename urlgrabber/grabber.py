@@ -244,7 +244,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.17 2004/03/19 05:23:58 rtomayko Exp $
+# $Id: grabber.py,v 1.18 2004/03/28 03:02:04 mstenner Exp $
 
 import os
 import os.path
@@ -466,11 +466,9 @@ class URLGrabber:
                     or (tries == opts.retry) \
                     or (e.errno not in opts.retrycodes): raise
                 if self.failure_callback:
-                    if type(self.failure_callback) == type( () ):
-                        cb, args, kwargs = self.failure_callback
-                    else:
-                        cb, args, kwargs = self.failure_callback, (), {}
-                    cb(e, *args, **kwargs)
+                    func, args, kwargs = \
+                          self._make_callback(opts.failure_callback)
+                    func(e, *args, **kwargs)
     
     def urlopen(self, url, **kwargs):
         """open the url and return a file object
@@ -513,10 +511,7 @@ class URLGrabber:
             try:
                 fo._do_grab()
                 if not opts.checkfunc is None:
-                    if callable(opts.checkfunc):
-                        func, args, kwargs = opts.checkfunc, (), {}
-                    else:
-                        func, args, kwargs = opts.checkfunc
+                    func, args, kwargs = self._make_callback(opts.checkfunc)
                     apply(func, (filename, )+args, kwargs)
             finally:
                 fo.close()
@@ -547,12 +542,8 @@ class URLGrabber:
                 if limit is None: s = fo.read()
                 else: s = fo.read(limit)
 
-
                 if not opts.checkfunc is None:
-                    if callable(opts.checkfunc):
-                        func, args, kwargs = opts.checkfunc, (), {}
-                    else:
-                        func, args, kwargs = opts.checkfunc
+                    func, args, kwargs = self._make_callback(opts.checkfunc)
                     apply(func, (s, )+args, kwargs)
             finally:
                 fo.close()
@@ -598,6 +589,12 @@ class URLGrabber:
         url = urlparse.urlunparse(parts)
         return url, parts
         
+    def _make_callback(self, callback_obj):
+        if callable(callback_obj):
+            return callback_obj, (), {}
+        else:
+            return callaopts.checkfunc
+
 # create the default URLGrabber used by urlXXX functions.
 # NOTE: actual defaults are set in URLGrabberOptions
 default_grabber = URLGrabber()
