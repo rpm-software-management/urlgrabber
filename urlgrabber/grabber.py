@@ -290,7 +290,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.39 2005/03/03 00:54:23 mstenner Exp $
+# $Id: grabber.py,v 1.40 2005/03/14 18:44:41 mstenner Exp $
 
 import os
 import os.path
@@ -372,6 +372,7 @@ class URLGrabError(IOError):
         10   - Byte range requested, but range support unavailable
         11   - Illegal reget mode
         12   - Socket timeout.
+        13   - malformed proxy url
 
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -1023,6 +1024,12 @@ def CachedProxyHandler(proxies):
         if pdict == proxies:
             break
     else:
+        for k, v in proxies.items():
+            utype, url = urllib.splittype(v)
+            host, other = urllib.splithost(url)
+            if (utype is None) or (host is None):
+                raise URLGrabError(13, _('Bad proxy URL: %s') % v)
+
         handler = urllib2.ProxyHandler(proxies)
         _proxy_cache.append( (proxies, handler) )
     return handler
@@ -1174,4 +1181,3 @@ if __name__ == '__main__':
     _main_test()
     _retry_test()
     _file_object_test('test')
-    

@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.24 2005/02/25 00:00:36 mstenner Exp $
+# $Id: test_grabber.py,v 1.25 2005/03/14 18:44:41 mstenner Exp $
 
 import sys
 import os
@@ -451,6 +451,23 @@ class BaseProxyTests(TestCase):
         except socket.error:
             have_proxy = 0
         return have_proxy
+
+class ProxyFormatTests(BaseProxyTests):
+    def setUp(self):
+        grabber._proxy_cache = []
+
+    def tearDown(self):
+        grabber._proxy_cache = []
+
+    def test_good_proxy_formats(self):
+        for f in ['http://foo.com/', 'http://user:pass@foo.com:8888']:
+            h = grabber.CachedProxyHandler({'http': f})
+        
+    def test_bad_proxy_formats(self):
+        for f in ['foo.com', 'foo.com:8888', 'user:pass@foo.com:8888']:
+            self.assertRaises(URLGrabError, grabber.CachedProxyHandler,
+                              {'http': f})
+        
 
 class ProxyHTTPAuthTests(BaseProxyTests):
     def setUp(self):
