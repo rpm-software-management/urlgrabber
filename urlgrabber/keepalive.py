@@ -58,6 +58,7 @@ import socket
 VERSION = (0, 2)
 #STRING_VERSION = '.'.join(map(str, VERSION))
 DEBUG = 0
+def DBPRINT(*args): print ' '.join(args)
 HANDLE_ERRORS = 1
 
 class HTTPHandler(urllib2.HTTPHandler):
@@ -97,7 +98,7 @@ class HTTPHandler(urllib2.HTTPHandler):
                     h.putheader('Content-length', '%d' % len(data))
             else:
                 h.putrequest('GET', req.get_selector())
-        except socket.error, err:
+        except (socket.error, httplib.HTTPException), err:
             raise urllib2.URLError(err)
 
         for args in self.parent.addheaders:
@@ -120,34 +121,48 @@ class HTTPHandler(urllib2.HTTPHandler):
                 try:
                     self._start_connection(h, req)
                     r = h.getresponse()
-                except (socket.error, httplib.ResponseNotReady,
-                        httplib.BadStatusLine):
+                except (socket.error, httplib.HTTPException):
                     r = None
+                except:
+                    # adding this block just in case we've missed
+                    # something we will still raise the exception, but
+                    # lets try and close the connection and remove it
+                    # first.  We previously got into a nasty loop
+                    # where an exception was uncaught, and so the
+                    # connection stayed open.  On the next try, the
+                    # same exception was raised, etc.  The tradeoff is
+                    # that it's now possible this call will raise
+                    # a DIFFERENT exception
+                    if DEBUG: DBPRINT("unexpected exception - " \
+                       "closing connection to %s" % host)
+                    self._remove_connection(host, close=1)
+                    raise
                     
                 if r is None or r.version == 9:
                     # httplib falls back to assuming HTTP 0.9 if it gets a
                     # bad header back.  This is most likely to happen if
                     # the socket has been closed by the server since we
                     # last used the connection.
-                    if DEBUG: print "failed to re-use connection to %s" % host
+                    if DEBUG: DBPRINT("failed to re-use connection to %s" \
+                                      % host)
                     h.close()
                 else:
-                    if DEBUG: print "re-using connection to %s" % host
+                    if DEBUG: DBPRINT("re-using connection to %s" % host)
                     need_new_connection = 0
+
             if need_new_connection:
-                if DEBUG: print "creating new connection to %s" % host
+                if DEBUG: DBPRINT("creating new connection to %s" % host)
                 h = http_class(host)
                 self._connections[host] = h
                 self._start_connection(h, req)
                 r = h.getresponse()
-        except socket.error, err:
+        except (socket.error, httplib.HTTPException), err:
             raise urllib2.URLError(err)
             
         # if not a persistent connection, don't try to reuse it
         if r.will_close: self._remove_connection(host)
 
-        if DEBUG:
-            print "STATUS: %s, %s" % (r.status, r.reason)
+        if DEBUG: DBPRINT("STATUS: %s, %s" % (r.status, r.reason))
         r._handler = self
         r._host = host
         r._url = req.get_full_url()
@@ -353,6 +368,39 @@ def fetch(N, url, delay=0):
 
     return diff
 
+def test_timeout(url):
+    global DEBUG, DBPRINT
+    dbp = DBPRINT
+    def DBPRINT(*args): print '    ' + ' '.join(args)
+    DEBUG=1
+    print "  fetching the file to establish a connection"
+    fo = urllib2.urlopen(url)
+    data1 = fo.read()
+    fo.close()
+ 
+    print "  waiting 60 seconds for the server to close the connection"
+    i = 60
+    while i > 0:
+        sys.stdout.write('\r  %2i' % i)
+        sys.stdout.flush()
+        time.sleep(1)
+        i -= 1
+    sys.stderr.write('\r')
+
+    print "  fetching the file a second time"
+    fo = urllib2.urlopen(url)
+    data2 = fo.read()
+    fo.close()
+
+    if data1 == data2:
+        print '  data are identical'
+    else:
+        print '  ERROR: DATA DIFFER'
+
+    DEBUG=0
+    DBPRINT = dbp
+
+    
 def test(url, N=10):
     print "checking error hander (do this on a non-200)"
     try: error_handler(url)
@@ -365,6 +413,9 @@ def test(url, N=10):
     print
     print "performing speed comparison"
     comp(N, url)
+    print
+    print "performing dropped-connection check"
+    test_timeout(url)
     
 if __name__ == '__main__':
     import time

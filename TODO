@@ -14,6 +14,9 @@ ALPHA:
     probably have a kwarg to turn it on/off but could probably default to being
     on.
     
+  * ponder and implement ryan's idea about restructuring the import style
+    https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000077.html
+
 ALPHA 2:
 
   * Consider adding timeout keyword arg that would handle setting the socket
