@@ -1,3 +1,5 @@
-include urlgrabber.py keepalive.py progress_meter.py
+include grabber.py progress.py keepalive.py byterange.py
+include scripts/urlgrabber
 include README
 include LICENSE
+include TODO

@@ -1,0 +1,37 @@
+Soon:
+
+  * Test proxy support with authenticating proxies (http and ftp).   
+
+  * FTP proxy testing in general.
+
+  * Evaluate FTP range implementation. Problem here is that we had to
+    duplicate quite a bit of code from urllib/urllib2 to make this work
+    with the current implementation. We need to accept it and tidy it up a 
+    bit or pitch it for something better. I've wracked my head trying to
+    find a better way of doing this. Too much urllib2 source is bad for
+    the head.
+
+  * The FTP REST command does not support specifying an end-byte like HTTP's
+    Range header. Currently, we are  calling close() on the file object when 
+    the last byte of a range is received. Is there a cleaner way of handling 
+    this? Need to verify that the FTP session is being shut down cleanly and
+    the connection is closed properly.
+
+  * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
+    or a requested range being invalid. Right now the result of either of 
+    these two cases is undefined and is probably different for HTTP/FTP.
+    Raising an exception seems to be "the right thing to do" in both cases.
+
+  * Implement MirrorGroups. (Michael to add detail)
+
+  * Possibly clean up conditionals checking for urllib2 availability. 
+    Assume urllib2 is available.
+
+Later:
+
+  * Need to test usage across multiple threads. grabber.py should be fine.
+    keepalive seems to be the scary piece here.
+
+  * Consider adding timeout keyword arg that would handle setting the socket
+    timeout natively under python 2.3 or using timeoutsocket.py hack if 
+    available and using python < 2.3.

@@ -1,0 +1,123 @@
+#!/usr/bin/python -t
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+# Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
+
+"""Usage: urlgrabber [OPTIONS] URL [FILE]
+
+OPTIONS
+
+    --copy-local       ignored except for file:// urls, in which case
+                       it specifies whether urlgrab should still make 
+                       a copy of the file, or simply point to the 
+                       existing copy.
+    --throttle=NUMBER  if it's an int, it's the bytes/second throttle 
+                       limit.  If it's a float, it is first multiplied
+                       by bandwidth.  If throttle == 0, throttling is 
+                       disabled.  If None, the module-level default 
+                       (which can be set with set_throttle) is used.
+    --bandwidth=NUMBER the nominal max bandwidth in bytes/second.  If
+                       throttle is a float and bandwidth == 0, 
+                       throttling is disabled.  If None, the 
+                       module-level default (which can be set with 
+                       set_bandwidth) is used.
+    --range=RANGE      a tuple of the form first_byte,last_byte 
+                       describing a byte range to retrieve. Either or 
+                       both of the values may be specified.  If 
+                       first_byte is None, byte offset 0 is assumed. 
+                       If last_byte is None, the last byte available 
+                       is assumed. Note that both first and last_byte 
+                       values are inclusive so a range of (10,11) 
+                       would return the 10th and 11th bytes of the 
+                       resource.
+    --user-agent=STR   the user-agent string provide if the url is HTTP.
+
+RETRY OPTIONS
+
+    --retry=NUMBER     the number of times to retry the grab before 
+                       bailing.  If this is zero, it will retry 
+                       forever. This was intentional... really, it was 
+                       :). If this value is not supplied or is supplied
+                       but is None retrying does not occur.
+    --retrycodes       a sequence of errorcodes (values of e.errno) for 
+                       which it should retry. See the doc on 
+                       URLGrabError for more details on this. retrycodes 
+                       defaults to -1,2,4,5,6,7 if not specified 
+                       explicitly.
+"""
+
+import sys
+from os.path import dirname, abspath
+
+# ugly: we need to import from URLGrabber package if installed.
+path=abspath(dirname(sys.argv[0]))
+if path.endswith('/bin'):
+    from URLGrabber.grabber import urlgrab
+else:
+    sys.path.insert(0,path)
+    from grabber import urlgrab
+DEBUG=0
+
+def main():
+    kwargs = {}
+    url = None
+    file = None
+    proxies = {}
+    
+    for arg in sys.argv[1:]:
+        if arg in ('--help','-h','-?'):
+            print __doc__
+            sys.exit(0)
+        elif arg in ('--debug', '-d'):
+            global DEBUG
+            DEBUG = 1
+        elif arg.startswith('--'):
+            ls = arg[2:].split('=')
+            a,v = (ls[0],len(ls) > 1 and ls[1] or 1)
+            a = a.replace('-','_')
+            if v is None: v = 1
+            if a in ('retrycodes','range'):
+                v = v.split(',')
+            if a.endswith('_proxy'):
+                proxies[ a[0:a.find('_')] ] = v
+                continue
+            if DEBUG: print a, '=', v
+            kwargs[a] = v
+        elif not url:
+            url = arg
+        elif not file:
+            file = arg
+        else:
+            print "Bad usage. Try %s --help"  % (sys.argv[0],)
+            sys.exit(99)
+    if url is None:
+        print "Bad usage. Try %s --help"  % (sys.argv[0],)
+        sys.exit(99)
+    if len(proxies):
+        kwargs['proxies'] = proxies
+    if DEBUG:
+        print 'kwargs: ', kwargs
+        print 'URL:    ', url
+        print 'FILE:   ', file
+        
+    try: from progress import text_progress_meter
+    except ImportError, e: pass
+    else: kwargs['progress_obj'] = text_progress_meter()
+    
+    filename = urlgrab(url,filename=file,**kwargs)
+    print "file written to %s" % (filename,)
+
+if __name__ == '__main__':
+    main()
