@@ -14,10 +14,12 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.2 2004/03/14 04:56:31 mstenner Exp $
+# $Id: __init__.py,v 1.3 2004/03/15 05:39:22 rtomayko Exp $
 
 __version__ = '2.9.0'
 __date__    = '2004/04/13'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>'
 __url__     = 'http://linux.duke.edu/projects/mini/urlgrabber/'
+
+from urlgrabber.grabber import urlgrab, urlopen, urlread
