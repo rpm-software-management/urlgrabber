@@ -72,13 +72,10 @@ GENERAL ARGUMENTS (kwargs)
     range to retrieve. Either or both of the values may set to
     None. If first_byte is None, byte offset 0 is assumed. If
     last_byte is None, the last byte available is assumed. Note that
-    both first and last_byte values are inclusive so a range of
-    (10,11) would return the 10th and 11th byte of the resource.
+    the range specification is python-like in that (0,10) will yeild
+    the first 10 bytes of the file.
 
     If set to None, no range will be used.
-
-    XXX -- is this correct?  It seems like it behaves like
-    python slices (which I think is good) -mds
     
   reget = None   [None|'simple'|'check_timestamp']
 
@@ -244,7 +241,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.19 2004/03/28 22:26:46 rtomayko Exp $
+# $Id: grabber.py,v 1.20 2004/03/28 23:54:35 mstenner Exp $
 
 import os
 import os.path
@@ -652,7 +649,14 @@ class URLGrabberFileObject:
             if range_handlers and (self.opts.range or self.opts.reget):
                 handlers.extend( range_handlers )
             handlers.append( auth_handler )
-            self._opener = CachedOpenerDirector(*handlers)
+            # Temporarily disabling this because it doesn't yet work
+            # correctly.  Some reget tests fail.  I really don't understand
+            # why, but some of the error handlers aren't set correctly.
+            #self._opener = CachedOpenerDirector(*handlers)
+            self._opener = urllib2.build_opener(*handlers)
+            # OK, I don't like to do this, but otherwise, we end up with
+            # TWO user-agent headers.
+            self._opener.addheaders = []
         return self._opener
         
     def _do_open(self):
