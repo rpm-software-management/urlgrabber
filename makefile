@@ -13,7 +13,8 @@ DATE    = $(shell $(PYTHON) -c 'import $(PY_MODULE); print $(PY_MODULE).__date__
 CVS_TAG = release-$(shell echo $(VERSION) | sed -e 's/\./_/g')
 PYTHON22 = $(shell /usr/bin/which python2.2 2>/dev/null)
 PYTHON23 = $(shell /usr/bin/which python2.3 2>/dev/null)
-TESTPYTHONS = $(PYTHON22) $(PYTHON23)
+PYTHON24 = $(shell /usr/bin/which python2.4 2>/dev/null)
+TESTPYTHONS = $(PYTHON22) $(PYTHON23) $(PYTHON24)
 ##############################################################################
 
 default:
