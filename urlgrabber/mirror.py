@@ -45,7 +45,7 @@ FAILOVER
   the classes maintain a master mirror list and a "current mirror"
   index.  When a download is initiated, a copy of this list and index
   is created for that download only.  The specific failover policy
-  depends ont he class used, and so is documented in the class
+  depends on the class used, and so is documented in the class
   documentation.  Note that ANY behavior of the class can be
   overridden, so any failover policy at all is possible (although
   you may need to change the interface in extreme cases).
@@ -83,7 +83,7 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.7 2004/03/17 03:07:05 mstenner Exp $
+# $Id: mirror.py,v 1.8 2004/03/28 20:51:07 rtomayko Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
