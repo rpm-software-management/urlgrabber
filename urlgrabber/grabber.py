@@ -244,7 +244,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.16 2004/03/19 01:48:40 mstenner Exp $
+# $Id: grabber.py,v 1.17 2004/03/19 05:23:58 rtomayko Exp $
 
 import os
 import os.path
@@ -642,14 +642,13 @@ class URLGrabberFileObject:
             # it _must_ come before all other handlers in the list or urllib2
             # chokes.
             if self.opts.proxies:
-                handlers.append( urllib2.ProxyHandler( self.opts.proxies ) )
+                handlers.append( CachedProxyHandler(self.opts.proxies) )
             if keepalive_handler and self.opts.keepalive:
                 handlers.append( keepalive_handler )
             if range_handlers and (self.opts.range or self.opts.reget):
                 handlers.extend( range_handlers )
-            if auth_handler:
-                handlers.append( auth_handler )
-            self._opener = urllib2.build_opener( *handlers )
+            handlers.append( auth_handler )
+            self._opener = CachedOpenerDirector(*handlers)
         return self._opener
         
     def _do_open(self):
@@ -843,6 +842,22 @@ class URLGrabberFileObject:
             try: self.fo.close_connection()
             except: pass
 
+_handler_cache = []
+def CachedOpenerDirector(*handlers):
+    for (cached_handlers, opener) in _handler_cache:
+        if cached_handlers == handlers:
+            return opener
+    opener = urllib2.build_opener(*handlers)
+    _handler_cache.append( (handlers, opener) )
+    return opener
+
+_proxy_cache = []
+def CachedProxyHandler(proxies):
+    for (pdict, handler) in _proxy_cache:
+        if pdict == proxies:
+            return handler
+    handler = urllib2.ProxyHandler(proxies)
+    _proxy_cache.append( (proxies,handler) )
 
 #####################################################################
 # DEPRECATED FUNCTIONS
