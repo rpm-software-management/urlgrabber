@@ -180,13 +180,17 @@ class MirrorGroup:
     ##############################################################
     #  CONFIGURATION METHODS  -  intended to be overrident to
     #                            customize behavior
-    def __init__(self, grabber, mirrors):
+    def __init__(self, grabber, mirrors, **kwargs):
         # OVERRIDE IDEAS:
         #   shuffle the list to randomize order
         self.grabber = grabber
         self.mirrors = self._parse_mirrors(mirrors)
         self._next = 0
         self._lock = thread.allocate_lock()
+        self._process_kwargs(kwargs)
+
+    def _process_kwargs(self, kwargs):
+        self.failure_callback = kwargs.get('failure_callback')
         
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
@@ -214,9 +218,18 @@ class MirrorGroup:
     def _failure(self, gr, e):
         # OVERRIDE IDEAS:
         #   inspect the error - remove=1 for 404, remove=2 for connection
-        #                       refused, etc.
-
-        # report?
+        #                       refused, etc. (this can also be done via
+        #                       the callback)
+        cb = self.failure_callback
+        if cb is None:
+            remove = 1
+        else:
+            if type(cb) == type( () ):
+                cb, args, kwargs = cb
+            else:
+                args, kwargs = (), {}
+            remove = cb(e, *args, **kwargs)
+            if remove is None: remove = 1
         self.increment_mirror(gr, remove=1)
 
     def increment_mirror(self, gr, remove=1):

@@ -377,6 +377,7 @@ class URLGrabberOptions:
         self.keepalive = 1
         self.proxies = None
         self.reget = None
+        self.failure_callback = None
         # update all attributes with supplied kwargs
         self._set_attributes(**kwargs)
         
@@ -436,6 +437,12 @@ class URLGrabber:
                 if (opts.retry is None) \
                     or (tries == opts.retry) \
                     or (e.errno not in opts.retrycodes): raise
+                if self.failure_callback:
+                    if type(self.failure_callback) == type( () ):
+                        cb, args, kwargs = self.failure_callback
+                    else:
+                        cb, args, kwargs = self.failure_callback, (), {}
+                    cb(e, *args, **kwargs)
     
     def urlopen(self, url, **kwargs):
         """open the url and return a file object
