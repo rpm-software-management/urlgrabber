@@ -12,7 +12,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
+# Copyright 2002-2004 Michael D. Stenner, Ryan D. Tomayko
+
+# $Id: byterange.py,v 1.5 2004/03/14 05:45:21 mstenner Exp $
 
 import os
 import stat

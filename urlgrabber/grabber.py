@@ -12,7 +12,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# Copyright 2002-2003 Michael D. Stenner, Ryan Tomayko
+# Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
 """A high-level cross-protocol url-grabber.
 
@@ -220,6 +220,8 @@ BANDWIDTH THROTTLING
 
 """
 
+# $Id: grabber.py,v 1.14 2004/03/14 05:45:21 mstenner Exp $
+
 import os
 import os.path
 import urlparse
@@ -229,13 +231,14 @@ import string
 import urllib2
 from stat import *  # S_* and ST_*
 
+from urlgrabber import __version__
+
 # XXX: leaving this global may cause problems with
 #      multiple threads. -rtomayko
 auth_handler = urllib2.HTTPBasicAuthHandler( \
      urllib2.HTTPPasswordMgrWithDefaultRealm())
 
 DEBUG=0
-VERSION='0.2'
 
 try:
     from i18n import _
@@ -373,7 +376,7 @@ class URLGrabberOptions:
         self.copy_local = 0
         self.close_connection = 0
         self.range = None
-        self.user_agent = 'urlgrabber/%s' % VERSION
+        self.user_agent = 'urlgrabber/%s' % __version__
         self.keepalive = 1
         self.proxies = None
         self.reget = None

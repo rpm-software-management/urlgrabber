@@ -82,6 +82,9 @@ CUSTOMIZATION
        options specified in a custom mirror dict.
 
 """
+
+# $Id: mirror.py,v 1.5 2004/03/14 05:45:21 mstenner Exp $
+
 import random
 import thread  # needed for locking to make this threadsafe
 
