@@ -1,11 +1,14 @@
 from munittest import *
 
 base_http = 'http://www.linux.duke.edu/projects/urlgrabber/test/'
+base_ftp  = 'ftp://localhost/test/'
 
 reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
 ref_http = base_http + 'reference'
+ref_ftp = base_ftp + 'reference'
 short_reference_data = ' '.join( [str(i) for i in range(10) ] )
 short_ref_http = base_http + 'short_reference'
+short_ref_ftp = base_ftp + 'short_reference'
 
 ref_200 = ref_http
 ref_404 = base_http + 'nonexistent_file'
