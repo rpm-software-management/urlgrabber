@@ -13,9 +13,6 @@ ALPHA 2:
     timeout natively under python 2.3 or using timeoutsocket.py hack if 
     available and using python < 2.3.
 
-  * Clean up conditionals checking for urllib2 availability. Assume urllib2 
-    is available.
-
   * Test proxy support with authenticating proxies (http and ftp).   
 
   * FTP proxy testing in general.
