@@ -29,6 +29,9 @@ from urlgrabber.progress import text_progress_meter
 tempsrc = '/tmp/ug-test-src'
 tempdst = '/tmp/ug-test-dst'
 
+# this isn't used but forces a proxy handler to be
+# added when creating the urllib2 opener.
+proxies = { 'http' : 'http://localhost' }
 DEBUG=0
 
 def main():
@@ -36,7 +39,7 @@ def main():
     speedtest(10 * 1024)    # 10 KB
     speedtest(100 * 1024)   # 100 KB
     speedtest(1000 * 1024)  # 1,000 KB (almost 1MB)
-    speedtest(10000 * 1024) # 10,000 KB (almost 10MB)
+    #speedtest(10000 * 1024) # 10,000 KB (almost 10MB)
     # remove temp files
     os.unlink(tempsrc)
     os.unlink(tempdst)
@@ -78,7 +81,7 @@ def speedtest(size):
     # get it nicely cached before we start comparing
     if DEBUG: print 'pre-caching'
     for i in range(100):
-        urlgrab(tempsrc, tempdst, copy_local=1, throttle=None)
+        urlgrab(tempsrc, tempdst, copy_local=1, throttle=None, proxies=proxies)
     
     if DEBUG: print 'running speed test.'
     reps = 500
@@ -89,13 +92,13 @@ def speedtest(size):
         t = time.time()
         urlgrab(tempsrc, tempdst,
                 copy_local=1, progress_obj=tpm,
-                throttle=throttle)
+                throttle=throttle, proxies=proxies)
         full_times.append(1000 * (time.time() - t))
 
         t = time.time()
         urlgrab(tempsrc, tempdst,
                 copy_local=1, progress_obj=None,
-                throttle=None)
+                throttle=None, proxies=proxies)
         raw_times.append(1000 * (time.time() - t))
     if DEBUG: print '\r'
     
