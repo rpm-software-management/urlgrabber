@@ -546,7 +546,14 @@ class URLGrabberFileObject:
             raise URLGrabError(7, _('HTTP Error (%s): %s') % \
                             (e.__class__.__name__, e))
         
-        if self.opts.progress_obj:
+        if not (self.opts.progress_obj or self.opts.raw_throttle()):
+            # if we're not using the progress_obj or throttling
+            # we can get a performance boost by going directly to
+            # the underlying fileobject for reads.
+            self.read = fo.read
+            if hasattr(fo, 'readline'):
+                self.readline = fo.readline
+        elif self.opts.progress_obj:
             try:    length = int(hdr['Content-Length'])
             except: length = None
             self.opts.progress_obj.start(str(self.filename), self.url, 
