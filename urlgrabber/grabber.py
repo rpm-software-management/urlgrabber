@@ -274,7 +274,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.30 2004/10/08 07:59:46 rtomayko Exp $
+# $Id: grabber.py,v 1.31 2004/10/16 15:43:26 rtomayko Exp $
 
 import os
 import os.path
@@ -827,7 +827,7 @@ class URLGrabberFileObject:
         except RangeError, e:
             raise URLGrabError(9, _('%s') % (e, ))
         except IOError, e:
-            if isinstance(e.reason, TimeoutError):
+            if hasattr(e, 'reason') and isinstance(e.reason, TimeoutError):
                 raise URLGrabError(12, _('Timeout: %s') % (e, ))
             else:
                 raise URLGrabError(4, _('IOError: %s') % (e, ))
