@@ -1,7 +1,6 @@
 ALPHA:
 
   * MirrorGroups
-    - add report callbacks so calling app can know about failures
     - docs
     - possibly move the arguments that make urlXXX different into the
       kwargs stuff, so that the wrapping in MirrorGroups can be a little
@@ -11,10 +10,12 @@ ALPHA:
     - add sublcasses of MirrorGroup for different failover policies,
       at least providing the same behavior as what yum does now
 
-  * Reget support. When urlgrab is called, check if the file exists on disk. If
-    so, offset the range so that we pull only the bytes remaining. This should
-    probably have a kwarg to turn it on/off but could probably default to being
-    on.
+  * Reget
+    - fix bug with self.opts; the reget code can modify self.opts in the
+	  URLGrabberFileObject, which _may_not_ be a copy of the grabber's
+	  opts.  This may go away if we decide to deal with opts a little
+      differently.
+    - do a little testing for ftp:// and file://
     
   * ponder and implement ryan's idea about restructuring the import style
     https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000077.html
