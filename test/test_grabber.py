@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.17 2004/04/02 00:10:46 mstenner Exp $
+# $Id: test_grabber.py,v 1.18 2004/08/11 16:45:42 mstenner Exp $
 
 import sys
 import os
@@ -205,6 +205,20 @@ class URLGrabberTestCase(TestCase):
             g = URLGrabber(prefix=b)
             (url, parts) = g._parse_url(file)
             self.assertEquals(url, target)
+
+class FailureTestCase(TestCase):
+    """Test grabber.URLGrabber class"""
+
+    def _failure_callback(self, e):
+        self.failure_callback_called = 1
+    
+    def test_failure_callback_called(self):
+        "failure callback is called on retry"
+        self.failure_callback_called = 0
+        g = grabber.URLGrabber(retry=2,failure_callback=self._failure_callback)
+        try: g.urlgrab(ref_404)
+        except URLGrabError: pass
+        self.assertEquals(self.failure_callback_called, 1)
 
 class RegetTestBase:
     def setUp(self):

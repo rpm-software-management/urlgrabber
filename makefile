@@ -20,7 +20,7 @@ clean:
 	$(RM) ChangeLog.bak
 
 test: FORCE
-	export PYTHONPATH=.; \
+	@export PYTHONPATH=.; \
 	for PYTHONBIN in $(TESTPYTHONS); do \
 		echo "Testing with: $$PYTHONBIN"; \
 		$$PYTHONBIN test/runtests.py -v 1; \

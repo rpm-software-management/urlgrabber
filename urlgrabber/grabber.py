@@ -255,7 +255,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.25 2004/07/22 03:04:22 mstenner Exp $
+# $Id: grabber.py,v 1.26 2004/08/11 16:45:42 mstenner Exp $
 
 import os
 import os.path
@@ -483,7 +483,7 @@ class URLGrabber:
                 if (opts.retry is None) \
                     or (tries == opts.retry) \
                     or (e.errno not in opts.retrycodes): raise
-                if self.failure_callback:
+                if opts.failure_callback:
                     func, args, kwargs = \
                           self._make_callback(opts.failure_callback)
                     func(e, *args, **kwargs)
