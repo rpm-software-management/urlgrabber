@@ -48,10 +48,15 @@ GENERAL ARGUMENTS (kwargs)
   progress_obj = None
 
     a class instance that supports the following methods:
-      po.start(filename, url, basename, length)
+      po.start(filename, url, basename, length, text)
       # length will be None if unknown
       po.update(read) # read == bytes read so far
       po.end()
+
+  text = None
+  
+    specifies an alternativ text item in the beginning of the progress
+    bar line. If not given, the basename of the file is used.
 
   throttle = 1.0
 
@@ -274,7 +279,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.32 2004/10/17 01:53:13 rtomayko Exp $
+# $Id: grabber.py,v 1.33 2005/01/14 18:21:41 rtomayko Exp $
 
 import os
 import os.path
@@ -506,6 +511,7 @@ class URLGrabberOptions:
         self.opener = None
         self.cache_openers = True
         self.timeout = None
+        self.text = None
  
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -778,7 +784,8 @@ class URLGrabberFileObject:
             except: length = None
             self.opts.progress_obj.start(str(self.filename), self.url, 
                                          os.path.basename(path), 
-                                         length)
+                                         length,
+                                         text=self.opts.text)
             self.opts.progress_obj.update(0)
         (self.fo, self.hdr) = (fo, hdr)
     
