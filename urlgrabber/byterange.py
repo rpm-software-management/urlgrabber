@@ -54,8 +54,12 @@ class HTTPRangeHandler(urllib2.BaseHandler):
     """
     
     def http_error_206(self, req, fp, code, msg, hdrs):
+        # 206 Partial Content Response
         return urllib.addinfourl(fp, hdrs, req.get_full_url())
-        
+    
+    def http_error_416(self, req, fp, code, msg, hdrs):
+        # HTTP's Range Not Satisfiable error
+        raise RangeError('Requested Range Not Satisfiable')
 
 class RangeableFileObject:
     """File object wrapper to enable raw range handling.
@@ -186,7 +190,7 @@ class RangeableFileObject:
                 bufsize = offset - pos
             buf = self.fo.read(bufsize)
             if len(buf) != bufsize:
-                raise RangeError('Cannot satisfy byte range starting at %s' % (self.firstbyte,))
+                raise RangeError('Requested Range Not Satisfiable')
             pos+= bufsize
 
 class FileRangeHandler(urllib2.FileHandler):
@@ -215,6 +219,8 @@ class FileRangeHandler(urllib2.FileHandler):
         if brange:
             (fb,lb) = brange
             if lb == '': lb = size
+            if fb < 0 or fb > size or lb > size:
+                raise RangeError('Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
         headers = mimetools.Message(StringIO(
@@ -292,9 +298,12 @@ class FTPRangeHandler(urllib2.FTPHandler):
                 (fb,lb) = range_tup
                 if lb == '': 
                     if retrlen is None or retrlen == 0:
-                        raise RangeError('Could not satisfy range due to unobtainable file length.')
+                        raise RangeError('Requested Range Not Satisfiable due to unobtainable file length.')
                     lb = retrlen
                     retrlen = lb - fb
+                    if retrlen < 0:
+                        # beginning of range is larger than file
+                        raise RangeError('Requested Range Not Satisfiable')
                 else:
                     retrlen = lb - fb
                     fp = RangeableFileObject(fp, (0,retrlen))
