@@ -17,13 +17,11 @@
 # Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
 
 import sys
-sys.path.insert(0, '.')
-
 import unittest
 
 from unittest import TestCase, TestSuite
 from StringIO import StringIO
-from byterange import RangeableFileObject
+from urlgrabber.byterange import RangeableFileObject
 
 def suite():
     return TestSuite((
@@ -102,8 +100,8 @@ class RangeModuleTestCase(TestCase):
     
     def test_range_tuple_normalize(self):
         """byterange.range_tuple_normalize()"""
-        from byterange import range_tuple_normalize
-        from byterange import RangeError
+        from urlgrabber.byterange import range_tuple_normalize
+        from urlgrabber.byterange import RangeError
         tests = ( 
                     ((None,50), (0,50)),
                     ((500,600), (500,600)),
@@ -122,7 +120,7 @@ class RangeModuleTestCase(TestCase):
         
     def test_range_header_to_tuple(self):
         """byterange.range_header_to_tuple()"""
-        from byterange import range_header_to_tuple
+        from urlgrabber.byterange import range_header_to_tuple
         tests = ( 
                     ('bytes=500-600', (500,601)),
                     ('bytes=500-', (500,'')),
@@ -134,7 +132,7 @@ class RangeModuleTestCase(TestCase):
     
     def test_range_tuple_to_header(self):
         """byterange.range_tuple_to_header()"""
-        from byterange import range_tuple_to_header
+        from urlgrabber.byterange import range_tuple_to_header
         tests = ( 
                     ((500,600), 'bytes=500-599'),
                     ((500,''), 'bytes=500-'),

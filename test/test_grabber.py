@@ -17,16 +17,14 @@
 # Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
 
 import sys
-sys.path.insert(0, '.')
-
 import unittest
 import os
 
 from unittest import TestCase, TestSuite
 
-import grabber
-from grabber import URLGrabber, urlgrab, urlopen, urlread
-from progress import text_progress_meter
+import urlgrabber.grabber as grabber
+from urlgrabber.grabber import URLGrabber, urlgrab, urlopen, urlread
+from urlgrabber.progress import text_progress_meter
 
 def suite():
     return TestSuite((

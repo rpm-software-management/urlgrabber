@@ -19,18 +19,12 @@
 import sys
 import os
 from os.path import dirname, join as joinpath
-
-if __name__ == '__main__':
-    dn = dirname(sys.argv[0])
-    sys.path.insert(0, joinpath(dn,'..'))
-    sys.path.insert(0, dn)
-
 import tempfile
 import time
 
-import grabber
-from grabber import URLGrabber, urlgrab, urlopen, urlread
-from progress import text_progress_meter
+import urlgrabber.grabber as grabber
+from urlgrabber.grabber import URLGrabber, urlgrab, urlopen, urlread
+from urlgrabber.progress import text_progress_meter
 
 tempsrc = '/tmp/ug-test-src'
 tempdst = '/tmp/ug-test-dst'
@@ -63,7 +57,7 @@ def speedtest(size):
     throttle = 2**40 # throttle to 1 TB/s   :)
 
     try:
-        from progress import text_progress_meter
+        from urlgrabber.progress import text_progress_meter
     except ImportError, e:
         tpm = None
         print 'not using progress meter'
