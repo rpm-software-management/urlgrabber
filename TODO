@@ -1,14 +1,7 @@
 ALPHA:
 
   * MirrorGroups
-    - docs
-    - possibly move the arguments that make urlXXX different into the
-      kwargs stuff, so that the wrapping in MirrorGroups can be a little
-      cleaner - this would mean that you'd have to do 
-         urlgrab(url, filename=filename)
-      which is annoying (and different from how it's being used)
-    - add sublcasses of MirrorGroup for different failover policies,
-      at least providing the same behavior as what yum does now
+	get comments from seth/ryan and make any necessary changes
 
   * Reget
     - fix bug with self.opts; the reget code can modify self.opts in the
@@ -19,6 +12,19 @@ ALPHA:
     
   * ponder and implement ryan's idea about restructuring the import style
     https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000077.html
+
+  * decide on a plan for threading/batch stuff.  We don't need to
+    implement it, but it would be nice to:
+    - decide if we're going to do it at all (I (mds) lean toward yes)
+    - decide on an proposed interface
+
+  * make a proper web page describing the features, philosophy,
+    intended audience, etc.  It might be reasonable to promote
+    urlgrabber from "mini project" to full-fledged project :)
+
+  * in general, decide on some of the questions in the following
+    sections - not implement, mind you, but at least be able to tell
+    people what we're planning
 
 ALPHA 2:
 
