@@ -128,6 +128,7 @@ class URLGrabberTestCase(TestCase):
         values into the URLGrabber constructor and checks that
         they've been set properly.
         """
+        opener = urllib2.OpenerDirector()
         g = URLGrabber( progress_obj=self.meter,
                         throttle=0.9,
                         bandwidth=20,
@@ -136,7 +137,8 @@ class URLGrabberTestCase(TestCase):
                         copy_local=1,
                         close_connection=1,
                         user_agent='test ua/1.0',
-                        proxies={'http' : 'http://www.proxy.com:9090'} )
+                        proxies={'http' : 'http://www.proxy.com:9090'},
+                        opener=opener )
         opts = g.opts
         self.assertEquals( opts.progress_obj, self.meter )
         self.assertEquals( opts.throttle, 0.9 )
@@ -147,6 +149,7 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals( opts.close_connection, 1 )
         self.assertEquals( opts.user_agent, 'test ua/1.0' )
         self.assertEquals( opts.proxies, {'http' : 'http://www.proxy.com:9090'} )
+        self.assertEquals( opts.opener, opener )
         
         nopts = grabber.URLGrabberOptions(delegate=opts, throttle=0.5, 
                                         copy_local=0)
@@ -159,6 +162,8 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals( nopts.close_connection, 1 )
         self.assertEquals( nopts.user_agent, 'test ua/1.0' )
         self.assertEquals( nopts.proxies, {'http' : 'http://www.proxy.com:9090'} )
+        nopts.opener = None
+        self.assertEquals( nopts.opener, None )
         
     def test_parse_url(self):
         """grabber.URLGrabber._parse_url()"""

@@ -128,6 +128,17 @@ GENERAL ARGUMENTS (kwargs)
     if necessary, so you cannot specify a prefix that ends with a
     partial file or directory name.
 
+  opener = None
+  
+    Overrides the default urllib2.OpenerDirector provided to 
+    urllib2 when making requests. This option exists so that the urllib2
+    handler chain may be customized. Note that the keepalive, range, reget, 
+    proxy, and keepalive features require that custom handlers be provided to 
+    urllib2 in order to function properly. If an opener option is provided, no 
+    attempt is made by urlgrabber to ensure chain integrity. You are responsible
+    for ensuring that any extension handlers are present if said features are
+    required.
+    
 RETRY RELATED ARGUMENTS
 
   retry = None
@@ -241,7 +252,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.20 2004/03/28 23:54:35 mstenner Exp $
+# $Id: grabber.py,v 1.21 2004/03/31 04:26:03 rtomayko Exp $
 
 import os
 import os.path
@@ -445,7 +456,8 @@ class URLGrabberOptions:
         self.reget = None
         self.failure_callback = None
         self.prefix = None
-                               
+        self.opener = None
+                           
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
     
@@ -637,7 +649,9 @@ class URLGrabberFileObject:
     
     def _get_opener(self):
         """Build a urllib2 OpenerDirector based on request options."""
-        if self._opener is None:
+        if self.opts.opener:
+            return self.opts.opener
+        elif self._opener is None:
             handlers = []
             # if you specify a ProxyHandler when creating the opener
             # it _must_ come before all other handlers in the list or urllib2
