@@ -24,12 +24,13 @@ import string, tempfile, random, cStringIO, os
 import urlgrabber.grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError
 import urlgrabber.mirror
-from urlgrabber.mirror import MirrorGroup
+from urlgrabber.mirror import MirrorGroup, MGRandomStart, MGRandomOrder
 
 from base_test_code import *
 
 def suite():
-    classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests]
+    classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests,
+                 SubclassTests]
     return unittest.TestSuite(makeSuites(classlist))
 
 class BasicTests(UGTestCase):
@@ -38,17 +39,59 @@ class BasicTests(UGTestCase):
         fullmirrors = [base_mirror_url + m + '/' for m in good_mirrors]
         self.mg = MirrorGroup(self.g, fullmirrors)
 
-    def test_simple_grab(self):
-        """test that a reference file can be properly downloaded"""
+    def test_urlgrab(self):
+        """MirrorGroup.urlgrab"""
         filename = tempfile.mktemp()
-        url = 'reference'
+        url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
         fo = open(filename)
-        contents = fo.read()
+        data = fo.read()
         fo.close()
 
-        self.assertEqual(contents, reference_data)
+        self.assertEqual(data, short_reference_data)
+
+    def test_urlread(self):
+        """MirrorGroup.urlread"""
+        url = 'short_reference'
+        data = self.mg.urlread(url)
+
+        self.assertEqual(data, short_reference_data)
+
+    def test_urlopen(self):
+        """MirrorGroup.urlopen"""
+        url = 'short_reference'
+        fo = self.mg.urlopen(url)
+        data = fo.read()
+        fo.close()
+
+        self.assertEqual(data, short_reference_data)
+
+class SubclassTests(UGTestCase):
+    def setUp(self):
+        self.g  = URLGrabber()
+        self.fullmirrors = [base_mirror_url + m + '/' for m in good_mirrors]
+
+    def fetchwith(self, mgclass):
+        self.mg = mgclass(self.g, self.fullmirrors)
+
+        filename = tempfile.mktemp()
+        url = 'short_reference'
+        self.mg.urlgrab(url, filename)
+
+        fo = open(filename)
+        data = fo.read()
+        fo.close()
+
+        self.assertEqual(data, short_reference_data)
+
+    def test_MGRandomStart(self):
+        "MGRandomStart.urlgrab"
+        self.fetchwith(MGRandomStart)
+
+    def test_MGRandomOrder(self):
+        "MGRandomOrder.urlgrab"
+        self.fetchwith(MGRandomOrder)
 
 class CallbackTests(UGTestCase):
     def setUp(self):

@@ -14,15 +14,18 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-"""Module for using a pool of mirrors with configurable failover
+"""Module for downloading files from a pool of mirrors
 
 DESCRIPTION
 
-  The main class in the module is called MirrorGroup (because it
-  constitutes a group of mirrors).  Instances of MirrorGroup act very
-  much like URLGrabber instances in that they have urlread, urlgrab,
-  and urlopen methods.  They can therefore, be used in very similar
-  ways.
+  This module provides support for downloading files from a pool of
+  mirrors with configurable failover policies.  To a large extent, the
+  failover policy is chosen by using different classes derived from
+  the main class, MirrorGroup.
+
+  Instances of MirrorGroup (and cousins) act very much like URLGrabber
+  instances in that they have urlread, urlgrab, and urlopen methods.
+  They can therefore, be used in very similar ways.
 
     from urlgrabber.grabber import URLGrabber
     from urlgrabber.mirror import MirrorGroup
@@ -38,26 +41,19 @@ DESCRIPTION
 FAILOVER
 
   The failover mechanism is designed to be customized by subclassing
-  from MirrorGroup to change the details of the behavior.  MirrorGroup
-  maintains the master mirror list and a "current mirror" index.  When
-  a download is initiated, a copy of this list and index is created
-  for that download only.  MirrorGroup has the following failover
-  policy:
-
-    * downloads begin with the first mirror
-
-    * a failure (after retries) causes it to increment the local AND
-      master indices.  Also, the current mirror is removed from the
-      local list (but NOT the master list - the mirror can potentially
-      be used for other files)
-
-    * if the local list is ever exhausted, an URLGrabError will be
-      raised (errno=256, no more mirrors)
+  from MirrorGroup to change the details of the behavior.  In general,
+  the classes maintain a master mirror list and a "current mirror"
+  index.  When a download is initiated, a copy of this list and index
+  is created for that download only.  The specific failover policy
+  depends ont he class used, and so is documented in the class
+  documentation.  Note that ANY behavior of the class can be
+  overridden, so any failover policy at all is possible (although
+  you may need to change the interface in extreme cases).
 
 CUSTOMIZATION
 
   Most customization of a MirrorGroup object is done at instantiation
-  time (or via subclassing).  There are three major types of
+  time (or via subclassing).  There are four major types of
   customization:
 
     1) Pass in a custom urlgrabber - The passed in urlgrabber will be
@@ -77,13 +73,16 @@ CUSTOMIZATION
        'grabber' is omitted, the default grabber will be used.  If
        kwargs are omitted, then (duh) they will not be used.
 
-    3) Finally, any kwargs passed in for the specific file (to the
+    3) Pass keyword arguments when instantiating the mirror group.
+       See, for example, the failure_callback argument.
+
+    4) Finally, any kwargs passed in for the specific file (to the
        urlgrab method, for example) will be folded in.  The options
        passed into the grabber's urlXXX methods will override any
        options specified in a custom mirror dict.
 
 """
-
+import random
 import thread  # needed for locking to make this threadsafe
 
 from urlgrabber.grabber import URLGrabError
@@ -115,13 +114,49 @@ class MirrorGroup:
     mirror will be removed from the list, and the next will be attempted.
     If all mirrors are exhausted, then an exception will be raised.
 
+    MirrorGroup has the following failover policy:
+
+      * downloads begin with the first mirror
+
+      * a failure (after retries) causes it to increment the local AND
+        master indices.  Also, the current mirror is removed from the
+        local list (but NOT the master list - the mirror can potentially
+        be used for other files)
+
+      * if the local list is ever exhausted, an URLGrabError will be
+        raised (errno=256, no more mirrors)
+
+    OPTIONS
+
+      In addition to the required arguments "grabber" and "mirrors",
+      MirrorGroup also takes the following optional arguments:
+      
+      failure_callback
+
+        this is a callback that will be called when a mirror "fails",
+        meaning the grabber raises some URLGrabError.  If this is a
+        tuple, it is enterpreted to be of the form (cb, args, kwargs)
+        where cb is the actual callable object (function, method,
+        etc).  Otherwise, it is assumed to be the callable object
+        itself.  The callback will be passed exception that was raised
+        (and args and kwargs if present).
+
+        If the callback returns an integer, it will set the "remove
+        policy" for that failure:
+
+          0:  do not remove the mirror - simply move on
+          1:  remove the mirror for this download attempt (this file)
+          2:  remove the mirror for all future downloads
+
+        WARNING: do not save the exception object.  As they contain
+        stack frame references, they can lead to circular references.
+
     Notes:
       * The behavior can be customized by deriving and overriding the
         'CONFIGURATION METHODS'
       * The 'grabber' instance is kept as a reference, not copied.
         Therefore, the grabber instance can be modified externally
         and changes will take effect immediately.
-
     """
 
     # notes on thread-safety:
@@ -133,54 +168,25 @@ class MirrorGroup:
     #   of the MG itself must be done when locked to prevent (for example)
     #   removal of the wrong mirror.
 
-    def _join_url(self, base_url, rel_url):
-        if base_url.endswith('/') or rel_url.startswith('/'):
-            return base_url + rel_url
-        else:
-            return baseurl + '/' + rel_url
-        
-    def _mirror_try(self, func, url, kw):
-        gr = GrabRequest()
-        gr.func = func
-        gr.url  = url
-        gr.kw   = kw
-        self._load_gr(gr)
-
-        while 1:
-            mirrorchoice = self._get_mirror(gr)
-            fullurl = self._join_url(mirrorchoice['mirror'], gr.url)
-            kwargs = dict(mirrorchoice.get('kwargs', {}))
-            kwargs.update(kw)
-            grabber = mirrorchoice.get('grabber') or self.grabber
-            func_ref = getattr(grabber, func)
-            if DEBUG: print 'MIRROR: trying %s -> %s' % (url, fullurl)
-            try:
-                return func_ref( *(fullurl,), **kwargs )
-            except Exception, e:
-                if DEBUG: print 'MIRROR: failed'
-                self._failure(gr, e)
-
-    def urlgrab(self, url, filename=None, **kwargs):
-        kw = dict(kwargs)
-        kw['filename'] = filename
-        func = 'urlgrab'
-        return self._mirror_try(func, url, kw)
-    
-    def urlopen(self, url, **kwargs):
-        kw = dict(kwargs)
-        func = 'urlopen'
-        return self._mirror_try(func, url, kw)
-
-    def urlread(self, url, limit=None, **kwargs):
-        kw = dict(kwargs)
-        kw['limit'] = limit
-        func = 'urlread'
-        return self._mirror_try(func, url, kw)
-    
     ##############################################################
     #  CONFIGURATION METHODS  -  intended to be overrident to
     #                            customize behavior
     def __init__(self, grabber, mirrors, **kwargs):
+        """Initialize the MirrorGroup object.
+
+        REQUIRED ARGUMENTS
+
+          grabber  - URLGrabber instance
+          mirrors  - a list of mirrors
+
+        OPTIONAL ARGUMENTS
+
+          failure_callback  - callback to be used when a mirror fails
+
+        See the module-level and class level documentation for more
+        details.
+        """
+
         # OVERRIDE IDEAS:
         #   shuffle the list to randomize order
         self.grabber = grabber
@@ -233,13 +239,19 @@ class MirrorGroup:
         self.increment_mirror(gr, remove=1)
 
     def increment_mirror(self, gr, remove=1):
-        """Tell the mirror object to use a different mirror for the
-        next download.  This will typically occur after an error.
-        This method is provided (and is made public) so that the
-        calling program can increment the mirror choice for methods
-        like urlopen for which the mirror object has no way to know if
-        there was a terminated download or if the download is very
-        slow.
+        """Tell the mirror object increment the mirror index
+
+        This increments the mirror index, which amounts to telling the
+        mirror object to use a different mirror (for this and future
+        downloads).
+
+        This is a SEMI-public method.  It will be called internally,
+        and you may never need to call it.  However, it is provided
+        (and is made public) so that the calling program can increment
+        the mirror choice for methods like urlopen.  For example, with
+        urlopen, there's no good way for the mirror group to know that
+        an error occurs mid-download (it's already returned and given
+        you the file object).
         
         remove  ---  can have several values
            0   do not remove the mirror from the list
@@ -270,7 +282,90 @@ class MirrorGroup:
             print 'GR   mirrors: [%s] %i' % (' '.join(grm), gr._next)
             selfm = [m['mirror'] for m in self.mirrors]
             print 'MAIN mirrors: [%s] %i' % (' '.join(selfm), self._next)
+
+    #####################################################################
+    # NON-CONFIGURATION METHODS
+    # these methods are designed to be largely workhorse methods that
+    # are not intended to be overridden.  That doesn't mean you can't;
+    # if you want to, feel free, but most things can be done by
+    # by overriding the configuration methods :)
+
+    def _join_url(self, base_url, rel_url):
+        if base_url.endswith('/') or rel_url.startswith('/'):
+            return base_url + rel_url
+        else:
+            return baseurl + '/' + rel_url
+        
+    def _mirror_try(self, func, url, kw):
+        gr = GrabRequest()
+        gr.func = func
+        gr.url  = url
+        gr.kw   = kw
+        self._load_gr(gr)
+
+        while 1:
+            mirrorchoice = self._get_mirror(gr)
+            fullurl = self._join_url(mirrorchoice['mirror'], gr.url)
+            kwargs = dict(mirrorchoice.get('kwargs', {}))
+            kwargs.update(kw)
+            grabber = mirrorchoice.get('grabber') or self.grabber
+            func_ref = getattr(grabber, func)
+            if DEBUG: print 'MIRROR: trying %s -> %s' % (url, fullurl)
+            try:
+                return func_ref( *(fullurl,), **kwargs )
+            except URLGrabError, e:
+                if DEBUG: print 'MIRROR: failed'
+                self._failure(gr, e)
+
+    def urlgrab(self, url, filename=None, **kwargs):
+        kw = dict(kwargs)
+        kw['filename'] = filename
+        func = 'urlgrab'
+        return self._mirror_try(func, url, kw)
+    
+    def urlopen(self, url, **kwargs):
+        kw = dict(kwargs)
+        func = 'urlopen'
+        return self._mirror_try(func, url, kw)
+
+    def urlread(self, url, limit=None, **kwargs):
+        kw = dict(kwargs)
+        kw['limit'] = limit
+        func = 'urlread'
+        return self._mirror_try(func, url, kw)
             
-                
+
+class MGRandomStart(MirrorGroup):
+    """A mirror group that starts at a random mirror in the list.
+
+    This behavior of this class is identical to MirrorGroup, except that
+    it starts at a random location in the mirror list.
+    """
+
+    def __init__(self, grabber, mirrors, **kwargs):
+        """Initialize the object
+
+        The arguments for intialization are the same as for MirrorGroup
+        """
+        MirrorGroup.__init__(self, grabber, mirrors, **kwargs)
+        self._next = random.randrange(len(mirrors))
+
+class MGRandomOrder(MirrorGroup):
+    """A mirror group that uses mirrors in a random order.
+
+    This behavior of this class is identical to MirrorGroup, except that
+    it uses the mirrors in a random order.  Note that the order is set at
+    initialization time and fixed thereafter.  That is, it does not pick a
+    random mirror after each failure.
+    """
+
+    def __init__(self, grabber, mirrors, **kwargs):
+        """Initialize the object
+
+        The arguments for intialization are the same as for MirrorGroup
+        """
+        MirrorGroup.__init__(self, grabber, mirrors, **kwargs)
+        random.shuffle(self.mirrors)
+
 if __name__ == '__main__':
     pass
