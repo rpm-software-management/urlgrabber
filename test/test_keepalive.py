@@ -22,6 +22,8 @@ import sys
 import os
 import time
 import urllib2
+import threading
+import re
 
 from urllib2 import URLError
 
@@ -170,8 +172,58 @@ class DroppedConnectionTests(TestCase):
             'STATUS: 200, OK'
             ]
         self.assert_(data1 == data2)
-        self.assert_(self.snarfed_logs == reference_logs)
+        l = [ re.sub(r'\s+\(\d+\)$', r'', line) for line in self.snarfed_logs ]
+        self.assert_(l == reference_logs)
         
+class ThreadingTests(TestCase):
+    def setUp(self):
+        self.kh = keepalive.HTTPHandler()
+        self.opener = urllib2.build_opener(self.kh)
+        self.snarfed_logs = []
+        self.dbp = keepalive.DBPRINT
+        keepalive.DBPRINT = self.logsnarf
+        keepalive.DEBUG = 1
+
+    def tearDown(self):
+        self.kh.close_all()
+        keepalive.DBPRINT = self.dbp
+        keepalive.DEBUG = 0
+        
+    def logsnarf(self, message):
+        self.snarfed_logs.append(message)
+
+    def test_basic_threading(self):
+        "use 3 threads, each getting a file 4 times"
+        numthreads = 3
+        cond = threading.Condition()
+        self.threads = []
+        for i in range(numthreads):
+            t = Fetcher(self.opener, ref_http, 4)
+            t.start()
+            self.threads.append(t)
+        for t in self.threads: t.join()
+        l = [ re.sub(r'\s+\(\d+\)$', r'', line) for line in self.snarfed_logs ]
+        l.sort()
+        creating = ['creating new connection to www.linux.duke.edu'] * 3
+        status = ['STATUS: 200, OK'] * 12
+        reuse = ['re-using connection to www.linux.duke.edu'] * 9
+        reference_logs = creating + status + reuse
+        reference_logs.sort()
+        self.assert_(l == reference_logs)
+            
+class Fetcher(threading.Thread):
+    def __init__(self, opener, url, num):
+        threading.Thread.__init__(self)
+        self.opener = opener
+        self.url = url
+        self.num = num
+        
+    def run(self):
+        for i in range(self.num):
+            fo = self.opener.open(self.url)
+            data = fo.read()
+            fo.close()
+    
 def suite():
     tl = TestLoader()
     return tl.loadTestsFromModule(sys.modules[__name__])
