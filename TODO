@@ -1,30 +1,40 @@
 ALPHA:
 
-  * MirrorGroups
-	get comments from seth/ryan and make any necessary changes
+  * mirror.py
+    - (mds) make failover more controllable on a per-fetch basis.  For
+      example, be able to control whether the _next index is incremented
+      at all
 
-  * Reget
-    - fix bug with self.opts; the reget code can modify self.opts in the
-	  URLGrabberFileObject, which _may_not_ be a copy of the grabber's
-	  opts.  This may go away if we decide to deal with opts a little
-      differently.
-    - do a little testing for ftp:// and file://
-    
-  * ponder and implement ryan's idea about restructuring the import style
-    https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000077.html
+  * options
+    - (both) try and think of better/faster/cleaner ways to handle
+      grabber options
+    - (both) think about an interface for setting instance-level
+      options for an already-created grabber (presumably, mg instances
+      would support this for their options, too)
 
-  * decide on a plan for threading/batch stuff.  We don't need to
-    implement it, but it would be nice to:
-    - decide if we're going to do it at all (I (mds) lean toward yes)
-    - decide on an proposed interface
+  * opener
+    - (both) try and reduce the number of opener creations - try and
+      use an instance-level opener for most fetches.
 
-  * make a proper web page describing the features, philosophy,
-    intended audience, etc.  It might be reasonable to promote
-    urlgrabber from "mini project" to full-fledged project :)
+  * threading/batch
+    - (rt) propose an interface for threaded batch downloads
+    - (mds) look at making keepalive threadsafe
+    - (mds) design a new progress-meter interface for threaded
+      multi-file downloads
+    - (rt) look at CacheFTPHandler and its implications for batch mode
+      and byte-ranges/reget
 
-  * in general, decide on some of the questions in the following
-    sections - not implement, mind you, but at least be able to tell
-    people what we're planning
+  * reget
+    - (mds) fix bug with self.opts; the reget code can modify
+      self.opts in the URLGrabberFileObject, which _may_not_ be a copy
+      of the grabber's opts.  Implementation will depend on what we
+      decide to do with options.
+    - (mds) do a little testing for ftp:// and file://
+
+  * web page
+    - (mds) make a proper web page describing the features, philosophy,
+      intended audience, etc.  promote urlgrabber from "mini project" to
+      full-fledged project
 
 ALPHA 2:
 
@@ -40,13 +50,13 @@ ALPHA 2:
     recent chatter on the yum list about Ctrl-C handling. Seth suggests 
     Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
 
+  * Make keepalive functionality work when used in multiple threads.
+  
 Misc/Maybe:
 
   * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to
     handle forking into secure/setuid sandbox.
 
-  * Make keepalive functionality work when used in multiple threads.
-  
   * Consider adding a progress_meter implementation that can be used in 
     concurrent download situations (I have some ideas about this -mds)
   
