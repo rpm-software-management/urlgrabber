@@ -2,26 +2,12 @@ ALPHA:
 
   * Implement MirrorGroups.
 
-  * Basic speed tests to make sure we're not insanely slow. Interested 
-    in the cases of:
-    - crazy features ON and large files
-    - crazy features ON and small files 
-    - crazy features OFF and large files
-    - crazy features OFF and small files
-    
-    Here, crazy features are things like throttling and progress meters.
-    The significance of large/small files is whether we're slow in the 
-    actual downloading or the setup overhead.
-
 ALPHA 2:
 
   * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
     or a requested range being invalid. Right now the result of either of 
     these two cases is undefined and is probably different for HTTP/FTP.
     Raising an exception seems to be "the right thing to do" in both cases.
-
-  * Need to test usage across multiple threads. grabber.py should be fine.
-    keepalive seems to be the scary piece here.
 
   * Consider adding timeout keyword arg that would handle setting the socket
     timeout natively under python 2.3 or using timeoutsocket.py hack if 
@@ -34,31 +20,28 @@ ALPHA 2:
 
   * FTP proxy testing in general.
 
-  * Evaluate FTP range implementation. Problem here is that we had to
-    duplicate quite a bit of code from urllib/urllib2 to make this work
-    with the current implementation. We need to accept it and tidy it up a 
-    bit or pitch it for something better. I've wracked my head trying to
-    find a better way of doing this. Too much urllib2 source is bad for
-    the head.
-
-  * The FTP REST command does not support specifying an end-byte like HTTP's
-    Range header. Currently, we are  calling close() on the file object when 
-    the last byte of a range is received. Is there a cleaner way of handling 
-    this? Need to verify that the FTP session is being shut down cleanly and
-    the connection is closed properly.
-
   * Have a plan for KeyboardInterupt exception handling. This is driven by 
     recent chatter on the yum list about Ctrl-C handling. Seth suggests 
     Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
-
-Misc/Maybe:
-
-  * Get viewcvs setup.
-
-  * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to
-    handle forking into secure/setuid sandbox.
 
   * Reget support. When urlgrab is called, check if the file exists on disk. If
     so, offset the range so that we pull only the bytes remaining. This should
     probably have a kwarg to turn it on/off but could probably default to being
     on.
+    
+Misc/Maybe:
+
+  * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to
+    handle forking into secure/setuid sandbox.
+
+  * Make keepalive functionality work when used in multiple threads.
+  
+  * Consider adding a progress_meter implementation that can be used in concurrent 
+    download situations.
+  
+  * Consider using CacheFTPHandler instead of FTPHandler in byterange.py. 
+    CacheFTPHandler reuses connections but this may lead to problems with
+    ranges. I've tested CacheFTPHandler with ranges using vsftpd as a 
+    server and everything works fine but this needs more exhaustive tests 
+    or a fallback mechanism. Also, CacheFTPHandler breaks in the same way 
+    keepalive breaks with multiple threads.
