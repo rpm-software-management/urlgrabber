@@ -13,6 +13,14 @@ ALPHA 2:
     - (rt) look at CacheFTPHandler and its implications for batch mode
       and byte-ranges/reget
 
+  * progress meter stuff
+    - support for retrying a file (in a MirrorGroup, for example)
+    - failure support (done?)
+    - support for when we have less information (no sizes, etc)
+    - check compatibility with gui interfaces
+    - starting a download with some parts already read (with reget, 
+      for example)
+
   * Add decent debugging code and a URLGRABBER_DEBUG environment
     variable so that users of miscellaneous applications can get the
     debugging output

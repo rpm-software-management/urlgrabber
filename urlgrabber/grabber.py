@@ -255,7 +255,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.24 2004/07/21 02:45:01 rtomayko Exp $
+# $Id: grabber.py,v 1.25 2004/07/22 03:04:22 mstenner Exp $
 
 import os
 import os.path
@@ -859,7 +859,7 @@ class URLGrabberFileObject:
 
     def close(self):
         if self.opts.progress_obj:
-            self.opts.progress_obj.end()
+            self.opts.progress_obj.end(self._amount_read)
         self.fo.close()
         if self.opts.close_connection:
             try: self.fo.close_connection()
