@@ -1,23 +1,30 @@
 # urlgrabber distutils setup
+import re as _re
+import urlgrabber as _urlgrabber
 
 name = "urlgrabber"
-version = "0.3"
 description = "high-level cross-protocol url-grabber"
-author = "Michael D. Stenner, Ryan Tomayko"
-author_email = "mstenner@linux.duke.edu, rtomayko@naeblis.cx"
-url = "http://linux.duke.edu/projects/mini/urlgrabber/"
-license="GPL"
+license = "GPL"
+version = _urlgrabber.__version__
+_authors = _re.split(r',\s+', _urlgrabber.__author__)
+author       = ', '.join([_re.sub(r'\s+<.*',        r'', _) for _ in _authors])
+author_email = ', '.join([_re.sub(r'(^.*<)|(>.*$)', r'', _) for _ in _authors])
+url = _urlgrabber.__url__
+
 packages = ['urlgrabber']
 package_dir = {'urlgrabber':'urlgrabber'}
 scripts = ['scripts/urlgrabber']
-data_files = [('share/doc/' + name + '-' + version, ['README','LICENSE', 'TODO', 'ChangeLog'])]
+data_files = [('share/doc/' + name + '-' + version,
+               ['README','LICENSE', 'TODO', 'ChangeLog'])]
 options = { 'clean' : { 'all' : 1 } }
 
 # load up distutils
 if __name__ == '__main__':
   config = globals().copy()
-  del config['__builtins__']
-  del config['__name__']
-  
+  keys = config.keys()
+  for k in keys:
+    #print '%-20s -> %s' % (k, config[k])
+    if k.startswith('_'): del config[k]
+
   from distutils.core import setup
   setup(**config)

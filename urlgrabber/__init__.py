@@ -12,4 +12,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# Copyright 2002-2003 Michael D. Stenner, Ryan Tomayko
+# Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
+
+# $Id: __init__.py,v 1.2 2004/03/14 04:56:31 mstenner Exp $
+
+__version__ = '2.9.0'
+__date__    = '2004/04/13'
+__author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
+              'Ryan Tomayko <rtomayko@naeblis.cx>'
+__url__     = 'http://linux.duke.edu/projects/mini/urlgrabber/'
