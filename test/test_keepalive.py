@@ -25,25 +25,15 @@ import urllib2
 from urllib2 import URLError
 from unittest import TestCase, TestSuite
 
+from base_test_code import *
+
 from urlgrabber import keepalive
 
 def suite():
-    return TestSuite((
-        unittest.makeSuite(CorruptionTests, 'test'),
-        unittest.makeSuite(HTTPErrorTests, 'test'),
-        unittest.makeSuite(DroppedConnectionTests, 'test'),
-        ))
+    classlist = [CorruptionTests, HTTPErrorTests, DroppedConnectionTests]
+    return unittest.TestSuite(makeSuites(classlist))
 
-reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
-short_reference_data = ' '.join( [str(i) for i in range(10) ] )
-base_http = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/'
-ref_http = base_http + 'reference'
-short_ref_http = base_http + 'short_reference'
-ref_200 = ref_http
-ref_404 = base_http + 'nonexistent_file'
-ref_403 = base_http + 'mirror/broken/'
-
-class CorruptionTests(unittest.TestCase):
+class CorruptionTests(UGTestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
@@ -95,7 +85,7 @@ class CorruptionTests(unittest.TestCase):
             else: break
         self.assert_(data == reference_data)
 
-class HTTPErrorTests(unittest.TestCase):
+class HTTPErrorTests(UGTestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
@@ -146,7 +136,7 @@ class HTTPErrorTests(unittest.TestCase):
         fo.close()
         self.assertEqual((fo.status, fo.reason), (403, 'Forbidden'))
 
-class DroppedConnectionTests(unittest.TestCase):
+class DroppedConnectionTests(UGTestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)

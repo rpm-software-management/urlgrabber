@@ -19,8 +19,10 @@
 import sys
 import unittest
 import os
-
+import string, tempfile, random, cStringIO, os
 from unittest import TestCase, TestSuite
+
+from base_test_code import *
 
 import urlgrabber.grabber as grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError, \
@@ -28,23 +30,11 @@ from urlgrabber.grabber import URLGrabber, URLGrabError, \
 from urlgrabber.progress import text_progress_meter
 
 def suite():
-    return TestSuite((
-        unittest.makeSuite(FileObjectTests, 'test'),
-        unittest.makeSuite(HTTPTests, 'test'),
-        unittest.makeSuite(URLGrabberModuleTestCase, 'test'),
-        unittest.makeSuite(URLGrabberTestCase, 'test'),
-        unittest.makeSuite(RegetTests, 'test'),
-        ))
+    classlist = [FileObjectTests, HTTPTests, URLGrabberModuleTestCase,
+                 URLGrabberTestCase, RegetTests]
+    return unittest.TestSuite(makeSuites(classlist))
 
-import string, tempfile, random, cStringIO, os
-
-reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
-short_reference_data = ' '.join( [str(i) for i in range(10) ] )
-base_http = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/'
-ref_http = base_http + 'reference'
-short_ref_http = base_http + 'short_reference'
-
-class FileObjectTests(unittest.TestCase):
+class FileObjectTests(UGTestCase):
     def setUp(self):
         self.filename = tempfile.mktemp()
         fo = open(self.filename, 'w')
@@ -60,11 +50,13 @@ class FileObjectTests(unittest.TestCase):
         os.unlink(self.filename)
 
     def test_readall(self):
+        "URLGrabberFileObject .read() method"
         s = self.wrapper.read()
         self.fo_output.write(s)
         self.assertEqual(reference_data, self.fo_output.getvalue())
 
     def test_readline(self):
+        "URLGrabberFileObject .readline() method"
         while 1:
             s = self.wrapper.readline()
             self.fo_output.write(s)
@@ -72,20 +64,22 @@ class FileObjectTests(unittest.TestCase):
         self.assertEqual(reference_data, self.fo_output.getvalue())
 
     def test_readlines(self):
+        "URLGrabberFileObject .readlines() method"
         li = self.wrapper.readlines()
         self.fo_output.write(string.join(li, ''))
         self.assertEqual(reference_data, self.fo_output.getvalue())
 
     def test_smallread(self):
+        "URLGrabberFileObject .read(N) with small N"
         while 1:
             s = self.wrapper.read(23)
             self.fo_output.write(s)
             if not s: break
         self.assertEqual(reference_data, self.fo_output.getvalue())
     
-class HTTPTests(unittest.TestCase):
+class HTTPTests(UGTestCase):
     def test_reference_file(self):
-        """test that a reference file can be properly downloaded via http"""
+        "download refernce file via HTTP"
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 
@@ -95,7 +89,7 @@ class HTTPTests(unittest.TestCase):
 
         self.assertEqual(contents, reference_data)
 
-class URLGrabberModuleTestCase(TestCase):
+class URLGrabberModuleTestCase(UGTestCase):
     """Test module level functions defined in grabber.py"""
     def setUp(self):
         pass
@@ -104,23 +98,23 @@ class URLGrabberModuleTestCase(TestCase):
         pass
     
     def test_urlopen(self):
-        """grabber.urlopen()"""
+        "module-level urlopen() function"
         fo = grabber.urlopen('http://www.python.org')
         fo.close()
     
     def test_urlgrab(self):
-        """grabber.urlgrab()"""
+        "module-level urlgrab() function"
         outfile = tempfile.mktemp()
         filename = grabber.urlgrab('http://www.python.org', 
                                     filename=outfile)
         os.unlink(outfile)
     
     def test_urlread(self):
-        """grabber.urlread()"""
+        "module-level urlgrab() function"
         s = grabber.urlread('http://www.python.org')
 
        
-class URLGrabberTestCase(TestCase):
+class URLGrabberTestCase(UGTestCase):
     """Test grabber.URLGrabber class"""
     
     def setUp(self):
@@ -181,7 +175,7 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals('', query)
         self.assertEquals('', frag)
 
-class RegetTests(TestCase):
+class RegetTests(UGTestCase):
     def setUp(self):
         self.ref = short_reference_data
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
@@ -193,6 +187,7 @@ class RegetTests(TestCase):
         except: pass
 
     def test_bad_reget_type(self):
+        "exception raised for illegal reget mode"
         self.assertRaises(URLGrabError, self.grabber.urlgrab,
                           short_ref_http, self.filename, reget='junk')
 
@@ -208,7 +203,7 @@ class RegetTests(TestCase):
         return data
     
     def test_basic_reget(self):
-        'test that reget fetches the second half of a file'
+        'simple (forced) reget'
         self._make_half_zero_file()
         self.grabber.urlgrab(short_ref_http, self.filename, reget='simple')
         data = self._read_file()
@@ -217,7 +212,7 @@ class RegetTests(TestCase):
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
     def test_older_check_timestamp(self):
-        'test that reget is used if server version is older than local'
+        'reget when server version is older than local'
         self._make_half_zero_file()
         ts = 1600000000 # set local timestamp to 2020
         os.utime(self.filename, (ts, ts)) 
@@ -229,7 +224,7 @@ class RegetTests(TestCase):
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
     def test_newer_check_timestamp(self):
-        'test that whole file is fetched if server version is newer than local'
+        'NO reget when server version is newer than local'
         self._make_half_zero_file()
         ts = 1 # set local timestamp to 1969
         os.utime(self.filename, (ts, ts)) 

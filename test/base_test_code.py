@@ -20,7 +20,8 @@ bad_mirror_files   = ['broken.txt']
 class UGTestCase(unittest.TestCase):
     def shortDescription(self):
         doc = self._TestCase__testMethodDoc
-        doc = doc and (doc.split('\n'))[0].strip() or None
+        doc = doc and (doc.split('\n'))[0].strip()
+        doc = doc or self._TestCase__testMethodName
         return '%-66s' % doc
 
 def makeSuites(classlist, prefix='test'):
