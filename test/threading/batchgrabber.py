@@ -36,8 +36,8 @@ if __name__ == '__main__':
 
 from threading import Thread, Semaphore
 from urlgrabber.grabber import URLGrabber, URLGrabError
+from urlgrabber.progress import MultiFileMeter, TextMultiFileMeter
 from time import sleep, time
-from urlgrabber.progress import text_progress_meter
 
 DEBUG=0
 
@@ -53,6 +53,8 @@ class BatchURLGrabber:
     self.queue.append( (url, filename, kwargs) )
   
   def batchgrab(self):
+    if hasattr(self.grabber.opts.progress_obj, 'start'):
+        self.grabber.opts.progress_obj.start(len(self.queue))
     while self.queue or self.threads:
       if self.queue and (len(self.threads) < self.maxthreads):
         url, filename, kwargs = self.queue[0]
@@ -82,90 +84,17 @@ class Worker(Thread):
     if DEBUG: print "worker thread started."
     grabber = self.parent.grabber
     progress_obj = grabber.opts.progress_obj
-    if isinstance(progress_obj, BatchProgressMeter):
+    if isinstance(progress_obj, MultiFileMeter):
       self.kwargs['progress_obj'] = progress_obj.newMeter()
     try:
       rslt = self.parent.grabber.urlgrab(self.url, self.filename, **self.kwargs)
     except URLGrabError, e:
       print '%s, %s' % (e, self.url)
-
-class BatchProgressMeter:
-  "An experimental text progress meter that works with multiple threads."
-  
-  def __init__(self, fo=sys.stdout):
-    self.fo = fo
-    self.update_period = 0.3 # seconds
-    self.meters = []
-    self.last_update = 0
-    
-  def newMeter(self):
-    "Create a new meter attached to this guy."
-    meter = Meter(self)
-    return meter
-  
-  def meter_start(self, meter):
-    "Called when an individual meter starts."
-    self.meters.append(meter)
-    pass
-    
-  def meter_end(self, meter):
-    "Called when an individual meter ends."
-    self.meters.remove(meter)
-    self.draw()
-    if len(self.meters) == 0:
-      self.fo.write('\n')
-      self.fo.flush()
-    
-  def meter_update(self, meter):
-    "Called when an individual meter is updated."
-    now = time()
-    if (now >= self.last_update + self.update_period) or \
-          not self.last_update:
-      self.last_update = now
-      self.draw()
-    
-  def draw(self):
-    out = '\r'
-    for meter in self.meters:
-      if meter.length:
-        try: frac = float(meter.read)/meter.length
-        except ZeroDivisionError, e: frac = 1.0
-        if frac > 1.0: frac = 1.0
-        out+= '[%7.7s:%3i%%]' % (meter.basename, frac*100)
-      else:
-        out+= '[%7.7s:%5sB]' % (meter.basename, meter.fread)
-    # erase previous output
-    self.fo.write('\r')
-    self.fo.write(' ' * 80)
-    self.fo.flush()
-    self.fo.write(out[:80] + '\r')
-    self.fo.flush()
-    
-class Meter(text_progress_meter):
-  def __init__(self, master):
-    self.master = master
-    text_progress_meter.__init__(self, fo=None)
-    
-  def _do_start(self):
-    self.master.meter_start(self)
-      
-  def _do_end(self):
-    self.ftotal_time = self.format_time(self.now - self.start_time)
-    self.ftotal_size = self.format_number(self.read)
-    self.master.meter_end(self)
-      
-  def _do_update(self, read):
-    # elapsed time since last update
-    self.read = read
-    self.etime = self.now - self.start_time
-    self.fetime = self.format_time(self.etime)
-    self.fread = self.format_number(read)
-    self.master.meter_update(self)
       
 def main():
   progress_obj = None
-  # uncomment to play with BatchProgressMeter
-  #progress_obj=BatchProgressMeter()
+  # uncomment to play with BatchProgressMeter (doesn't work right now)
+  # progress_obj = TextMultiFileMeter()
   g = BatchURLGrabber(keepalive=1, progress_obj=progress_obj)
   for arg in sys.argv[1:]:
     g.urlgrab(arg)
