@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.22 2005/01/14 18:22:18 rtomayko Exp $
+# $Id: test_grabber.py,v 1.23 2005/02/14 22:13:36 mstenner Exp $
 
 import sys
 import os
@@ -371,18 +371,6 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.assertEquals(data[:self.hl], '0'*self.hl)
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
-class ProFTPDSucksTests(TestCase):
-    def setUp(self):
-        self.url = ref_proftp
-        try:
-            fo = urllib2.urlopen(self.url).close()
-        except IOError:
-            self.skip()
-
-    def test_restart_workaround(self):
-        inst = grabber.URLGrabber()
-        rslt = inst.urlread(self.url, range=(500, 1000))
-        
 class HTTPRegetTests(FTPRegetTests):
     def setUp(self):
         RegetTestBase.setUp(self)
@@ -433,9 +421,18 @@ class FileRegetTests(HTTPRegetTests):
         try: os.unlink(self.tmp)
         except: pass
 
-# I'd like to write some ftp tests as well, but I don't have a
-# reliable ftp server
+class ProFTPDSucksTests(TestCase):
+    def setUp(self):
+        self.url = ref_proftp
+        try:
+            fo = urllib2.urlopen(self.url).close()
+        except IOError:
+            self.skip()
 
+    def test_restart_workaround(self):
+        inst = grabber.URLGrabber()
+        rslt = inst.urlread(self.url, range=(500, 1000))
+        
 def suite():
     tl = TestLoader()
     return tl.loadTestsFromModule(sys.modules[__name__])
