@@ -148,6 +148,18 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals( opts.user_agent, 'test ua/1.0' )
         self.assertEquals( opts.proxies, {'http' : 'http://www.proxy.com:9090'} )
         
+        nopts = grabber.URLGrabberOptions(delegate=opts, throttle=0.5, 
+                                        copy_local=0)
+        self.assertEquals( nopts.progress_obj, self.meter )
+        self.assertEquals( nopts.throttle, 0.5 )
+        self.assertEquals( nopts.bandwidth, 20 )
+        self.assertEquals( nopts.retry, 20 )
+        self.assertEquals( nopts.retrycodes, [5,6,7] )
+        self.assertEquals( nopts.copy_local, 0 )
+        self.assertEquals( nopts.close_connection, 1 )
+        self.assertEquals( nopts.user_agent, 'test ua/1.0' )
+        self.assertEquals( nopts.proxies, {'http' : 'http://www.proxy.com:9090'} )
+        
     def test_parse_url(self):
         """grabber.URLGrabber._parse_url()"""
         g = URLGrabber()

@@ -244,7 +244,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.18 2004/03/28 03:02:04 mstenner Exp $
+# $Id: grabber.py,v 1.19 2004/03/28 22:26:46 rtomayko Exp $
 
 import os
 import os.path
@@ -385,12 +385,54 @@ def urlread(url, limit=None, **kwargs):
 class URLGrabberOptions:
     """Class to ease kwargs handling."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, delegate=None, **kwargs):
         """Initialize URLGrabberOptions object.
         Set default values for all options and then update options specified
         in kwargs.
         """
-        # ensure defaults are present
+        self.delegate = delegate
+        if delegate is None:
+            self._set_defaults()
+        self._set_attributes(**kwargs)
+    
+    def __getattr__(self, name):
+        if self.delegate and hasattr(self.delegate, name):
+            return getattr(self.delegate, name)
+        raise AttributeError, name
+    
+    def raw_throttle(self):
+        """Calculate raw throttle value from throttle and bandwidth 
+        values.
+        """
+        if self.throttle <= 0:  
+            return 0
+        elif type(self.throttle) == type(0): 
+            return float(self.throttle)
+        else: # throttle is a float
+            return self.bandwidth * self.throttle
+        
+    def derive(self, **kwargs):
+        """Create a derived URLGrabberOptions instance.
+        This method creates a new instance and overrides the
+        options specified in kwargs.
+        """
+        return URLGrabberOptions(delegate=self, **kwargs)
+        
+    def _set_attributes(self, **kwargs):
+        """Update object attributes with those provided in kwargs."""
+        self.__dict__.update(kwargs)
+        if have_range and kwargs.has_key('range'):
+            # normalize the supplied range value
+            self.range = range_tuple_normalize(self.range)
+        if not self.reget in [None, 'simple', 'check_timestamp']:
+            raise URLGrabError(11, _('Illegal reget mode: %s') \
+                               % (self.reget, ))
+
+    def _set_defaults(self):
+        """Set all options to their default values. 
+        When adding new options, make sure a default is
+        provided here.
+        """
         self.progress_obj = None
         self.throttle = 1.0
         self.bandwidth = 0
@@ -406,42 +448,7 @@ class URLGrabberOptions:
         self.reget = None
         self.failure_callback = None
         self.prefix = None
-        # update all attributes with supplied kwargs
-        self._set_attributes(**kwargs)
-        
-    def raw_throttle(self):
-        """Calculate raw throttle value from throttle and bandwidth 
-        values.
-        """
-        if self.throttle <= 0:  
-            return 0
-        elif type(self.throttle) == type(0): 
-            return float(self.throttle)
-        else: # throttle is a float
-            return self.bandwidth * self.throttle
-        
-    def derive(self, **kwargs):
-        """Copy this object and then override the specified options.
-        This method does *not* return a copy if no kwargs are supplied.
-        """
-        if len(kwargs) > 0:
-            from copy import copy
-            clone = copy(self)
-            clone._set_attributes(**kwargs)
-            return clone
-        else:
-            return self
-        
-    def _set_attributes(self, **kwargs):
-        """Update object attributes with those provided in kwargs."""
-        self.__dict__.update(kwargs)
-        if have_range and kwargs.has_key('range'):
-            # normalize the supplied range value
-            self.range = range_tuple_normalize(self.range)
-        if not self.reget in [None, 'simple', 'check_timestamp']:
-            raise URLGrabError(11, _('Illegal reget mode: %s') \
-                               % (self.reget, ))
-
+                               
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
     
