@@ -130,14 +130,14 @@ GENERAL ARGUMENTS (kwargs)
 
   opener = None
   
-    Overrides the default urllib2.OpenerDirector provided to 
-    urllib2 when making requests. This option exists so that the urllib2
-    handler chain may be customized. Note that the keepalive, range, reget, 
-    proxy, and keepalive features require that custom handlers be provided to 
-    urllib2 in order to function properly. If an opener option is provided, no 
-    attempt is made by urlgrabber to ensure chain integrity. You are responsible
-    for ensuring that any extension handlers are present if said features are
-    required.
+    Overrides the default urllib2.OpenerDirector provided to urllib2
+    when making requests.  This option exists so that the urllib2
+    handler chain may be customized.  Note that the range, reget,
+    proxy, and keepalive features require that custom handlers be
+    provided to urllib2 in order to function properly.  If an opener
+    option is provided, no attempt is made by urlgrabber to ensure
+    chain integrity.  You are responsible for ensuring that any
+    extension handlers are present if said features are required.
     
 RETRY RELATED ARGUMENTS
 
@@ -252,7 +252,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.21 2004/03/31 04:26:03 rtomayko Exp $
+# $Id: grabber.py,v 1.22 2004/03/31 16:32:11 mstenner Exp $
 
 import os
 import os.path
