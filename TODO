@@ -1,7 +1,19 @@
 ALPHA:
 
-  * Implement MirrorGroups.
+  * MirrorGroups
+    - add report callbacks so calling app can know about failures
+    - docs
+    - possibly move the arguments that make urlXXX different into the
+      kwargs stuff, so that the wrapping in MirrorGroups can be a little
+      cleaner - this would mean that you'd have to do 
+         urlgrab(url, filename=filename)
+      which is annoying (and different from how it's being used)
 
+  * Reget support. When urlgrab is called, check if the file exists on disk. If
+    so, offset the range so that we pull only the bytes remaining. This should
+    probably have a kwarg to turn it on/off but could probably default to being
+    on.
+    
 ALPHA 2:
 
   * Consider adding timeout keyword arg that would handle setting the socket
@@ -16,11 +28,6 @@ ALPHA 2:
     recent chatter on the yum list about Ctrl-C handling. Seth suggests 
     Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
 
-  * Reget support. When urlgrab is called, check if the file exists on disk. If
-    so, offset the range so that we pull only the bytes remaining. This should
-    probably have a kwarg to turn it on/off but could probably default to being
-    on.
-    
 Misc/Maybe:
 
   * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to

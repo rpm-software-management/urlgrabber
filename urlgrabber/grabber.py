@@ -218,22 +218,41 @@ else:
 class URLGrabError(IOError):
     """
     URLGrabError error codes:
-      -1 - default retry code for retrygrab check functions
-      0  - everything looks good (you should never see this)
-      1  - malformed url
-      2  - local file doesn't exist
-      3  - request for non-file local file (dir, etc)
-      4  - IOError on fetch
-      5  - OSError on fetch
-      6  - no content length header when we expected one
-      7  - HTTPException
-      8  - Exceeded read limit (for urlread)
-      9  - Requested byte range not satisfiable.
- 
-    Negative codes are reserved for use by functions passed in to
-    retrygrab with checkfunc.
 
-    You can use it like this:
+      URLGrabber error codes (0 -- 255)
+        0    - everything looks good (you should never see this)
+        1    - malformed url
+        2    - local file doesn't exist
+        3    - request for non-file local file (dir, etc)
+        4    - IOError on fetch
+        5    - OSError on fetch
+        6    - no content length header when we expected one
+        7    - HTTPException
+        8    - Exceeded read limit (for urlread)
+        9    - Requested byte range not satisfiable.
+
+      MirrorGroup error codes (256 -- 511)
+        256  - No more mirrors left to try
+
+      Custom (non-builtin) classes derived from MirrorGroup (512 -- 767)
+        [ this range reserved for application-specific error codes ]
+
+      Retry codes (< 0)
+        -1   - retry the download, unknown reason
+
+    Note: to test which group a code is in, you can simply do integer
+    division by 256: e.errno / 256
+
+    Negative codes are reserved for use by functions passed in to
+    retrygrab with checkfunc.  The value -1 is built in as a generic
+    retry code and is already included in the retrycodes list.
+    Therefore, you can create a custom check function that simply
+    returns -1 and the fetch will be re-tried.  For more customized
+    retries, you can use other negative number and include them in
+    retry-codes.  This is nice for outputting useful messages about
+    what failed.
+
+    You can use these error codes like so:
       try: urlgrab(url)
       except URLGrabError, e:
          if e.errno == 3: ...
