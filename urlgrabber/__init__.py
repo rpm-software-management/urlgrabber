@@ -14,7 +14,7 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.9 2005/02/14 22:33:42 mstenner Exp $
+# $Id: __init__.py,v 1.10 2005/02/21 17:59:33 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 
@@ -48,6 +48,6 @@ __version__ = '2.9.2'
 __date__    = '2005/02/14'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>'
-__url__     = 'http://linux.duke.edu/projects/mini/urlgrabber/'
+__url__     = 'http://linux.duke.edu/projects/urlgrabber/'
 
 from grabber import urlgrab, urlopen, urlread
