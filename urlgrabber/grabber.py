@@ -548,7 +548,7 @@ class URLGrabber:
         path = os.path.normpath(path)
         if '@' in host and auth_handler and scheme in ['http', 'https']:
             try:
-                user_password, host = user_pass, host = host.split('@', 1)
+                user_pass, host = host.split('@', 1)
                 if ':' in user_pass: user, password = user_pass.split(':', 1)
             except ValueError, e:
                 raise URLGrabError(1, _('Bad URL: %s') % url)
