@@ -1,12 +1,5 @@
 ALPHA:
 
-  * options
-    - (both) try and think of better/faster/cleaner ways to handle
-      grabber options
-    - (both) think about an interface for setting instance-level
-      options for an already-created grabber (presumably, mg instances
-      would support this for their options, too)
-
   * opener
     - ???? can we make it possible to include (or exclude) custom
       handlers in the openers?
@@ -17,12 +10,6 @@ ALPHA:
       multi-file downloads
     - (rt) look at CacheFTPHandler and its implications for batch mode
       and byte-ranges/reget
-
-  * reget
-    - (mds) fix bug with self.opts; the reget code can modify
-      self.opts in the URLGrabberFileObject, which _may_not_ be a copy
-      of the grabber's opts.  Implementation will depend on what we
-      decide to do with options.
 
   * web page
     - examples page
