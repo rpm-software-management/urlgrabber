@@ -1,3 +1,60 @@
+2005-02-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.4
+
+2005-02-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	Added http_headers and ftp_headers options.
+
+2005-02-25  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* TODO, test/base_test_code.py, test/test_grabber.py,
+	test/support/squid/squid-setup, test/support/squid/squid.conf,
+	test/support/testdata/README, test/support/testdata/reference,
+	test/support/testdata/short_reference,
+	test/support/testdata/mirror/broken/broken.txt,
+	test/support/testdata/mirror/broken/reference,
+	test/support/testdata/mirror/broken/short_reference,
+	test/support/testdata/mirror/broken/test1.txt,
+	test/support/testdata/mirror/broken/test2.txt,
+	test/support/testdata/mirror/m1/broken.txt,
+	test/support/testdata/mirror/m1/reference,
+	test/support/testdata/mirror/m1/short_reference,
+	test/support/testdata/mirror/m1/test1.txt,
+	test/support/testdata/mirror/m1/test2.txt,
+	test/support/testdata/mirror/m2/broken.txt,
+	test/support/testdata/mirror/m2/reference,
+	test/support/testdata/mirror/m2/short_reference,
+	test/support/testdata/mirror/m2/test1.txt,
+	test/support/testdata/mirror/m2/test2.txt,
+	test/support/testdata/mirror/m3/broken.txt,
+	test/support/testdata/mirror/m3/reference,
+	test/support/testdata/mirror/m3/short_reference,
+	test/support/testdata/mirror/m3/test1.txt,
+	test/support/testdata/mirror/m3/test2.txt,
+	test/support/vsftpd/ftp-server-setup,
+	test/support/vsftpd/vsftpd.conf,
+	test/support/vsftpd/vsftpd.ftpusers,
+	test/support/vsftpd/vsftpd.user_list, urlgrabber/grabber.py:
+
+	Added data and instructions for setting up ftp and proxy servers
+	for testing and also added proxy tests.  Fixed two bugs related to
+	proxies.  One bug made it so the first time proxy data was passed
+	in, it was not actually used.  The other prevented proxies from
+	working for ftp or non-keepalive http using python 2.2.  The latter
+	is a bug in urllib2, but is now worked around (somewhat hackishly,
+	I admit) in urlgrabber.   LocalWords:  CVS
+
+2005-02-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2005-02-22  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/__init__.py:
