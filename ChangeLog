@@ -1,0 +1,275 @@
+2004-03-08 02:46  rtomayko
+
+	* TODO:
+	
+	raise exceptions for invalid ranges DONE.
+
+2004-03-08 02:44  rtomayko
+
+	* urlgrabber/grabber.py:
+	
+	Added support for RangeError to URLGrabError handling (errno 9).
+	Also, default is _not_ to retry grabs resulting in RangeError.
+
+2004-03-08 02:42  rtomayko
+
+	* urlgrabber/byterange.py:
+	
+	Fixed try/except without an explicit exception. that's a no-no.
+
+2004-03-08 02:35  rtomayko
+
+	* urlgrabber/byterange.py:
+	
+	raising RangeError anytime a range is non-satisfiable.
+
+2004-03-08 01:50  rtomayko
+
+	* urlgrabber/grabber.py:
+	
+	Always copy_local when a byte range is specified to urlgrab.
+
+2004-03-08 01:16  rtomayko
+
+	* TODO:
+	
+	urllib2 conditionals were cleaned up a while ago..
+
+2004-03-08 01:12  rtomayko
+
+	* TODO:
+	
+	Confirmed FTP connections are being closed properly when using
+	ranges.  Added item for using CacheFTPHandler so FTP connections
+	are reused.  Moved reget item under ALPHA 2.  Added items for
+	keepalive/progress_meter w/ multiple threads.  viewcvs DONE.  Test
+	under multiple threads DONE.  Basic performance tests DONE.
+
+2004-03-06 18:33  rtomayko
+
+	* test/threading/: urls-keepalive, urls-many:
+	
+	Some URLs for batchgrabber.py.
+
+2004-03-06 18:31  rtomayko
+
+	* test/threading/batchgrabber.py:
+	
+	Module for testing urlgrabber w/ multiple threads.
+
+2004-02-29 19:41  rtomayko
+
+	* urlgrabber/grabber.py:
+	
+	Performance tweak to bypass URLGrabberFileObject.read when not
+	using progress_obj or throttle.
+
+2004-02-29 19:40  rtomayko
+
+	* urlgrabber/grabber.py:
+	
+	Removed speed test from grabber.py. This test has been moved to
+	test/grabberperf.py
+
+2004-02-29 19:38  rtomayko
+
+	* test/grabberperf.py:
+	
+	First cut at a module to run through some performance tests for
+	grabber.py
+
+2004-02-29 19:38  rtomayko
+
+	* test/test_grabber.py:
+	
+	Clean up temp files after testing urlgrab.
+
+2004-02-28 15:33  rtomayko
+
+	* TODO:
+	
+	Added reget and batch stuff under the 'maybe' section.
+
+2004-02-22 00:32  rtomayko
+
+	* urlgrabber/grabber.py:
+	
+	Brought in fix from yum for user:pass escaping in URLs.
+
+2004-02-21 22:16  rtomayko
+
+	* TODO, urlgrabber/grabber.py:
+	
+	Added checkfunc support to urlread.
+
+2004-02-21 22:01  rtomayko
+
+	* TODO, urlgrabber/byterange.py:
+	
+	Changed all variables/args named 'range' to rangetup or brange to
+	avoid possible python keyword clash.
+
+2004-02-21 21:41  rtomayko
+
+	* TODO:
+	
+	Added item about handling KeyboardInterupt exceptions.
+
+2004-02-21 21:38  rtomayko
+
+	* TODO:
+	
+	Restructured TODO list based on recent email from Michael.
+
+2004-02-13 23:46  rtomayko
+
+	* .cvsignore, MANIFEST.in, README, TODO, progress_meter.py,
+	setup.py, urlgrabber.py, scripts/urlgrabber, test/.cvsignore,
+	test/runtests.py, test/test_byterange.py, test/test_grabber.py,
+	test/test_urlgrabber.py, urlgrabber/__init__.py,
+	urlgrabber/byterange.py, urlgrabber/grabber.py,
+	urlgrabber/progress.py:
+	
+	Mass commit/merge of changes made for urlgrabber restructuring..
+	See ChangeLog for details.
+
+2004-02-11 12:44  mstenner
+
+	* ChangeLog:
+	
+	These are the changes from when ryan was working in a separate
+	repo.  They are included here in bulk for ChangeLog simplicity.
+	
+	2004-02-09 Friday     rtomayko
+	
+	  * TODO: Initial commit of TODO list..
+	
+	2004-01-29 Thursday   rtomayko
+	
+	  * grabber.py, grabbertests.py, urlgrabber: Added proxy support.
+	
+	  * grabber.py: Removed default option copying in URLGrabber class
+	    because this could cause side-effects.
+	
+	2004-01-25 Sunday     rtomayko
+	
+	  * setup.py: Fixed bad syntax on doc files..
+	
+	  * setup.py, urlgrabber: Added urlgrabber script to distutils
+	    install.
+	
+	2003-12-16 Tuesday    rtomayko
+	
+	  * byterange.py, grabber.py: Initial crack at range support for
+	    FTP - working but ugly..
+	
+	2003-12-12 Friday     rtomayko
+	
+	  * byterange.py, byterangetests.py: Make range tuples work like
+	    python slices. endpos is non-inclusive.
+	
+	2003-12-10 Wednesday  rtomayko
+	
+	  * scripts/urlgrabber: Quick script to call urlgrabber from the
+	    command line. I've been using it in place of wget to get as 
+	    much testing as possible.
+	
+	  * grabber.py: Fixed small problem with progress meter not
+	    updating properly. This was caused by moving _do_grab to
+	    URLGrabberFileObject.
+	
+	  * grabber.py: Moved _do_open and per-request variables into
+	    URLGrabberFileObject
+	
+	  * grabber.py: Added doc for user_agent kwarg
+	
+	  * grabber.py: Moved urllib2 Handler configuration to
+	    URLGrabberFileObject. Each request has a
+	    urllib2.OpenerDirector now that is customized based on
+	    options.
+	
+	  * grabber.py: Added keepalive kwarg. keepalive can be
+	    specified on a per-request basis now.
+	
+	  * grabber.py: Changed method of handling retries. I'm not 
+	    sure if I like this yet. All URLGrabber.urlXXX methods 
+	    define a function and pass it to the URLGrabber._retry() 
+	    method which calls the function provided and handles 
+	    retrying if the provided function raises a URLGrabError.
+	
+	2003-12-09 Tuesday    rtomayko
+	
+	  * grabber.py: default_grabber is now a default instance of 
+	    URLGrabber used by the module level urlXXX functions.
+	
+	  * grabber.py: deprecated module level set_<option> methods.
+	    default_grabber should be used instead.
+	
+	  * grabber.py: URLGrabber should be completely stateless now.
+	    Using a single URLGrabber object for multiple requests 
+	    shouldn't be a problem.
+	
+	  * grabber.py: Added URLGrabberOptions class to handle kwargs 
+	    more elegantly.
+	
+	2003-12-08 Monday   rtomayko
+	
+	  * __init__.py, setup.py: everything should be in a package named
+	    urlgrabber now (distutils is a nice piece of software).
+	
+	  * grabber.py, range.py, rangetests.py, grabbertests.py: - Initial
+	    attempt at range support for HTTP and local files through range
+	    module.
+	
+	  * byterange.py: brought in skeleton classes from urllib2 for FTP 
+	    range support but FTP ranges are not yet supported.
+	
+	  * byterange.py: Local file range support internally implemented 
+	    with RangeableFileObject which is a pretty cool file object 
+	    wrapper that automatically handles ranging.
+	
+	2003-12-07 Sunday   rtomayko
+	
+	  * grabber.py: minor changes for line wrapping
+	
+	  * grabber.py: added URLGrabber class (moved _do_open, _do_grab,
+	    _parse_url, _get_raw_throttle into said class).
+	
+	  * grabber.py: deprecated retrygrab. now supported through
+	    urlgrab(retry=n).
+	
+	  * grabber.py: local filenames (i.e. without URL scheme 
+	    specifier) are now handled wherever a url may be passed.
+	
+	  * grabber.py: retry is now fully supported on urlread and 
+	    partially supported on urlopen. wrt to urlopen, retries are 
+	    possible if an URLGrabError occurs while _opening_ the url 
+	    (e.g. due to temporarily unavailable, etc). however, we 
+	    still can't protect anyone from problems that occur after 
+	    urlopen has returned the file object.
+	
+	2003-12-05 Friday   rtomayko
+	
+	  * grabber.py: Initial attempt at retooling the interface to use
+	    kwargs.. *Most* functionality should still be working..
+
+2003-10-12 20:21  mstenner
+
+	* urlgrabber.py, test/test_urlgrabber.py:
+	
+	created test_urlgrabber.py and started moving tests into it
+
+2003-10-11 22:03  mstenner
+
+	* README, makefile, progress_meter.py, urlgrabber.py,
+	urlgrabber/keepalive.py, LICENSE, MANIFEST.in, setup.py:
+	
+	importing urlgrabber
+
+2003-10-11 22:03  mstenner
+
+	* README, makefile, progress_meter.py, urlgrabber.py,
+	urlgrabber/keepalive.py, LICENSE, MANIFEST.in, setup.py:
+	
+	Initial revision
+
