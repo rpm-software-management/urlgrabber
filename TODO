@@ -8,6 +8,8 @@ ALPHA:
       cleaner - this would mean that you'd have to do 
          urlgrab(url, filename=filename)
       which is annoying (and different from how it's being used)
+    - add sublcasses of MirrorGroup for different failover policies,
+      at least providing the same behavior as what yum does now
 
   * Reget support. When urlgrab is called, check if the file exists on disk. If
     so, offset the range so that we pull only the bytes remaining. This should
@@ -38,8 +40,8 @@ Misc/Maybe:
 
   * Make keepalive functionality work when used in multiple threads.
   
-  * Consider adding a progress_meter implementation that can be used in concurrent 
-    download situations.
+  * Consider adding a progress_meter implementation that can be used in 
+    concurrent download situations (I have some ideas about this -mds)
   
   * Consider using CacheFTPHandler instead of FTPHandler in byterange.py. 
     CacheFTPHandler reuses connections but this may lead to problems with
@@ -47,3 +49,7 @@ Misc/Maybe:
     server and everything works fine but this needs more exhaustive tests 
     or a fallback mechanism. Also, CacheFTPHandler breaks in the same way 
     keepalive breaks with multiple threads.
+
+  * Consider some statistics tracking so that urlgrabber can record the 
+    speed/reliability of different servers.  This could then be used by
+    the mirror code for choosing optimal servers (slick, eh?)
