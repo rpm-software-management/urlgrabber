@@ -26,6 +26,11 @@
 >>> 
 >>> fo = urllib2.urlopen('http://www.python.org')
 
+If a connection to a given host is requested, and all of the existing
+connections are still in use, another connection will be opened.  If
+the handler tries to use an existing connection but it fails in some
+way, it will be closed and removed from the pool.
+
 To remove the handler, simply re-run build_opener with no arguments, and
 install that opener.
 
@@ -36,6 +41,12 @@ use the handler methods:
   close_connection(host)
   close_all()
   open_connections()
+
+NOTE: using the close_connection and close_all methods of the handler
+should be done with care when using multiple threads.
+  * there is nothing that prevents another thread from creating new
+    connections immediately after connections are closed
+  * no checks are done to prevent in-use connections from being closed
 
 >>> keepalive_handler.close_all()
 
@@ -68,7 +79,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.5 2004/03/20 05:40:12 mstenner Exp $
+# $Id: keepalive.py,v 1.6 2004/03/21 02:41:08 mstenner Exp $
 
 import urllib2
 import httplib
@@ -183,46 +194,24 @@ class HTTPHandler(urllib2.HTTPHandler):
             raise urllib2.URLError('no host given')
 
         try:
-            need_new_connection = 1
             h = self._cm.get_ready_conn(host)
-            if not h is None:
-                try:
-                    self._start_transaction(h, req)
-                    r = h.getresponse()
-                except (socket.error, httplib.HTTPException):
-                    r = None
-                except:
-                    # adding this block just in case we've missed
-                    # something we will still raise the exception, but
-                    # lets try and close the connection and remove it
-                    # first.  We previously got into a nasty loop
-                    # where an exception was uncaught, and so the
-                    # connection stayed open.  On the next try, the
-                    # same exception was raised, etc.  The tradeoff is
-                    # that it's now possible this call will raise
-                    # a DIFFERENT exception
-                    if DEBUG: DBPRINT("unexpected exception - " \
-                       "closing connection to %s" % host)
-                    self._cm.remove(h)
-                    h.close()
-                    raise
-                    
-                if r is None or r.version == 9:
-                    # httplib falls back to assuming HTTP 0.9 if it gets a
-                    # bad header back.  This is most likely to happen if
-                    # the socket has been closed by the server since we
-                    # last used the connection.
-                    if DEBUG: DBPRINT("failed to re-use connection to %s" \
-                                      % host)
-                    self._cm.remove(h)
-                    h.close()
-                else:
-                    if DEBUG: DBPRINT("re-using connection to %s" % host)
-                    need_new_connection = 0
+            while h:
+                r = self._reuse_connection(h, req, host)
 
-            if need_new_connection:
-                if DEBUG: DBPRINT("creating new connection to %s" % host)
+                # if this response is non-None, then it worked and we're
+                # done.  Break out, skipping the else block.
+                if r: break
+
+                # connection is bad - possibly closed by server
+                # discard it and ask for the next free connection
+                h.close()
+                self._cm.remove(h)
+                h = self._cm.get_ready_conn(host)
+            else:
+                # no (working) free connections were found.  Create a new one.
                 h = http_class(host)
+                if DEBUG: DBPRINT("creating new connection to %s (%d)" % \
+                                  (host, id(h)))
                 self._cm.add(host, h, 0)
                 self._start_transaction(h, req)
                 r = h.getresponse()
@@ -242,6 +231,50 @@ class HTTPHandler(urllib2.HTTPHandler):
             return r
         else:
             return self.parent.error('http', req, r, r.status, r.reason, r.msg)
+
+
+    def _reuse_connection(self, h, req, host):
+        """start the transaction with a re-used connection
+        return a response object (r) upon success or None on failure.
+        This DOES not close or remove bad connections in cases where
+        it returns.  However, if an unexpected exception occurs, it
+        will close and remove the connection before re-raising.
+        """
+        try:
+            self._start_transaction(h, req)
+            r = h.getresponse()
+            # note: just because we got something back doesn't mean it
+            # worked.  We'll check the version below, too.
+        except (socket.error, httplib.HTTPException):
+            r = None
+        except:
+            # adding this block just in case we've missed
+            # something we will still raise the exception, but
+            # lets try and close the connection and remove it
+            # first.  We previously got into a nasty loop
+            # where an exception was uncaught, and so the
+            # connection stayed open.  On the next try, the
+            # same exception was raised, etc.  The tradeoff is
+            # that it's now possible this call will raise
+            # a DIFFERENT exception
+            if DEBUG: DBPRINT("unexpected exception - " \
+                              "closing connection to %s (%d)" % (host, id(h)))
+            self._cm.remove(h)
+            h.close()
+            raise
+                    
+        if r is None or r.version == 9:
+            # httplib falls back to assuming HTTP 0.9 if it gets a
+            # bad header back.  This is most likely to happen if
+            # the socket has been closed by the server since we
+            # last used the connection.
+            if DEBUG: DBPRINT("failed to re-use connection to %s (%d)" \
+                              % (host, id(h)))
+            r = None
+        else:
+            if DEBUG: DBPRINT("re-using connection to %s (%d)" % (host, id(h)))
+
+        return r
 
     def _start_transaction(self, h, req):
         try:
