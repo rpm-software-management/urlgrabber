@@ -121,6 +121,17 @@ GENERAL ARGUMENTS (kwargs)
     HTTP servers in the User-agent header. The module level default
     for this option is "urlgrabber/VERSION".
 
+  http_headers = None
+
+    a tuple of 2-tuples, each containing a header and value.  These
+    will be used for http and https requests only.  For example, you
+    can do
+      http_headers = (('Pragma', 'no-cache'),)
+
+  ftp_headers = None
+
+    this is just like http_headers, but will be used for ftp requests.
+
   proxies = None
 
     a dictionary that maps protocol schemes to proxy hosts. For
@@ -279,7 +290,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.37 2005/02/25 00:00:38 mstenner Exp $
+# $Id: grabber.py,v 1.38 2005/02/28 17:12:18 mstenner Exp $
 
 import os
 import os.path
@@ -513,7 +524,9 @@ class URLGrabberOptions:
         self.cache_openers = True
         self.timeout = None
         self.text = None
- 
+        self.http_headers = None
+        self.ftp_headers = None
+
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
     
@@ -770,14 +783,14 @@ class URLGrabberFileObject:
     def _do_open(self):
         opener = self._get_opener()
 
-        # build request object
-        req = urllib2.Request(self.url)
-        if self.opts.user_agent:
-            req.add_header('User-agent', self.opts.user_agent)
-
+        req = urllib2.Request(self.url) # build request object
+        self._add_headers(req) # add misc headers that we need
         self._build_range(req) # take care of reget and byterange stuff
+
         fo, hdr = self._make_request(req, opener)
         if self.reget_time and self.opts.reget == 'check_timestamp':
+            # do this if we have a local file with known timestamp AND
+            # we're in check_timestamp reget mode.
             fetch_again = 0
             try:
                 modified_tuple  = hdr.getdate_tz('last-modified')
@@ -815,6 +828,18 @@ class URLGrabberFileObject:
             self.opts.progress_obj.update(0)
         (self.fo, self.hdr) = (fo, hdr)
     
+    def _add_headers(self, req):
+        if self.opts.user_agent:
+            req.add_header('User-agent', self.opts.user_agent)
+        try: req_type = req.get_type()
+        except ValueError: req_type = None
+        if self.opts.http_headers and req_type in ('http', 'https'):
+            for h, v in self.opts.http_headers:
+                req.add_header(h, v)
+        if self.opts.ftp_headers and req_type == 'ftp':
+            for h, v in self.opts.ftp_headers:
+                req.add_header(h, v)
+
     def _build_range(self, req):
         self.reget_time = None
         self.append = 0
