@@ -166,21 +166,29 @@ RETRY RELATED ARGUMENTS
     unsuccessful check.  Raising of any other exception will be
     considered immediate failure and no retries will occur.
 
-    Negative error numbers are reserved for use by these passed in
-    functions.  By default, -1 results in a retry, but this can be
-    customized with retrycodes.
+    If it raises URLGrabError, the error code will determine the retry
+    behavior.  Negative error numbers are reserved for use by these
+    passed in functions, so you can use many negative numbers for
+    different types of failure.  By default, -1 results in a retry,
+    but this can be customized with retrycodes.
 
     If you simply pass in a function, it will be given exactly one
-    argument: the local file name as returned by urlgrab.  If you need
-    to pass in other arguments, you can do so like this:
+    argument: a CallbackObject instance with the .url attribute
+    defined and either .filename (for urlgrab) or .data (for urlread).
+    For urlgrab, .filename is the name of the local file.  For
+    urlread, .data is the actual string data.  If you need other
+    arguments passed to the callback (program state of some sort), you
+    can do so like this:
 
       checkfunc=(function, ('arg1', 2), {'kwarg': 3})
 
-    if the downloaded file as filename /tmp/stuff, then this will
-    result in this call:
+    if the downloaded file has filename /tmp/stuff, then this will
+    result in this call (for urlgrab):
 
-      function('/tmp/stuff', 'arg1', 2, kwarg=3)
-
+      function(obj, 'arg1', 2, kwarg=3)
+      # obj.filename = '/tmp/stuff'
+      # obj.url = 'http://foo.com/stuff'
+      
     NOTE: both the "args" tuple and "kwargs" dict must be present if
     you use this syntax, but either (or both) can be empty.
 
@@ -188,8 +196,10 @@ RETRY RELATED ARGUMENTS
 
     The callback that gets called during retries when an attempt to
     fetch a file fails.  The syntax for specifying the callback is
-    identical to checkfunc, except that it will be passed the raised
-    exception rather than a filename.
+    identical to checkfunc, except for the attributes defined in the
+    CallbackObject instance.  In this case, it will have .exception
+    and .url defined.  As you might suspect, .exception is the
+    exception that was raised.
 
     The callback is present primarily to inform the calling program of
     the failure, but if it raises an exception (including the one it's
@@ -255,7 +265,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.27 2004/08/12 16:08:06 mstenner Exp $
+# $Id: grabber.py,v 1.28 2004/08/20 19:29:31 mstenner Exp $
 
 import os
 import os.path
@@ -353,6 +363,20 @@ class URLGrabError(IOError):
          print e.strerror
            # or simply
          print e  #### print '[Errno %i] %s' % (e.errno, e.strerror)
+    """
+    pass
+
+class CallbackObject:
+    """Container for returned callback data.
+
+    This is currently a dummy class into which urlgrabber can stuff
+    information for passing to callbacks.  This way, the prototype for
+    all callbacks is the same, regardless of the data that will be
+    passed back.  Any function that accepts a callback function as an
+    argument SHOULD document what it will define in this object.
+
+    It is possible that this class will have some greater
+    functionality in the future.
     """
     pass
 
@@ -484,9 +508,15 @@ class URLGrabber:
                     or (tries == opts.retry) \
                     or (e.errno not in opts.retrycodes): raise
                 if opts.failure_callback:
-                    func, args, kwargs = \
+                    cb_func, cb_args, cb_kwargs = \
                           self._make_callback(opts.failure_callback)
-                    func(e, *args, **kwargs)
+                    # this is a little icky - for now, the first element
+                    # of args is the url.  we might consider a way to tidy
+                    # that up, though
+                    obj = CallbackObject()
+                    obj.exception = e
+                    obj.url = args[0]
+                    cb_func(obj, *cb_args, **cb_kwargs)
     
     def urlopen(self, url, **kwargs):
         """open the url and return a file object
@@ -529,8 +559,12 @@ class URLGrabber:
             try:
                 fo._do_grab()
                 if not opts.checkfunc is None:
-                    func, args, kwargs = self._make_callback(opts.checkfunc)
-                    apply(func, (filename, )+args, kwargs)
+                    cb_func, cb_args, cb_kwargs = \
+                             self._make_callback(opts.checkfunc)
+                    obj = CallbackObject()
+                    obj.filename = filename
+                    obj.url = url
+                    apply(cb_func, (obj, )+cb_args, cb_kwargs)
             finally:
                 fo.close()
             return filename
@@ -561,8 +595,12 @@ class URLGrabber:
                 else: s = fo.read(limit)
 
                 if not opts.checkfunc is None:
-                    func, args, kwargs = self._make_callback(opts.checkfunc)
-                    apply(func, (s, )+args, kwargs)
+                    cb_func, cb_args, cb_kwargs = \
+                             self._make_callback(opts.checkfunc)
+                    obj = CallbackObject()
+                    obj.data = s
+                    obj.url = url
+                    apply(cb_func, (obj, )+cb_args, cb_kwargs)
             finally:
                 fo.close()
             return s
