@@ -152,12 +152,13 @@ class DroppedConnectionTests(TestCase):
         self.snarfed_logs.append(message)
         
     def test_dropped_connection(self):
-        "testing connection restarting (60-second delay, ctrl-c to skip)"
+        "testing connection restarting (20-second delay, ctrl-c to skip)"
+        # the server has a 15-second keepalive timeout (the apache default)
         fo = self.opener.open(ref_http)
         data1 = fo.read()
         fo.close()
 
-        try: time.sleep(60)
+        try: time.sleep(20)
         except KeyboardInterrupt: self.skip()
         
         fo = self.opener.open(ref_http)
