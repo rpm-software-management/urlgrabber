@@ -702,48 +702,6 @@ def _retry_test():
     except URLGrabError, e: print e
     else: print 'LOCAL FILE:', name
 
-def _file_object_test(filename=None):
-    import random, cStringIO, sys
-    if filename is None:
-        filename = __file__
-    print 'using file "%s" for comparisons' % filename
-    fo = open(filename)
-    s_input = fo.read()
-    fo.close()
-
-    for testfunc in [_test_file_object_smallread,
-                     _test_file_object_readall,
-                     _test_file_object_readline,
-                     _test_file_object_readlines]:
-        fo_input = cStringIO.StringIO(s_input)
-        fo_output = cStringIO.StringIO()
-        wrapper = URLGrabberFileObject(fo_input, None, 0)
-        print 'testing %-30s ' % testfunc.__name__,
-        testfunc(wrapper, fo_output)
-        s_output = fo_output.getvalue()
-        if s_output == s_input: print 'passed'
-        else: print 'FAILED'
-            
-def _test_file_object_smallread(wrapper, fo_output):
-    while 1:
-        s = wrapper.read(23)
-        fo_output.write(s)
-        if not s: return
-
-def _test_file_object_readall(wrapper, fo_output):
-    s = wrapper.read()
-    fo_output.write(s)
-
-def _test_file_object_readline(wrapper, fo_output):
-    while 1:
-        s = wrapper.readline()
-        fo_output.write(s)
-        if not s: return
-
-def _test_file_object_readlines(wrapper, fo_output):
-    li = wrapper.readlines()
-    fo_output.write(string.join(li, ''))
-
 if __name__ == '__main__':
     _main_test()
     #_speed_test()
