@@ -62,9 +62,10 @@ RETRY OPTIONS
                        explicitly.
 """
 
-# $Id: urlgrabber,v 1.3 2004/03/31 17:02:00 mstenner Exp $
+# $Id: urlgrabber,v 1.4 2004/09/07 21:19:54 mstenner Exp $
 
 import sys
+import urlgrabber.grabber
 from urlgrabber.grabber import urlgrab
 
 DEBUG=0
@@ -115,6 +116,7 @@ def main():
     except ImportError, e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
     
+    urlgrabber.grabber.DEBUG = DEBUG
     filename = urlgrab(url,filename=file,**kwargs)
     print "file written to %s" % (filename,)
 

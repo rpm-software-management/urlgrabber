@@ -86,12 +86,12 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.11 2004/08/20 19:29:31 mstenner Exp $
+# $Id: mirror.py,v 1.12 2004/09/07 21:19:54 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
 
-from urlgrabber.grabber import URLGrabError, CallbackObject
+from grabber import URLGrabError, CallbackObject
 
 DEBUG=0
 def DBPRINT(*args): print ' '.join(args)

@@ -265,7 +265,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.28 2004/08/20 19:29:31 mstenner Exp $
+# $Id: grabber.py,v 1.29 2004/09/07 21:19:54 mstenner Exp $
 
 import os
 import os.path
@@ -276,7 +276,10 @@ import string
 import urllib2
 from stat import *  # S_* and ST_*
 
-from urlgrabber import __version__
+try:
+    exec('from ' + (__name__.split('.'))[0] + ' import __version__')
+except:
+    __version__ = '???'
 
 auth_handler = urllib2.HTTPBasicAuthHandler( \
      urllib2.HTTPPasswordMgrWithDefaultRealm())
