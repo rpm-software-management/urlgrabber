@@ -1,3 +1,163 @@
+2004-08-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.0
+
+2004-08-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* makefile:
+
+	Added "release" and "daily" targets to makefile for automated
+	releases.
+
+2004-08-20  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/: test_grabber.py, test_mirror.py:
+
+	Updated callback tests to accomodate the new callback semantics.
+	Also added many new checkfunc tests to for URLGrabber.
+
+2004-08-20  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/: grabber.py, mirror.py:
+
+	Changed the callback syntax.  This affects failure_callback use in
+	both URLGrabber and MirrorGroup instances.  It also affects
+	checkfunc use in URLGrabber instances.	If you use these features,
+	you WILL need to change your code.
+
+2004-08-12  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_mirror.py:
+
+	enhanced the failover test to ensure that the bad mirror is tried
+	and fails
+
+2004-08-12  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_grabber.py, urlgrabber/grabber.py:
+
+	fixed typo in _make_callback and added testcase
+
+2004-08-11  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* makefile, test/test_grabber.py, urlgrabber/grabber.py:
+
+	Fixed a bug in URLGrabber._retry that prevented failure callbacks
+	from working.  Also added a testcase for failure callbacks.
+
+2004-08-09  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/mirror.py:
+
+	fixed documentation typos
+
+2004-07-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* TODO, urlgrabber/grabber.py, urlgrabber/progress.py:
+
+	Committing new progress meter code.  This new version includes an
+	emulation of the old meter with pretty good backward compatibility.
+	 However, if people are using custom progress meters, they might
+	break.	This is a good general warning for the next few versions of
+	urlgrabber, actually.  As the threading stuff evolves, the progress
+	meter may have to change its behavior a bit.
+
+2004-07-21  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* .cvsignore:
+
+	Ignoring kdevelop, kate, and anjuta project files.  Ignoring
+	directories created by distutils: build, dist
+
+2004-07-21  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* TODO:
+
+	opener related items for ALPHA are completed.  Moved stuff related
+	to getting a release out up into ALPHA section.
+
+2004-07-21  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* setup.py, urlgrabber/__init__.py:
+
+	Added distutils trove classifiers to setup.py for eventual
+	inclusion in PyPI.  Added general description string for urlgrabber
+	package (__init__.py).
+
+2004-07-21  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/grabber.py:
+
+	Fixed bug with urllib2.OpenerDirector caching.	Added cache_openers
+	option (pass to any urlXXX function/method) to control
+	OpenerDirector caching. The default is to cache openers.
+
+2004-04-02  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* makefile, test/test_grabber.py:
+
+	Tidied up the grabber tests so we're not always skipping those ftp
+	reget tests (the just don't happen now).  Also, modified the
+	makefile so that "make test" runs the testsuite with -v 1 for BOTH
+	python2.2 and 2.3 if they are available.
+
+2004-03-31  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* LICENSE, maint/license-notice, scripts/urlgrabber,
+	test/grabberperf.py, test/runtests.py, test/test_byterange.py,
+	test/test_grabber.py, test/test_keepalive.py, test/test_mirror.py,
+	test/threading/batchgrabber.py, urlgrabber/byterange.py,
+	urlgrabber/grabber.py, urlgrabber/keepalive.py,
+	urlgrabber/mirror.py, urlgrabber/progress.py:
+
+	Replace LICENSE with the LGPL. Added maint/license-notice, which
+	contains the corresponding license-snippet that should be included
+	at the top of each file.  Finally, added this snippet to all of the
+	.py files.  urlgrabber is now fully LGPL-ed.
+
+2004-03-31  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	fixed minor typo in opener option docs
+
+2004-03-31  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/runtests.py:
+
+	Added support for specifying verbosity of unit tests when using
+	runtests.py. 'python runtests.py --help' for usage.
+
+2004-03-31  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/test_grabber.py, urlgrabber/grabber.py:
+
+	Added opener kwarg/option to allow overriding of
+	urllib2.OpenerDirector.
+
+2004-03-31  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/munittest.py, test/test_keepalive.py,
+	urlgrabber/keepalive.py:
+
+	Fixed a few bugs related to python 2.3.
+
+2004-03-29  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* TODO:
+
+	updated TODO
+
+2004-03-29  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog, makefile:
+
+	Modified "make ChangeLog" target so that it doesn't print the
+	times.	If we use local times, then it varies with who rebuilds the
+	ChangeLog file.  Also updated the ChangeLog to the new format.
+
 2004-03-28  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* makefile:
