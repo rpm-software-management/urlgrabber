@@ -32,11 +32,11 @@ if __name__ == '__main__':
   sys.path.insert(0, (os.path.dirname(sys.argv[0]) or '.') + '/../..')
 
 from threading import Thread, Semaphore
-from grabber import URLGrabber
+from urlgrabber.grabber import URLGrabber, URLGrabError
 from time import sleep, time
-from progress import text_progress_meter
+from urlgrabber.progress import text_progress_meter
 
-DEBUG=1
+DEBUG=0
 
 class BatchURLGrabber:
   def __init__(self, maxthreads=5, **kwargs):
@@ -63,9 +63,10 @@ class BatchURLGrabber:
           if not t.isAlive():
             if DEBUG: print "cleaning up worker: " + t.url
             self.threads.remove(t)
-        if len(self.threads) == self.maxthreads:
-          sleep(0.2)
-  
+        #if len(self.threads) == self.maxthreads:
+        #  sleep(0.2)
+        sleep(0.2)
+        
 class Worker(Thread):
   def __init__(self, parent, url, filename, kwargs):
     Thread.__init__(self)
@@ -80,7 +81,10 @@ class Worker(Thread):
     progress_obj = grabber.opts.progress_obj
     if isinstance(progress_obj, BatchProgressMeter):
       self.kwargs['progress_obj'] = progress_obj.newMeter()
-    rslt = self.parent.grabber.urlgrab(self.url, self.filename, **self.kwargs)
+    try:
+      rslt = self.parent.grabber.urlgrab(self.url, self.filename, **self.kwargs)
+    except URLGrabError, e:
+      print '%s, %s' % (e, self.url)
 
 class BatchProgressMeter:
   "An experimental text progress meter that works with multiple threads."
@@ -156,10 +160,10 @@ class Meter(text_progress_meter):
     self.master.meter_update(self)
       
 def main():
-  # uncomment to play with BatchProgressMeter
-  # progress_obj=BatchProgressMeter()
   progress_obj = None
-  g = BatchURLGrabber(keepalive=0, progress_obj=progress_obj)
+  # uncomment to play with BatchProgressMeter
+  #progress_obj=BatchProgressMeter()
+  g = BatchURLGrabber(keepalive=1, progress_obj=progress_obj)
   for arg in sys.argv[1:]:
     g.urlgrab(arg)
   if DEBUG: print "before batchgrab"

@@ -13,7 +13,6 @@ ALPHA:
 
   * threading/batch
     - (rt) propose an interface for threaded batch downloads
-    - (mds) look at making keepalive threadsafe
     - (mds) design a new progress-meter interface for threaded
       multi-file downloads
     - (rt) look at CacheFTPHandler and its implications for batch mode
@@ -76,3 +75,5 @@ Misc/Maybe:
   * Consider some statistics tracking so that urlgrabber can record the 
     speed/reliability of different servers.  This could then be used by
     the mirror code for choosing optimal servers (slick, eh?)
+
+  * check SSL certs.  This may require PyOpenSSL.
