@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.19 2004/08/12 16:08:06 mstenner Exp $
+# $Id: test_grabber.py,v 1.20 2004/08/20 19:30:24 mstenner Exp $
 
 import sys
 import os
@@ -32,7 +32,7 @@ from base_test_code import *
 
 import urlgrabber
 import urlgrabber.grabber as grabber
-from urlgrabber.grabber import URLGrabber, URLGrabError
+from urlgrabber.grabber import URLGrabber, URLGrabError, CallbackObject
 from urlgrabber.progress import text_progress_meter
 
 class FileObjectTests(TestCase):
@@ -215,11 +215,14 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals(g._make_callback(tup_cb), tup_cb)
 
 class FailureTestCase(TestCase):
-    """Test grabber.URLGrabber class"""
+    """Test failure behavior"""
 
-    def _failure_callback(self, e):
+    def _failure_callback(self, obj, *args, **kwargs):
         self.failure_callback_called = 1
-    
+        self.obj = obj
+        self.args = args
+        self.kwargs = kwargs
+        
     def test_failure_callback_called(self):
         "failure callback is called on retry"
         self.failure_callback_called = 0
@@ -227,6 +230,97 @@ class FailureTestCase(TestCase):
         try: g.urlgrab(ref_404)
         except URLGrabError: pass
         self.assertEquals(self.failure_callback_called, 1)
+
+    def test_failure_callback_args(self):
+        "failure callback is called with the proper args"
+        fc = (self._failure_callback, ('foo',), {'bar': 'baz'})
+        g = grabber.URLGrabber(retry=2,failure_callback=fc)
+        try: g.urlgrab(ref_404)
+        except URLGrabError: pass
+        self.assert_(hasattr(self, 'obj'))
+        self.assert_(hasattr(self, 'args'))
+        self.assert_(hasattr(self, 'kwargs'))
+        self.assertEquals(self.args, ('foo',))
+        self.assertEquals(self.kwargs, {'bar': 'baz'})
+        self.assert_(isinstance(self.obj, CallbackObject))
+        self.assertEquals(self.obj.url, ref_404)
+        self.assert_(isinstance(self.obj.exception, URLGrabError))
+        del self.obj
+
+class CheckfuncTestCase(TestCase):
+    """Test checkfunc behavior"""
+
+    def setUp(self):
+        cf = (self._checkfunc, ('foo',), {'bar': 'baz'})
+        self.g = grabber.URLGrabber(checkfunc=cf)
+        self.filename = tempfile.mktemp()
+        self.data = short_reference_data
+        
+    def tearDown(self):
+        try: os.unlink(self.filename)
+        except: pass
+        if hasattr(self, 'obj'): del self.obj
+        
+    def _checkfunc(self, obj, *args, **kwargs):
+        self.obj = obj
+        self.args = args
+        self.kwargs = kwargs
+
+        if hasattr(obj, 'filename'):
+            # we used urlgrab
+            fo = file(obj.filename)
+            data = fo.read()
+            fo.close()
+        else:
+            # we used urlread
+            data = obj.data
+
+        if data == self.data: return
+        else: raise URLGrabError(-2, "data doesn't match")
+        
+    def _check_common_args(self):
+        "check the args that are common to both urlgrab and urlread"
+        self.assert_(hasattr(self, 'obj'))
+        self.assert_(hasattr(self, 'args'))
+        self.assert_(hasattr(self, 'kwargs'))
+        self.assertEquals(self.args, ('foo',))
+        self.assertEquals(self.kwargs, {'bar': 'baz'})
+        self.assert_(isinstance(self.obj, CallbackObject))
+        self.assertEquals(self.obj.url, short_ref_http)
+
+    def test_checkfunc_urlgrab_args(self):
+        "check for proper args when used with urlgrab"
+        self.g.urlgrab(short_ref_http, self.filename)
+        self._check_common_args()
+        self.assertEquals(self.obj.filename, self.filename)
+
+    def test_checkfunc_urlread_args(self):
+        "check for proper args when used with urlread"
+        self.g.urlread(short_ref_http)
+        self._check_common_args()
+        self.assertEquals(self.obj.data, short_reference_data)
+
+    def test_checkfunc_urlgrab_success(self):
+        "check success with urlgrab checkfunc"
+        self.data = short_reference_data
+        self.g.urlgrab(short_ref_http, self.filename)
+
+    def test_checkfunc_urlread_success(self):
+        "check success with urlread checkfunc"
+        self.data = short_reference_data
+        self.g.urlread(short_ref_http)
+
+    def test_checkfunc_urlgrab_failure(self):
+        "check failure with urlgrab checkfunc"
+        self.data = 'other data'
+        self.assertRaises(URLGrabError, self.g.urlgrab,
+                          short_ref_http, self.filename)
+
+    def test_checkfunc_urlread_failure(self):
+        "check failure with urlread checkfunc"
+        self.data = 'other data'
+        self.assertRaises(URLGrabError, self.g.urlread,
+                          short_ref_http)
 
 class RegetTestBase:
     def setUp(self):

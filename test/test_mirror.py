@@ -21,7 +21,7 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.8 2004/08/12 16:39:52 mstenner Exp $
+# $Id: test_mirror.py,v 1.9 2004/08/20 19:30:24 mstenner Exp $
 
 import sys
 import os
@@ -104,7 +104,7 @@ class CallbackTests(TestCase):
     def test_failure_callback(self):
         "test that MG executes the failure callback correctly"
         tricky_list = []
-        def failure_callback(e, tl): tl.append(str(e))
+        def failure_callback(cb_obj, tl): tl.append(str(cb_obj.exception))
         self.mg.failure_callback = failure_callback, (tricky_list, ), {}
         data = self.mg.urlread('reference')
         self.assert_(data == reference_data)
@@ -113,7 +113,7 @@ class CallbackTests(TestCase):
 
     def test_callback_reraise(self):
         "test that the callback can correctly re-raise the exception"
-        def failure_callback(e): raise
+        def failure_callback(cb_obj): raise cb_obj.exception
         self.mg.failure_callback = failure_callback
         self.assertRaises(URLGrabError, self.mg.urlread, 'reference')
 
