@@ -27,7 +27,9 @@ from base_test_code import *
 
 def suite():
     classlist = [RangeableFileObjectTestCase, RangeModuleTestCase]
-    return unittest.TestSuite(makeSuites(classlist))
+    s = UGSuite(makeSuites(classlist))
+    s.description = "byterange.py tests"
+    return s
 
 class RangeableFileObjectTestCase(UGTestCase):
     """Test range.RangeableFileObject class"""

@@ -32,9 +32,12 @@ from urlgrabber.progress import text_progress_meter
 def suite():
     classlist = [FileObjectTests, HTTPTests, URLGrabberModuleTestCase,
                  URLGrabberTestCase, RegetTests]
-    return unittest.TestSuite(makeSuites(classlist))
+    s = UGSuite(makeSuites(classlist))
+    s.description = "grabber.py tests"
+    return s
 
 class FileObjectTests(UGTestCase):
+    
     def setUp(self):
         self.filename = tempfile.mktemp()
         fo = open(self.filename, 'w')

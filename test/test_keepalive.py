@@ -31,7 +31,9 @@ from urlgrabber import keepalive
 
 def suite():
     classlist = [CorruptionTests, HTTPErrorTests, DroppedConnectionTests]
-    return unittest.TestSuite(makeSuites(classlist))
+    s = UGSuite(makeSuites(classlist))
+    s.description = "keepalive.py tests"
+    return s
 
 class CorruptionTests(UGTestCase):
     def setUp(self):
@@ -160,7 +162,7 @@ class DroppedConnectionTests(UGTestCase):
         fo.close()
 
         try: time.sleep(60)
-        except KeyboardInterrupt: return()
+        except KeyboardInterrupt: raise Skip()
         
         fo = self.opener.open(ref_http)
         data2 = fo.read()

@@ -31,7 +31,9 @@ from base_test_code import *
 def suite():
     classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests,
                  SubclassTests, ActionTests]
-    return unittest.TestSuite(makeSuites(classlist))
+    s = UGSuite(makeSuites(classlist))
+    s.description = "mirror.py tests"
+    return s
 
 class BasicTests(UGTestCase):
     def setUp(self):
