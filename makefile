@@ -1,19 +1,23 @@
 RM = /bin/rm -f
-WEBHOST = teton.dulug.duke.edu
-WEBPATH = /var/www/linuxduke/projects/mini/urlgrabber
+WEBHOST = login.dulug.duke.edu
+WEBPATH = /home/groups/urlgrabber/web/download
+PYTHON = python
 
 ChangeLog: FORCE
 	maint/cvs2cl.pl -S -U maint/usermap
 
 dist: ChangeLog
-	python2 setup.py sdist --force-manifest
-	scp dist/* $(WEBHOST):$(WEBPATH)/dist/
+	$(PYTHON) setup.py sdist --force-manifest
+	scp dist/* $(WEBHOST):$(WEBPATH)/
 
 clean:
 	$(RM) MANIFEST
 	$(RM) -r dist/
 	$(RM) *.pyc urlgrabber/*.pyc scripts/*.pyc test/*.pyc
 	$(RM) ChangeLog.bak
+
+test: FORCE
+	export PYTHONPATH=.; $(PYTHON) test/runtests.py
 
 FORCE:
 
