@@ -17,7 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: byterange.py,v 1.6 2004/03/31 17:02:00 mstenner Exp $
+# $Id: byterange.py,v 1.7 2004/12/12 05:17:07 rtomayko Exp $
 
 import os
 import stat
@@ -358,7 +358,12 @@ class ftpwrapper(urllib.ftpwrapper):
                 cmd = 'RETR ' + file
                 conn = self.ftp.ntransfercmd(cmd, rest)
             except ftplib.error_perm, reason:
-                if str(reason)[:3] != '550':
+                if str(reason)[:3] == '501':
+                    # workaround for REST not supported error
+                    fp, retrlen = self.retrfile(file, type)
+                    fp = RangeableFileObject(fp, (rest,''))
+                    return (fp, retrlen)
+                elif str(reason)[:3] != '550':
                     raise IOError, ('ftp error', reason), sys.exc_info()[2]
         if not conn:
             # Set transfer mode to ASCII!

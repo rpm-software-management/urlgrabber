@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.20 2004/08/20 19:30:24 mstenner Exp $
+# $Id: test_grabber.py,v 1.21 2004/12/12 05:17:07 rtomayko Exp $
 
 import sys
 import os
@@ -371,11 +371,24 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.assertEquals(data[:self.hl], '0'*self.hl)
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
+class ProFTPDSucksTests(TestCase):
+    def setUp(self):
+        self.url = ref_proftp
+        try:
+            fo = urllib2.urlopen(self.url).close()
+        except IOError:
+            raise
+            self.skip()
+
+    def test_restart_workaround(self):
+        inst = grabber.URLGrabber()
+        rslt = inst.urlread(self.url, range=(500, 1000))
+        
 class HTTPRegetTests(FTPRegetTests):
     def setUp(self):
         RegetTestBase.setUp(self)
         self.url = short_ref_http
-
+        
     def test_older_check_timestamp(self):
         # define this here rather than in the FTP tests because currently,
         # we get no timestamp information back from ftp servers.

@@ -3,9 +3,14 @@ from munittest import *
 base_http = 'http://www.linux.duke.edu/projects/urlgrabber/test/'
 base_ftp  = 'ftp://localhost/test/'
 
+# set to a proftp server only. we're working around a couple of
+# bugs in their implementation in byterange.py.
+base_proftp = 'ftp://localhost/test/'
+
 reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
 ref_http = base_http + 'reference'
 ref_ftp = base_ftp + 'reference'
+ref_proftp = base_proftp + 'reference'
 short_reference_data = ' '.join( [str(i) for i in range(10) ] )
 short_ref_http = base_http + 'short_reference'
 short_ref_ftp = base_ftp + 'short_reference'
