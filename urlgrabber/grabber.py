@@ -61,6 +61,15 @@ GENERAL ARGUMENTS (kwargs)
     (which can be set on default_grabber.throttle) is used. See
     BANDWIDTH THROTTLING for more information.
 
+  timeout = None
+
+    a positive float expressing the number of seconds to wait for socket
+    operations. If the value is None or 0.0, socket operations will block
+    forever. Setting this option causes urlgrabber to call the settimeout
+    method on the Socket object used for the request. See the Python
+    documentation on settimeout for more information.
+    http://www.python.org/doc/current/lib/socket-objects.html
+
   bandwidth = 0
 
     the nominal max bandwidth in bytes/second.  If throttle is a float
@@ -265,7 +274,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.29 2004/09/07 21:19:54 mstenner Exp $
+# $Id: grabber.py,v 1.30 2004/10/08 07:59:46 rtomayko Exp $
 
 import os
 import os.path
@@ -319,6 +328,15 @@ else:
     have_range = 1
 
 
+# check whether socket timeout support is available (Python >= 2.3)
+import socket
+try:
+    TimeoutError = socket.timeout
+    have_socket_timeout = True
+except AttributeError:
+    TimeoutError = None
+    have_socket_timeout = False
+
 class URLGrabError(IOError):
     """
     URLGrabError error codes:
@@ -336,6 +354,7 @@ class URLGrabError(IOError):
         9    - Requested byte range not satisfiable.
         10   - Byte range requested, but range support unavailable
         11   - Illegal reget mode
+        12   - Socket timeout.
 
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -486,6 +505,7 @@ class URLGrabberOptions:
         self.prefix = None
         self.opener = None
         self.cache_openers = True
+        self.timeout = None
  
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -745,8 +765,9 @@ class URLGrabberFileObject:
                 fo, hdr = self._make_request(req, opener)
 
         (scheme, host, path, parm, query, frag) = urlparse.urlparse(self.url)
-        if not (self.opts.progress_obj or self.opts.raw_throttle()):
-            # if we're not using the progress_obj or throttling
+        if not (self.opts.progress_obj or self.opts.raw_throttle() \
+                or self.opts.timeout):
+            # if we're not using the progress_obj, throttling, or timeout
             # we can get a performance boost by going directly to
             # the underlying fileobject for reads.
             self.read = fo.read
@@ -791,14 +812,25 @@ class URLGrabberFileObject:
 
     def _make_request(self, req, opener):
         try:
-            fo = opener.open(req)
+            if have_socket_timeout and self.opts.timeout:
+                old_to = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(self.opts.timeout)
+                try:
+                    fo = opener.open(req)
+                finally:
+                    socket.setdefaulttimeout(old_to)
+            else:
+                fo = opener.open(req)
             hdr = fo.info()
         except ValueError, e:
             raise URLGrabError(1, _('Bad URL: %s') % (e, ))
         except RangeError, e:
             raise URLGrabError(9, _('%s') % (e, ))
         except IOError, e:
-            raise URLGrabError(4, _('IOError: %s') % (e, ))
+            if isinstance(e.reason, TimeoutError):
+                raise URLGrabError(12, _('Timeout: %s') % (e, ))
+            else:
+                raise URLGrabError(4, _('IOError: %s') % (e, ))
         except OSError, e:
             raise URLGrabError(5, _('OSError: %s') % (e, ))
         except HTTPException, e:
@@ -860,7 +892,10 @@ class URLGrabberFileObject:
             # now read some data, up to self._rbufsize
             if amt is None: readamount = self._rbufsize
             else:           readamount = min(amt, self._rbufsize)
-            new = self.fo.read(readamount)
+            try:
+                new = self.fo.read(readamount)
+            except TimeoutError, e:
+                raise URLGrabError(12, _('Timeout: %s') % (e, ))
             newsize = len(new)
             if not newsize: break # no more to read
 
@@ -924,6 +959,7 @@ def CachedProxyHandler(proxies):
             return handler
     handler = urllib2.ProxyHandler(proxies)
     _proxy_cache.append( (proxies,handler) )
+
 
 #####################################################################
 # DEPRECATED FUNCTIONS

@@ -25,14 +25,6 @@ ALPHA 2:
     variable so that users of miscellaneous applications can get the
     debugging output
 
-  * Consider adding timeout keyword arg that would handle setting the socket
-    timeout natively under python 2.3 or using timeoutsocket.py hack if 
-    available and using python < 2.3.
-
-  * Consider adding higher-level select-based timeouts to protect
-    against stupid servers and crazy network problems.  See this thread:
-    https://lists.dulug.duke.edu/pipermail/yum/2004-September/005159.html
-
   * Test proxy support with authenticating proxies (http and ftp).   
 
   * FTP proxy testing in general.
