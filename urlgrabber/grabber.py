@@ -422,8 +422,17 @@ class URLGrabber:
             
         def retryfunc(opts, url, limit):
             fo = URLGrabberFileObject(url, filename=None, opts=opts)
-            s = fo.read(limit)
-            fo.close()
+            s = ''
+            try:
+                s = fo.read(limit)
+                if not opts.checkfunc is None:
+                    if callable(opts.checkfunc):
+                        func, args, kwargs = opts.checkfunc, (), {}
+                    else:
+                        func, args, kwargs = opts.checkfunc
+                    apply(func, (s, )+args, kwargs)
+            finally:
+                fo.close()
             return s
             
         s = self._retry(opts, retryfunc, url, limit)

@@ -13,8 +13,6 @@ ALPHA:
     The significance of large/small files is whether we're slow in the 
     actual downloading or the setup overhead.
 
-  * urlread needs to support checkfunc (pass in the string itself).
-
 ALPHA 2:
 
   * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
