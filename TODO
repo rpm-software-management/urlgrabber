@@ -4,11 +4,6 @@ ALPHA:
 
 ALPHA 2:
 
-  * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
-    or a requested range being invalid. Right now the result of either of 
-    these two cases is undefined and is probably different for HTTP/FTP.
-    Raising an exception seems to be "the right thing to do" in both cases.
-
   * Consider adding timeout keyword arg that would handle setting the socket
     timeout natively under python 2.3 or using timeoutsocket.py hack if 
     available and using python < 2.3.
