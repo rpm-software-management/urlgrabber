@@ -83,7 +83,7 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.5 2004/03/14 05:45:21 mstenner Exp $
+# $Id: mirror.py,v 1.6 2004/03/17 02:59:51 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
@@ -91,6 +91,7 @@ import thread  # needed for locking to make this threadsafe
 from urlgrabber.grabber import URLGrabError
 
 DEBUG=0
+def DBPRINT(*args): print ' '.join(args)
 
 try:
     from i18n import _
@@ -121,12 +122,13 @@ class MirrorGroup:
 
       * downloads begin with the first mirror
 
-      * a failure (after retries) causes it to increment the local AND
-        master indices.  Also, the current mirror is removed from the
-        local list (but NOT the master list - the mirror can potentially
-        be used for other files)
+      * by default (see default_action below) a failure (after retries)
+        causes it to increment the local AND master indices.  Also,
+        the current mirror is removed from the local list (but NOT the
+        master list - the mirror can potentially be used for other
+        files)
 
-      * if the local list is ever exhausted, an URLGrabError will be
+      * if the local list is ever exhausted, a URLGrabError will be
         raised (errno=256, no more mirrors)
 
     OPTIONS
@@ -134,6 +136,44 @@ class MirrorGroup:
       In addition to the required arguments "grabber" and "mirrors",
       MirrorGroup also takes the following optional arguments:
       
+      default_action
+
+        A dict that describes the actions to be taken upon failure
+        (after retries).  default_action can contain any of the
+        following keys (shown here with their default values):
+
+          default_action = {'increment': 1,
+                            'increment_master': 1,
+                            'remove': 1,
+                            'remove_master': 0,
+                            'fail': 0}
+
+        In this context, 'increment' means "use the next mirror" and
+        'remove' means "never use this mirror again".  The two
+        'master' values refer to the instance-level mirror list (used
+        for all files), whereas the non-master values refer to the
+        current download only.
+
+        The 'fail' option will cause immediate failure by re-raising
+        the exception and no further attempts to get the current
+        download.
+
+        This dict can be set at instantiation time,
+          mg = MirrorGroup(grabber, mirrors, default_action={'fail':1})
+        at method-execution time (only applies to current fetch),
+          filename = mg.urlgrab(url, default_action={'increment': 0})
+        or by returning an action dict from the failure_callback
+          return {'fail':0}
+        in increasing precedence.
+        
+        If all three of these were done, the net result would be:
+              {'increment': 0,         # set at instantiation
+               'increment_master': 1,  # class default
+               'remove': 1,            # class default
+               'remove_master': 0,     # class default
+               'fail': 0}              # set in methed, reset from
+                                       # callback
+
       failure_callback
 
         this is a callback that will be called when a mirror "fails",
@@ -144,12 +184,12 @@ class MirrorGroup:
         itself.  The callback will be passed exception that was raised
         (and args and kwargs if present).
 
-        If the callback returns an integer, it will set the "remove
-        policy" for that failure:
+        The failure callback can return an action dict, as described
+        above.
 
-          0:  do not remove the mirror - simply move on
-          1:  remove the mirror for this download attempt (this file)
-          2:  remove the mirror for all future downloads
+        Like default_action, the failure_callback can be set at
+        instantiation time or when the urlXXX method is called.  In
+        the latter case, it applies only for that fetch.
 
         WARNING: do not save the exception object.  As they contain
         stack frame references, they can lead to circular references.
@@ -172,7 +212,7 @@ class MirrorGroup:
     #   removal of the wrong mirror.
 
     ##############################################################
-    #  CONFIGURATION METHODS  -  intended to be overrident to
+    #  CONFIGURATION METHODS  -  intended to be overridden to
     #                            customize behavior
     def __init__(self, grabber, mirrors, **kwargs):
         """Initialize the MirrorGroup object.
@@ -185,6 +225,7 @@ class MirrorGroup:
         OPTIONAL ARGUMENTS
 
           failure_callback  - callback to be used when a mirror fails
+          default_action    - dict of failure actions
 
         See the module-level and class level documentation for more
         details.
@@ -196,10 +237,17 @@ class MirrorGroup:
         self.mirrors = self._parse_mirrors(mirrors)
         self._next = 0
         self._lock = thread.allocate_lock()
+        self.default_action = None
         self._process_kwargs(kwargs)
 
+    # if these values are found in **kwargs passed to one of the urlXXX
+    # methods, they will be stripped before getting passed on to the
+    # grabber
+    options = ['default_action', 'failure_callback']
+    
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
+        self.default_action   = kwargs.get('default_action')
         
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
@@ -229,19 +277,28 @@ class MirrorGroup:
         #   inspect the error - remove=1 for 404, remove=2 for connection
         #                       refused, etc. (this can also be done via
         #                       the callback)
-        cb = self.failure_callback
-        if cb is None:
-            remove = 1
-        else:
+        cb = gr.kw.get('failure_callback') or self.failure_callback
+        if cb:
             if type(cb) == type( () ):
                 cb, args, kwargs = cb
             else:
                 args, kwargs = (), {}
-            remove = cb(e, *args, **kwargs)
-            if remove is None: remove = 1
-        self.increment_mirror(gr, remove=1)
+            action = cb(e, *args, **kwargs) or {}
+        else:
+            action = {}
+        # XXXX - decide - there are two ways to do this
+        # the first is action overriding as a whole - use the entire action
+        # or fall back on module level defaults
+        #action = action or gr.kw.get('default_action') or self.default_action
+        # the other is to fall through for each element in the action dict
+        a = dict(self.default_action or {})
+        a.update(gr.kw.get('default_action', {}))
+        a.update(action)
+        action = a
+        self.increment_mirror(gr, action)
+        if action and action.get('fail', 0): raise
 
-    def increment_mirror(self, gr, remove=1):
+    def increment_mirror(self, gr, action={}):
         """Tell the mirror object increment the mirror index
 
         This increments the mirror index, which amounts to telling the
@@ -271,20 +328,24 @@ class MirrorGroup:
         except ValueError:
             pass
         else:
-            if remove == 2: del self.mirrors[ind]
-            if self._next == ind: self._next += 1
-            if self._next >= len(self.mirrors): self._next = 0
+            if action.get('remove_master', 0):
+                del self.mirrors[ind]
+            elif self._next == ind and action.get('increment_master', 1):
+                self._next += 1
+                if self._next >= len(self.mirrors): self._next = 0
         self._lock.release()
         
-        if remove: del gr.mirrors[gr._next]
-        gr._next += 1
-        if gr._next >= len(gr.mirrors): gr._next = 0
+        if action.get('remove', 1):
+            del gr.mirrors[gr._next]
+        elif action.get('increment', 1):
+            gr._next += 1
+            if gr._next >= len(gr.mirrors): gr._next = 0
 
         if DEBUG:
             grm = [m['mirror'] for m in gr.mirrors]
-            print 'GR   mirrors: [%s] %i' % (' '.join(grm), gr._next)
+            DBPRINT('GR   mirrors: [%s] %i' % (' '.join(grm), gr._next))
             selfm = [m['mirror'] for m in self.mirrors]
-            print 'MAIN mirrors: [%s] %i' % (' '.join(selfm), self._next)
+            DBPRINT('MAIN mirrors: [%s] %i' % (' '.join(selfm), self._next))
 
     #####################################################################
     # NON-CONFIGURATION METHODS
@@ -297,14 +358,18 @@ class MirrorGroup:
         if base_url.endswith('/') or rel_url.startswith('/'):
             return base_url + rel_url
         else:
-            return baseurl + '/' + rel_url
+            return base_url + '/' + rel_url
         
     def _mirror_try(self, func, url, kw):
         gr = GrabRequest()
         gr.func = func
         gr.url  = url
-        gr.kw   = kw
+        gr.kw   = dict(kw)
         self._load_gr(gr)
+
+        for k in self.options:
+            try: del kw[k]
+            except KeyError: pass
 
         while 1:
             mirrorchoice = self._get_mirror(gr)
@@ -313,11 +378,11 @@ class MirrorGroup:
             kwargs.update(kw)
             grabber = mirrorchoice.get('grabber') or self.grabber
             func_ref = getattr(grabber, func)
-            if DEBUG: print 'MIRROR: trying %s -> %s' % (url, fullurl)
+            if DEBUG: DBPRINT('MIRROR: trying %s -> %s' % (url, fullurl))
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
-                if DEBUG: print 'MIRROR: failed'
+                if DEBUG: DBPRINT('MIRROR: failed')
                 self._failure(gr, e)
 
     def urlgrab(self, url, filename=None, **kwargs):

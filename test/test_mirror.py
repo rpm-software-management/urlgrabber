@@ -30,7 +30,7 @@ from base_test_code import *
 
 def suite():
     classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests,
-                 SubclassTests]
+                 SubclassTests, ActionTests]
     return unittest.TestSuite(makeSuites(classlist))
 
 class BasicTests(UGTestCase):
@@ -110,6 +110,12 @@ class CallbackTests(UGTestCase):
         self.assertEquals(tricky_list,
                           ['[Errno 4] IOError: HTTP Error 403: Forbidden'])
 
+    def test_callback_reraise(self):
+        "test that the callback can correctly re-raise the exception"
+        def failure_callback(e): raise
+        self.mg.failure_callback = failure_callback
+        self.assertRaises(URLGrabError, self.mg.urlread, 'reference')
+
 class BadMirrorTests(UGTestCase):
     def setUp(self):
         self.g  = URLGrabber()
@@ -140,6 +146,114 @@ class FailoverTests(UGTestCase):
         fo.close()
 
         self.assertEqual(contents, reference_data)
+
+class FakeGrabber:
+    def __init__(self, resultlist=None):
+        self.resultlist = resultlist or []
+        self.index = 0
+        self.calls = []
+        
+    def urlgrab(self, url, filename=None, **kwargs):
+        self.calls.append( (url, filename) )
+        res = self.resultlist[self.index]
+        self.index += 1
+        if isinstance(res, Exception): raise res
+        else: return res
+
+class ActionTests(UGTestCase):
+    def setUp(self):
+        self.snarfed_logs = []
+        self.debug = urlgrabber.mirror.DEBUG
+        urlgrabber.mirror.DEBUG = 1
+        self.dbprint = urlgrabber.mirror.DBPRINT
+        urlgrabber.mirror.DBPRINT = self.logsnarf
+        self.mirrors = ['a', 'b', 'c', 'd', 'e', 'f']
+        self.g = FakeGrabber([URLGrabError(3), URLGrabError(3), 'filename'])
+        self.mg = MirrorGroup(self.g, self.mirrors)
+
+    def logsnarf(self, message):
+        self.snarfed_logs.append(message)
+
+    def tearDown(self):
+        urlgrabber.mirror.DEBUG = self.debug
+        urlgrabber.mirror.DBPRINT = self.dbprint
+        
+    def test_defaults(self):
+        'test default action policy'
+        self.mg.urlgrab('somefile')
+        expected_calls = [ (m + '/' + 'somefile', None) \
+                           for m in self.mirrors[:3] ]
+        expected_logs = \
+            ['MIRROR: trying somefile -> a/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [b c d e f] 0',
+             'MAIN mirrors: [a b c d e f] 1',
+             'MIRROR: trying somefile -> b/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [c d e f] 0',
+             'MAIN mirrors: [a b c d e f] 2',
+             'MIRROR: trying somefile -> c/somefile']
+            
+        self.assertEquals(self.g.calls, expected_calls)
+        self.assertEquals(self.snarfed_logs, expected_logs)
+                
+    def test_instance_action(self):
+        'test the effects of passed-in default_action'
+        self.mg.default_action = {'remove_master': 1}
+        self.mg.urlgrab('somefile')
+        expected_calls = [ (m + '/' + 'somefile', None) \
+                           for m in self.mirrors[:3] ]
+        expected_logs = \
+            ['MIRROR: trying somefile -> a/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [b c d e f] 0',
+             'MAIN mirrors: [b c d e f] 0',
+             'MIRROR: trying somefile -> b/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [c d e f] 0',
+             'MAIN mirrors: [c d e f] 0',
+             'MIRROR: trying somefile -> c/somefile']
+            
+        self.assertEquals(self.g.calls, expected_calls)
+        self.assertEquals(self.snarfed_logs, expected_logs)
+                
+    def test_method_action(self):
+        'test the effects of method-level default_action'
+        self.mg.urlgrab('somefile', default_action={'remove_master': 1})
+        expected_calls = [ (m + '/' + 'somefile', None) \
+                           for m in self.mirrors[:3] ]
+        expected_logs = \
+            ['MIRROR: trying somefile -> a/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [b c d e f] 0',
+             'MAIN mirrors: [b c d e f] 0',
+             'MIRROR: trying somefile -> b/somefile',
+             'MIRROR: failed',
+             'GR   mirrors: [c d e f] 0',
+             'MAIN mirrors: [c d e f] 0',
+             'MIRROR: trying somefile -> c/somefile']
+            
+        self.assertEquals(self.g.calls, expected_calls)
+        self.assertEquals(self.snarfed_logs, expected_logs)
+                
+
+    def callback(self, e): return {'fail': 1}
+    
+    def test_callback_action(self):
+        'test the effects of a callback-returned action'
+        self.assertRaises(URLGrabError, self.mg.urlgrab, 'somefile',
+                          failure_callback=self.callback)
+        expected_calls = [ (m + '/' + 'somefile', None) \
+                           for m in self.mirrors[:1] ]
+        expected_logs = \
+                      ['MIRROR: trying somefile -> a/somefile',
+                       'MIRROR: failed',
+                       'GR   mirrors: [b c d e f] 0',
+                       'MAIN mirrors: [a b c d e f] 1']
+
+        self.assertEquals(self.g.calls, expected_calls)
+        self.assertEquals(self.snarfed_logs, expected_logs)
+                
 
 if __name__ == '__main__':
     urlgrabber.grabber.DEBUG = 0

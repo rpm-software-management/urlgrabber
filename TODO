@@ -1,10 +1,5 @@
 ALPHA:
 
-  * mirror.py
-    - (mds) make failover more controllable on a per-fetch basis.  For
-      example, be able to control whether the _next index is incremented
-      at all
-
   * options
     - (both) try and think of better/faster/cleaner ways to handle
       grabber options
@@ -39,6 +34,10 @@ ALPHA:
       full-fledged project
 
 ALPHA 2:
+
+  * Add decent debugging code and a URLGRABBER_DEBUG environment
+    variable so that users of miscellaneous applications can get the
+    debugging output
 
   * Consider adding timeout keyword arg that would handle setting the socket
     timeout natively under python 2.3 or using timeoutsocket.py hack if 
