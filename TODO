@@ -1,8 +1,12 @@
 ALPHA:
 
   * opener
-    - ???? can we make it possible to include (or exclude) custom
-      handlers in the openers?
+    - fix broken opener caching - the implementation may depend on
+      the next item
+    - can we make it possible to include (or exclude) custom
+      handlers in the openers?  Possibly just provide an "opener"
+      option, although this would preclude the use of the "proxy"
+      option.
 
   * threading/batch
     - (rt) propose an interface for threaded batch downloads
@@ -33,8 +37,6 @@ ALPHA 2:
     recent chatter on the yum list about Ctrl-C handling. Seth suggests 
     Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
 
-  * Make keepalive functionality work when used in multiple threads.
-  
   * look at making the 'check_timestamp' reget mode work with ftp.
     Currently, we NEVER get a timestamp back, so we can't compare.
     We'll probably need to subclass/replace either the urllib2 FTP handler
@@ -43,6 +45,9 @@ ALPHA 2:
     getting the entire file.
 
   * ipv6
+
+  * cache dns lookups -- for a possible approach, see
+    https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000136.html
 
 Misc/Maybe:
 
