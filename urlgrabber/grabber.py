@@ -279,7 +279,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.34 2005/02/14 21:55:07 mstenner Exp $
+# $Id: grabber.py,v 1.35 2005/02/14 22:33:09 mstenner Exp $
 
 import os
 import os.path
@@ -287,6 +287,7 @@ import urlparse
 import rfc822
 import time
 import string
+import urllib
 import urllib2
 from stat import *  # S_* and ST_*
 
@@ -570,7 +571,10 @@ class URLGrabber:
         (url, parts) = self._parse_url(url)
         (scheme, host, path, parm, query, frag) = parts
         if filename is None:
-            filename = os.path.basename( path )
+            if scheme in [ 'http', 'https' ]:
+                filename = os.path.basename( urllib.unquote(path) )
+            else:
+                filename = os.path.basename( path )
         if scheme == 'file' and not opts.copy_local:
             # just return the name of the local file - don't make a 
             # copy currently
@@ -662,6 +666,7 @@ class URLGrabber:
             (scheme, host, path, parm, query, frag) = \
                                              urlparse.urlparse(url)
         path = os.path.normpath(path)
+        if scheme in ['http', 'https']: path = urllib.quote(path)
         if '@' in host and auth_handler and scheme in ['http', 'https']:
             try:
                 user_pass, host = host.split('@', 1)
