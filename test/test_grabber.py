@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.16 2004/03/31 17:02:00 mstenner Exp $
+# $Id: test_grabber.py,v 1.17 2004/04/02 00:10:46 mstenner Exp $
 
 import sys
 import os
@@ -206,22 +206,17 @@ class URLGrabberTestCase(TestCase):
             (url, parts) = g._parse_url(file)
             self.assertEquals(url, target)
 
-class HTTPRegetTests(TestCase):
+class RegetTestBase:
     def setUp(self):
         self.ref = short_reference_data
-        self.url = short_ref_http
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
         self.filename = tempfile.mktemp()
         self.hl = len(self.ref) / 2
+        self.url = 'OVERRIDE THIS'
 
     def tearDown(self):
         try: os.unlink(self.filename)
         except: pass
-
-    def test_bad_reget_type(self):
-        "exception raised for illegal reget mode"
-        self.assertRaises(URLGrabError, self.grabber.urlgrab,
-                          self.url, self.filename, reget='junk')
 
     def _make_half_zero_file(self):
         fo = open(self.filename, 'w')
@@ -234,6 +229,23 @@ class HTTPRegetTests(TestCase):
         fo.close()
         return data
     
+class CommonRegetTests(RegetTestBase, TestCase):
+    def test_bad_reget_type(self):
+        "exception raised for illegal reget mode"
+        self.assertRaises(URLGrabError, self.grabber.urlgrab,
+                          self.url, self.filename, reget='junk')
+
+class FTPRegetTests(RegetTestBase, TestCase):
+    def setUp(self):
+        RegetTestBase.setUp(self)
+        self.url = short_ref_ftp
+        # this tests to see if the server is available.  If it's not,
+        # then these tests will be skipped
+        try:
+            fo = urllib2.urlopen(self.url).close()
+        except IOError:
+            self.skip()
+
     def test_basic_reget(self):
         'simple (forced) reget'
         self._make_half_zero_file()
@@ -243,15 +255,14 @@ class HTTPRegetTests(TestCase):
         self.assertEquals(data[:self.hl], '0'*self.hl)
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
-    def test_older_check_timestamp(self):
-        'reget when server version is older than local'
-        # skip the check_timestamp tests for ftp because (for now) we don't
-        # have a way of knowing the time (so you should just choose simple
-        # or None for ftp).  It is probably possible to issue a 'modtime'
-        # command command, but neither urllib2 nor ftplib support this,
-        # wo we'd have to subclass one or both to thet it in there.
-        if self.url.startswith('ftp'): self.skip()
+class HTTPRegetTests(FTPRegetTests):
+    def setUp(self):
+        RegetTestBase.setUp(self)
+        self.url = short_ref_http
 
+    def test_older_check_timestamp(self):
+        # define this here rather than in the FTP tests because currently,
+        # we get no timestamp information back from ftp servers.
         self._make_half_zero_file()
         ts = 1600000000 # set local timestamp to 2020
         os.utime(self.filename, (ts, ts)) 
@@ -262,9 +273,8 @@ class HTTPRegetTests(TestCase):
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
     def test_newer_check_timestamp(self):
-        'NO reget when server version is newer than local'
-        if self.url.startswith('ftp'): self.skip()
-
+        # define this here rather than in the FTP tests because currently,
+        # we get no timestamp information back from ftp servers.
         self._make_half_zero_file()
         ts = 1 # set local timestamp to 1969
         os.utime(self.filename, (ts, ts)) 
@@ -273,29 +283,12 @@ class HTTPRegetTests(TestCase):
 
         self.assertEquals(data, self.ref)
 
-class FTPRegetTests(HTTPRegetTests):
-    def setUp(self):
-        self.ref = short_reference_data
-        self.url = short_ref_ftp
-
-        # this tests to see if the server is available.  If it's not,
-        # then these tests will be skipped
-        try:
-            fo = urllib2.urlopen(self.url).close()
-        except IOError:
-            self.skip()
-
-        self.grabber = grabber.URLGrabber(reget='check_timestamp')
-        self.filename = tempfile.mktemp()
-        self.hl = len(self.ref) / 2
-
 class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
-
         tmp = tempfile.mktemp()
         tmpfo = open(tmp, 'w')
-        tmpfo.write(short_reference_data)
+        tmpfo.write(self.ref)
         tmpfo.close()
         self.tmp = tmp
         
