@@ -68,42 +68,182 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.4 2004/03/14 05:45:21 mstenner Exp $
+# $Id: keepalive.py,v 1.5 2004/03/20 05:40:12 mstenner Exp $
 
 import urllib2
 import httplib
 import socket
+import thread
 
 DEBUG = 0
 def DBPRINT(*args): print ' '.join(args)
 HANDLE_ERRORS = 1
 
+class ConnectionManager:
+    """
+    The connection manager must be able to:
+      * keep track of all existing
+      """
+    def __init__(self):
+        self._lock = thread.allocate_lock()
+        self._hostmap = {} # map hosts to a list of connections
+        self._connmap = {} # map connections to host
+        self._readymap = {} # map connection to ready state
+
+    def add(self, host, connection, ready):
+        self._lock.acquire()
+        try:
+            if not self._hostmap.has_key(host): self._hostmap[host] = []
+            self._hostmap[host].append(connection)
+            self._connmap[connection] = host
+            self._readymap[connection] = ready
+        finally:
+            self._lock.release()
+
+    def remove(self, connection):
+        self._lock.acquire()
+        try:
+            try:
+                host = self._connmap[connection]
+            except KeyError:
+                pass
+            else:
+                del self._connmap[connection]
+                del self._readymap[connection]
+                self._hostmap[host].remove(connection)
+                if not self._hostmap[host]: del self._hostmap[host]
+        finally:
+            self._lock.release()
+
+    def set_ready(self, connection, ready):
+        try: self._readymap[connection] = ready
+        except KeyError: pass
+        
+    def get_ready_conn(self, host):
+        conn = None
+        self._lock.acquire()
+        try:
+            if self._hostmap.has_key(host):
+                for c in self._hostmap[host]:
+                    if self._readymap[c]:
+                        self._readymap[c] = 0
+                        conn = c
+                        break
+        finally:
+            self._lock.release()
+        return conn
+
+    def get_all(self, host=None):
+        if host:
+            return list(self._hostmap.get(host, []))
+        else:
+            return dict(self._hostmap)
+
 class HTTPHandler(urllib2.HTTPHandler):
     def __init__(self):
-        self._connections = {}
+        self._cm = ConnectionManager()
         
+    #### Connection Management
+    def open_connections(self):
+        """return a list of connected hosts and the number of connections
+        to each.  [('foo.com:80', 2), ('bar.org', 1)]"""
+        return [(host, len(li)) for (host, li) in self._cm.get_all().items()]
+
     def close_connection(self, host):
-        """close connection to <host>
+        """close connection(s) to <host>
         host is the host:port spec, as in 'www.cnn.com:8080' as passed in.
         no error occurs if there is no connection to that host."""
-        self._remove_connection(host, close=1)
-
-    def open_connections(self):
-        """return a list of connected hosts"""
-        return self._connections.keys()
-
+        for h in self._cm.get_all(host):
+            self._cm.remove(h)
+            h.close()
+        
     def close_all(self):
         """close all open connections"""
-        for host, conn in self._connections.items():
-            conn.close()
-        self._connections = {}
+        for host, conns in self._cm.get_all().items():
+            for h in conns:
+                self._cm.remove(h)
+                h.close()
         
-    def _remove_connection(self, host, close=0):
-        if self._connections.has_key(host):
-            if close: self._connections[host].close()
-            del self._connections[host]
+    def _request_closed(self, request, host, connection):
+        """tells us that this request is now closed and the the
+        connection is ready for another request"""
+        self._cm.set_ready(connection, 1)
+
+    def _remove_connection(self, host, connection, close=0):
+        if close: connection.close()
+        self._cm.remove(connection)
         
-    def _start_connection(self, h, req):
+    #### Transaction Execution
+    def http_open(self, req):
+        return self.do_open(HTTPConnection, req)
+
+    def do_open(self, http_class, req):
+        host = req.get_host()
+        if not host:
+            raise urllib2.URLError('no host given')
+
+        try:
+            need_new_connection = 1
+            h = self._cm.get_ready_conn(host)
+            if not h is None:
+                try:
+                    self._start_transaction(h, req)
+                    r = h.getresponse()
+                except (socket.error, httplib.HTTPException):
+                    r = None
+                except:
+                    # adding this block just in case we've missed
+                    # something we will still raise the exception, but
+                    # lets try and close the connection and remove it
+                    # first.  We previously got into a nasty loop
+                    # where an exception was uncaught, and so the
+                    # connection stayed open.  On the next try, the
+                    # same exception was raised, etc.  The tradeoff is
+                    # that it's now possible this call will raise
+                    # a DIFFERENT exception
+                    if DEBUG: DBPRINT("unexpected exception - " \
+                       "closing connection to %s" % host)
+                    self._cm.remove(h)
+                    h.close()
+                    raise
+                    
+                if r is None or r.version == 9:
+                    # httplib falls back to assuming HTTP 0.9 if it gets a
+                    # bad header back.  This is most likely to happen if
+                    # the socket has been closed by the server since we
+                    # last used the connection.
+                    if DEBUG: DBPRINT("failed to re-use connection to %s" \
+                                      % host)
+                    self._cm.remove(h)
+                    h.close()
+                else:
+                    if DEBUG: DBPRINT("re-using connection to %s" % host)
+                    need_new_connection = 0
+
+            if need_new_connection:
+                if DEBUG: DBPRINT("creating new connection to %s" % host)
+                h = http_class(host)
+                self._cm.add(host, h, 0)
+                self._start_transaction(h, req)
+                r = h.getresponse()
+        except (socket.error, httplib.HTTPException), err:
+            raise urllib2.URLError(err)
+            
+        # if not a persistent connection, don't try to reuse it
+        if r.will_close: self._cm.remove(h)
+
+        if DEBUG: DBPRINT("STATUS: %s, %s" % (r.status, r.reason))
+        r._handler = self
+        r._host = host
+        r._url = req.get_full_url()
+        r._connection = h
+
+        if r.status == 200 or not HANDLE_ERRORS:
+            return r
+        else:
+            return self.parent.error('http', req, r, r.status, r.reason, r.msg)
+
+    def _start_transaction(self, h, req):
         try:
             if req.has_data():
                 data = req.get_data()
@@ -126,74 +266,7 @@ class HTTPHandler(urllib2.HTTPHandler):
         if req.has_data():
             h.send(data)
 
-    def do_open(self, http_class, req):
-        host = req.get_host()
-        if not host:
-            raise urllib2.URLError('no host given')
-
-        try:
-            need_new_connection = 1
-            h = self._connections.get(host)
-            if not h is None:
-                try:
-                    self._start_connection(h, req)
-                    r = h.getresponse()
-                except (socket.error, httplib.HTTPException):
-                    r = None
-                except:
-                    # adding this block just in case we've missed
-                    # something we will still raise the exception, but
-                    # lets try and close the connection and remove it
-                    # first.  We previously got into a nasty loop
-                    # where an exception was uncaught, and so the
-                    # connection stayed open.  On the next try, the
-                    # same exception was raised, etc.  The tradeoff is
-                    # that it's now possible this call will raise
-                    # a DIFFERENT exception
-                    if DEBUG: DBPRINT("unexpected exception - " \
-                       "closing connection to %s" % host)
-                    self._remove_connection(host, close=1)
-                    raise
-                    
-                if r is None or r.version == 9:
-                    # httplib falls back to assuming HTTP 0.9 if it gets a
-                    # bad header back.  This is most likely to happen if
-                    # the socket has been closed by the server since we
-                    # last used the connection.
-                    if DEBUG: DBPRINT("failed to re-use connection to %s" \
-                                      % host)
-                    h.close()
-                else:
-                    if DEBUG: DBPRINT("re-using connection to %s" % host)
-                    need_new_connection = 0
-
-            if need_new_connection:
-                if DEBUG: DBPRINT("creating new connection to %s" % host)
-                h = http_class(host)
-                self._connections[host] = h
-                self._start_connection(h, req)
-                r = h.getresponse()
-        except (socket.error, httplib.HTTPException), err:
-            raise urllib2.URLError(err)
-            
-        # if not a persistent connection, don't try to reuse it
-        if r.will_close: self._remove_connection(host)
-
-        if DEBUG: DBPRINT("STATUS: %s, %s" % (r.status, r.reason))
-        r._handler = self
-        r._host = host
-        r._url = req.get_full_url()
-
-        if r.status == 200 or not HANDLE_ERRORS:
-            return r
-        else:
-            return self.parent.error('http', req, r, r.status, r.reason, r.msg)
-
-    def http_open(self, req):
-        return self.do_open(HTTPConnection, req)
-
 class HTTPResponse(httplib.HTTPResponse):
-
     # we need to subclass HTTPResponse in order to
     # 1) add readline() and readlines() methods
     # 2) add close_connection() methods
@@ -224,12 +297,19 @@ class HTTPResponse(httplib.HTTPResponse):
         self._handler = None # inserted by the handler later
         self._host = None    # (same)
         self._url = None     # (same)
+        self._connection = None # (same)
 
     _raw_read = httplib.HTTPResponse.read
 
+    def close(self):
+        if self.fp:
+            self.fp.close()
+            self.fp = None
+            self._handler._request_closed(self, self._host, self._connection)
+
     def close_connection(self):
+        self._handler._remove_connection(self._host, self._connection, close=1)
         self.close()
-        self._handler._remove_connection(self._host, close=1)
         
     def info(self):
         return self.msg

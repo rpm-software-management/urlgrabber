@@ -56,6 +56,8 @@ ALPHA 2:
     be worth it just for this one mode of reget.  It fails safely - by
     getting the entire file.
 
+  * ipv6
+
 Misc/Maybe:
 
   * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to
