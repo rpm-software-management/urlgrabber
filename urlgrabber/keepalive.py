@@ -79,7 +79,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.6 2004/03/21 02:41:08 mstenner Exp $
+# $Id: keepalive.py,v 1.7 2004/03/31 01:27:25 mstenner Exp $
 
 import urllib2
 import httplib
@@ -338,7 +338,9 @@ class HTTPResponse(httplib.HTTPResponse):
         if self.fp:
             self.fp.close()
             self.fp = None
-            self._handler._request_closed(self, self._host, self._connection)
+            if self._handler:
+                self._handler._request_closed(self, self._host,
+                                              self._connection)
 
     def close_connection(self):
         self._handler._remove_connection(self._host, self._connection, close=1)
@@ -425,7 +427,7 @@ def error_handler(url):
             print "  status = %s, reason = %s" % (status, reason)
     HANDLE_ERRORS = orig
     hosts = keepalive_handler.open_connections()
-    print "open connections:", ' '.join(hosts)
+    print "open connections:", hosts
     keepalive_handler.close_all()
 
 def continuity(url):
@@ -508,8 +510,8 @@ def test_timeout(url):
     data1 = fo.read()
     fo.close()
  
-    print "  waiting 60 seconds for the server to close the connection"
-    i = 60
+    i = 20
+    print "  waiting %i seconds for the server to close the connection" % i
     while i > 0:
         sys.stdout.write('\r  %2i' % i)
         sys.stdout.flush()

@@ -98,7 +98,7 @@ AND THERE IS NO OBLIGATION WHATSOEVER TO PROVIDE MAINTENANCE,
 SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 """
 
-# $Id: munittest.py,v 1.1 2004/03/18 18:38:20 mstenner Exp $
+# $Id: munittest.py,v 1.2 2004/03/31 01:27:24 mstenner Exp $
 
 import time
 import sys
@@ -698,6 +698,10 @@ class _WritelnDecorator:
 
     def __getattr__(self, attr):
         return getattr(self.stream,attr)
+
+    def write(self, arg):
+        self.stream.write(arg)
+        self.stream.flush()
 
     def writeln(self, arg=None):
         if arg: self.write(arg)

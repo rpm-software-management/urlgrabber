@@ -173,7 +173,8 @@ class DroppedConnectionTests(TestCase):
             'STATUS: 200, OK'
             ]
         self.assert_(data1 == data2)
-        l = [ re.sub(r'\s+\(\d+\)$', r'', line) for line in self.snarfed_logs ]
+        l = [ re.sub(r'\s+\(-?\d+\)$', r'', line) for \
+              line in self.snarfed_logs ]
         self.assert_(l == reference_logs)
         
 class ThreadingTests(TestCase):
@@ -203,13 +204,18 @@ class ThreadingTests(TestCase):
             t.start()
             self.threads.append(t)
         for t in self.threads: t.join()
-        l = [ re.sub(r'\s+\(\d+\)$', r'', line) for line in self.snarfed_logs ]
+        l = [ re.sub(r'\s+\(-?\d+\)$', r'', line) for line in self.snarfed_logs ]
         l.sort()
         creating = ['creating new connection to www.linux.duke.edu'] * 3
         status = ['STATUS: 200, OK'] * 12
         reuse = ['re-using connection to www.linux.duke.edu'] * 9
         reference_logs = creating + status + reuse
         reference_logs.sort()
+        #print '--------------------'
+        #for log in l: print log
+        #print '--------------------'
+        #for log in reference_logs: print log
+        #print '--------------------'
         self.assert_(l == reference_logs)
             
 class Fetcher(threading.Thread):
