@@ -722,73 +722,6 @@ def _main_test():
     else: print 'LOCAL FILE:', name
 
 
-def _speed_test():
-    #### speed test --- see comment below
-    import sys
-    
-    full_times = []
-    raw_times = []
-    set_throttle(2**40) # throttle to 1 TB/s   :)
-
-    try:
-        from progress import text_progress_meter
-    except ImportError, e:
-        tpm = None
-        print 'not using progress meter'
-    else:
-        tpm = text_progress_meter(fo=open('/dev/null', 'w'))
-
-    # to address concerns that the overhead from the progress meter
-    # and throttling slow things down, we do this little test.  Make
-    # sure /tmp/test holds a sanely-sized file (like .2 MB)
-    #
-    # using this test, you get the FULL overhead of the progress
-    # meter and throttling, without the benefit: the meter is directed
-    # to /dev/null and the throttle bandwidth is set EXTREMELY high.
-    #
-    # note: it _is_ even slower to direct the progress meter to a real
-    # tty or file, but I'm just interested in the overhead from _this_
-    # module.
-    
-    # get it nicely cached before we start comparing
-    print 'pre-caching'
-    for i in range(100):
-        urlgrab('file:///tmp/test', '/tmp/test2',
-                copy_local=1)
-
-    reps = 1000
-    for i in range(reps):
-        print '\r%4i/%-4i' % (i, reps),
-        sys.stdout.flush()
-        t = time.time()
-        urlgrab('file:///tmp/test', '/tmp/test2',
-                copy_local=1, progress_obj=tpm)
-        full_times.append(1000 * (time.time() - t))
-
-        t = time.time()
-        urlgrab('file:///tmp/test', '/tmp/test2',
-                copy_local=1, progress_obj=None)
-        raw_times.append(1000* (time.time() - t))
-    print '\r'
-    
-    full_times.sort()
-    full_mean = 0.0
-    for i in full_times: full_mean = full_mean + i
-    full_mean = full_mean/len(full_times)
-    print '[full] mean: %.3f ms, median: %.3f ms, min: %.3f ms, max: %.3f ms' % \
-          (full_mean, full_times[int(len(full_times)/2)], min(full_times),
-           max(full_times))
-
-    raw_times.sort()
-    raw_mean = 0.0
-    for i in raw_times: raw_mean = raw_mean + i
-    raw_mean = raw_mean/len(raw_times)
-    print '[raw]  mean: %.3f ms, median: %.3f ms, min: %.3f ms, max: %.3f ms' % \
-          (raw_mean, raw_times[int(len(raw_times)/2)], min(raw_times),
-           max(raw_times))
-
-    close_all()
-
 def _retry_test():
     import sys
     try: url, filename = sys.argv[1:3]
@@ -871,7 +804,6 @@ def _test_file_object_readlines(wrapper, fo_output):
 
 if __name__ == '__main__':
     _main_test()
-    _speed_test()
     _retry_test()
     _file_object_test('test')
     
