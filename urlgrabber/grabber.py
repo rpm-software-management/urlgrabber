@@ -203,10 +203,12 @@ else:
 
 try:
     # add in range support conditionally too
-    from byterange import HTTPRangeHandler,FileRangeHandler,FTPRangeHandler
-    from byterange import range_tuple_normalize, range_tuple_to_header
+    from byterange import HTTPRangeHandler,FileRangeHandler,FTPRangeHandler, \
+                          range_tuple_normalize, range_tuple_to_header, \
+                          RangeError
 except ImportError, msg:
     range_handlers = ()
+    RangeError = None
     have_range = 0
 else:
     range_handlers = (HTTPRangeHandler(), FileRangeHandler(), FTPRangeHandler())
@@ -226,6 +228,7 @@ class URLGrabError(IOError):
       6  - no content length header when we expected one
       7  - HTTPException
       8  - Exceeded read limit (for urlread)
+      9  - Requested byte range not satisfiable.
  
     Negative codes are reserved for use by functions passed in to
     retrygrab with checkfunc.
@@ -538,6 +541,8 @@ class URLGrabberFileObject:
             hdr = fo.info()
         except ValueError, e:
             raise URLGrabError(1, _('Bad URL: %s') % (e, ))
+        except RangeError, e:
+            raise URLGrabError(9, _('%s') % (e, ))
         except IOError, e:
             raise URLGrabError(4, _('IOError: %s') % (e, ))
         except OSError, e:
