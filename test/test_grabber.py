@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.21 2004/12/12 05:17:07 rtomayko Exp $
+# $Id: test_grabber.py,v 1.22 2005/01/14 18:22:18 rtomayko Exp $
 
 import sys
 import os
@@ -377,7 +377,6 @@ class ProFTPDSucksTests(TestCase):
         try:
             fo = urllib2.urlopen(self.url).close()
         except IOError:
-            raise
             self.skip()
 
     def test_restart_workaround(self):
