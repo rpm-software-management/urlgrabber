@@ -290,7 +290,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.38 2005/02/28 17:12:18 mstenner Exp $
+# $Id: grabber.py,v 1.39 2005/03/03 00:54:23 mstenner Exp $
 
 import os
 import os.path
@@ -740,6 +740,9 @@ class URLGrabberFileObject:
             return self.opts.opener
         elif self._opener is None:
             handlers = []
+            need_keepalive_handler = (keepalive_handler and self.opts.keepalive)
+            need_range_handler = (range_handlers and \
+                                  (self.opts.range or self.opts.reget))
             # if you specify a ProxyHandler when creating the opener
             # it _must_ come before all other handlers in the list or urllib2
             # chokes.
@@ -761,14 +764,15 @@ class URLGrabberFileObject:
                 # conflicting defaults as well.  I would LOVE to see
                 # these go way or be dealt with more elegantly.  The
                 # problem isn't there after 2.2.  -MDS 2005/02/24
-                handlers.append( urllib2.FTPHandler() )
-                if not (keepalive_handler and self.opts.keepalive):
+                if not need_keepalive_handler:
                     handlers.append( urllib2.HTTPHandler() )
+                if not need_range_handler:
+                    handlers.append( urllib2.FTPHandler() )
                 # -------------------------------------------------------
                     
-            if keepalive_handler and self.opts.keepalive:
+            if need_keepalive_handler:
                 handlers.append( keepalive_handler )
-            if range_handlers and (self.opts.range or self.opts.reget):
+            if need_range_handler:
                 handlers.extend( range_handlers )
             handlers.append( auth_handler )
             if self.opts.cache_openers:
