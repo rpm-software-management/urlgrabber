@@ -21,7 +21,7 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.7 2004/03/31 17:02:00 mstenner Exp $
+# $Id: test_mirror.py,v 1.8 2004/08/12 16:39:52 mstenner Exp $
 
 import sys
 import os
@@ -140,12 +140,19 @@ class FailoverTests(TestCase):
         """test that a the MG fails over past a bad mirror"""
         filename = tempfile.mktemp()
         url = 'reference'
-        self.mg.urlgrab(url, filename)
+        elist = []
+        def cb(e, elist=elist): elist.append(e)
+        self.mg.urlgrab(url, filename, failure_callback=cb)
 
         fo = open(filename)
         contents = fo.read()
         fo.close()
-
+        
+        # first be sure that the first mirror failed and that the
+        # callback was called
+        self.assertEqual(len(elist), 1)
+        # now be sure that the second mirror succeeded and the correct
+        # data was returned
         self.assertEqual(contents, reference_data)
 
 class FakeGrabber:
