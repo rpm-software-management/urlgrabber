@@ -52,6 +52,10 @@ ALPHA 2:
     this? Need to verify that the FTP session is being shut down cleanly and
     the connection is closed properly.
 
+  * Have a plan for KeyboardInterupt exception handling. This is driven by 
+    recent chatter on the yum list about Ctrl-C handling. Seth suggests 
+    Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
+
 Misc:
 
   * Need to get a on-commit-email script working for urlgrabber CVS. While 
