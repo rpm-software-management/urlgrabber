@@ -23,14 +23,13 @@ from unittest import TestCase, TestSuite
 from StringIO import StringIO
 from urlgrabber.byterange import RangeableFileObject
 
+from base_test_code import *
+
 def suite():
-    return TestSuite((
-        unittest.makeSuite(RangeableFileObjectTestCase,'test'),
-        unittest.makeSuite(RangeModuleTestCase,'test') 
-        ))
+    classlist = [RangeableFileObjectTestCase, RangeModuleTestCase]
+    return unittest.TestSuite(makeSuites(classlist))
 
-
-class RangeableFileObjectTestCase(TestCase):
+class RangeableFileObjectTestCase(UGTestCase):
     """Test range.RangeableFileObject class"""
     
     def setUp(self):
@@ -90,7 +89,7 @@ class RangeableFileObjectTestCase(TestCase):
         self.rfo.readline()
         self.assertEquals(39,self.rfo.tell())
         
-class RangeModuleTestCase(TestCase):
+class RangeModuleTestCase(UGTestCase):
     """Test module level functions defined in range.py"""
     def setUp(self):
         pass
