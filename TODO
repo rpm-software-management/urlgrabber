@@ -26,12 +26,10 @@ ALPHA:
       self.opts in the URLGrabberFileObject, which _may_not_ be a copy
       of the grabber's opts.  Implementation will depend on what we
       decide to do with options.
-    - (mds) do a little testing for ftp:// and file://
 
   * web page
-    - (mds) make a proper web page describing the features, philosophy,
-      intended audience, etc.  promote urlgrabber from "mini project" to
-      full-fledged project
+    - examples page
+    - put up the software :)
 
 ALPHA 2:
 
@@ -53,6 +51,13 @@ ALPHA 2:
 
   * Make keepalive functionality work when used in multiple threads.
   
+  * look at making the 'check_timestamp' reget mode work with ftp.
+    Currently, we NEVER get a timestamp back, so we can't compare.
+    We'll probably need to subclass/replace either the urllib2 FTP handler
+    or the ftplib FTP object (or both, but I doubt it).  It may or may not
+    be worth it just for this one mode of reget.  It fails safely - by
+    getting the entire file.
+
 Misc/Maybe:
 
   * BatchURLGrabber/BatchMirrorGroup for concurrent downloads and possibly to

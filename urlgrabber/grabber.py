@@ -244,7 +244,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.15 2004/03/16 20:54:58 mstenner Exp $
+# $Id: grabber.py,v 1.16 2004/03/19 01:48:40 mstenner Exp $
 
 import os
 import os.path
@@ -524,14 +524,6 @@ class URLGrabber:
         
         return self._retry(opts, retryfunc, url, filename)
     
-    # NOTES ON REGET
-    #
-    #   See this email and preceeding thread:
-    #     https://lists.dulug.duke.edu/pipermail/yum-devel/2004-February/000042.html
-    #
-    #   If
-
-        
     def urlread(self, url, limit=None, **kwargs):
         """read the url into a string, up to 'limit' bytes
         If the limit is exceeded, an exception will be thrown.  Note
@@ -548,7 +540,14 @@ class URLGrabber:
             fo = URLGrabberFileObject(url, filename=None, opts=opts)
             s = ''
             try:
-                s = fo.read(limit)
+                # this is an unfortunate thing.  Some file-like objects
+                # have a default "limit" of None, while the built-in (real)
+                # file objects have -1.  They each break the other, so for
+                # now, we just force the default if necessary.
+                if limit is None: s = fo.read()
+                else: s = fo.read(limit)
+
+
                 if not opts.checkfunc is None:
                     if callable(opts.checkfunc):
                         func, args, kwargs = opts.checkfunc, (), {}
@@ -576,12 +575,13 @@ class URLGrabber:
         """
         if self.opts.prefix:
             p = self.opts.prefix
-            if p.endswith('/') or url.startswith('/'): url = p + url
+            if p[-1] == '/' or url[0] == '/': url = p + url
             else: url = p + '/' + url
             
         (scheme, host, path, parm, query, frag) = \
                                              urlparse.urlparse(url)
         if not scheme:
+            if not url[0] == '/': url = os.path.abspath(url)
             url = 'file:' + url
             (scheme, host, path, parm, query, frag) = \
                                              urlparse.urlparse(url)
