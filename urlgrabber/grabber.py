@@ -274,7 +274,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.31 2004/10/16 15:43:26 rtomayko Exp $
+# $Id: grabber.py,v 1.32 2004/10/17 01:53:13 rtomayko Exp $
 
 import os
 import os.path
@@ -894,6 +894,8 @@ class URLGrabberFileObject:
             else:           readamount = min(amt, self._rbufsize)
             try:
                 new = self.fo.read(readamount)
+            except socket.error:
+                raise URLGrabError(4, _('Socket Error: %s') % (e, ))
             except TimeoutError, e:
                 raise URLGrabError(12, _('Timeout: %s') % (e, ))
             newsize = len(new)
