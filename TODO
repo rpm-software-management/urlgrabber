@@ -1,4 +1,39 @@
-Soon:
+ALPHA:
+
+  * Implement MirrorGroups.
+
+  * Basic speed tests to make sure we're not insanely slow. Interested 
+    in the cases of:
+    - crazy features ON and large files
+    - crazy features ON and small files 
+    - crazy features OFF and large files
+    - crazy features OFF and small files
+    
+    Here, crazy features are things like throttling and progress meters.
+    The significance of large/small files is whether we're slow in the 
+    actual downloading or the setup overhead.
+
+  * BUG: Argument "range" in RangeableFileObject should be changed to
+    something else.
+
+  * urlread needs to support checkfunc (pass in the string itself).
+
+ALPHA 2:
+
+  * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
+    or a requested range being invalid. Right now the result of either of 
+    these two cases is undefined and is probably different for HTTP/FTP.
+    Raising an exception seems to be "the right thing to do" in both cases.
+
+  * Need to test usage across multiple threads. grabber.py should be fine.
+    keepalive seems to be the scary piece here.
+
+  * Consider adding timeout keyword arg that would handle setting the socket
+    timeout natively under python 2.3 or using timeoutsocket.py hack if 
+    available and using python < 2.3.
+
+  * Clean up conditionals checking for urllib2 availability. Assume urllib2 
+    is available.
 
   * Test proxy support with authenticating proxies (http and ftp).   
 
@@ -17,21 +52,8 @@ Soon:
     this? Need to verify that the FTP session is being shut down cleanly and
     the connection is closed properly.
 
-  * Handle non-satisfiable ranges. e.g. due to a server not supporting ranges 
-    or a requested range being invalid. Right now the result of either of 
-    these two cases is undefined and is probably different for HTTP/FTP.
-    Raising an exception seems to be "the right thing to do" in both cases.
+Misc:
 
-  * Implement MirrorGroups. (Michael to add detail)
-
-  * Possibly clean up conditionals checking for urllib2 availability. 
-    Assume urllib2 is available.
-
-Later:
-
-  * Need to test usage across multiple threads. grabber.py should be fine.
-    keepalive seems to be the scary piece here.
-
-  * Consider adding timeout keyword arg that would handle setting the socket
-    timeout natively under python 2.3 or using timeoutsocket.py hack if 
-    available and using python < 2.3.
+  * Need to get a on-commit-email script working for urlgrabber CVS. While 
+    we're talking about operational type stuff, we should also get viewcvs 
+    setup.
