@@ -1,3 +1,113 @@
+2005-02-14  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.1
+
+2005-02-14  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_keepalive.py, test/test_mirror.py,
+	urlgrabber/byterange.py, urlgrabber/grabber.py,
+	urlgrabber/keepalive.py:
+
+	Fixed python 2.4 bug - added .code attribute to returned file
+	objects.  Changed keepalive.HANDLE_ERRORS behavior for the way 2.4
+	does things.
+
+2005-02-08  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* makefile:
+
+	Added Python 2.4 to lists of pythons to test..
+
+2005-02-04  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/byterange.py:
+
+	Fixed RH bug #147124.  range_tuple_header was not accounting for a
+	possible None value.
+	https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=147124
+
+2005-01-14  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/test_grabber.py:
+
+	Fixed proftpd test (was raising error when it shouldn't have been)
+
+2005-01-14  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/: grabber.py, progress.py:
+
+	Applied urlgrabber-add-text.patch from Terje Rosten
+
+2004-12-12  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/base_test_code.py, test/test_grabber.py,
+	urlgrabber/byterange.py:
+
+	Fix for RH bug #140387
+	https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=140387
+
+2004-10-17  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/grabber.py:
+
+	Added except for socket resource error when reading from urllib2
+	file object.
+
+2004-10-16  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/grabber.py:
+
+	Fixed AttributeError problem that was pretty common after additions
+	for timeout support.
+
+2004-10-08  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* TODO, urlgrabber/grabber.py:
+
+	Added timeout support.
+
+2004-09-07  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* TODO, scripts/urlgrabber, urlgrabber/__init__.py,
+	urlgrabber/grabber.py, urlgrabber/mirror.py,
+	urlgrabber/progress.py:
+
+	Added Ryan's progress changes in.  That still has some quirks I
+	need to iron out.
+
+	Made all urlgrabber imports relative to work more nicely with yum's
+	package layout.  This was straightforward except for the
+	__version__ import, which I solved in a slightly icky way.
+
+2004-08-25  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* MANIFEST.in:
+
+	Added "MANIFEST" to MANIFEST.in.  Without this, one couldn't
+	correctly rebuild an rpm (for example) from the distributed
+	tarball.
+
+2004-08-24  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/threading/batchgrabber.py:
+
+	Updates for Michael's multifile progress bar changes.
+
+2004-08-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* makefile, urlgrabber/__init__.py:
+
+	Fixed a typo in the new 'release' target.  Reformatted the doc in
+	__init__.py to be under 80 columns in PKG-INFO.
+
+2004-08-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2004-08-21  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/__init__.py:
