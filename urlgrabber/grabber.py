@@ -279,7 +279,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.36 2005/02/21 17:36:53 mstenner Exp $
+# $Id: grabber.py,v 1.37 2005/02/25 00:00:38 mstenner Exp $
 
 import os
 import os.path
@@ -732,6 +732,27 @@ class URLGrabberFileObject:
             # chokes.
             if self.opts.proxies:
                 handlers.append( CachedProxyHandler(self.opts.proxies) )
+
+                # -------------------------------------------------------
+                # OK, these next few lines are a serious kludge to get
+                # around what I think is a bug in python 2.2's
+                # urllib2.  The basic idea is that default handlers
+                # get applied first.  If you override one (like a
+                # proxy handler), then the default gets pulled, but
+                # the replacement goes on the end.  In the case of
+                # proxies, this means the normal handler picks it up
+                # first and the proxy isn't used.  Now, this probably
+                # only happened with ftp or non-keepalive http, so not
+                # many folks saw it.  The simple approach to fixing it
+                # is just to make sure you override the other
+                # conflicting defaults as well.  I would LOVE to see
+                # these go way or be dealt with more elegantly.  The
+                # problem isn't there after 2.2.  -MDS 2005/02/24
+                handlers.append( urllib2.FTPHandler() )
+                if not (keepalive_handler and self.opts.keepalive):
+                    handlers.append( urllib2.HTTPHandler() )
+                # -------------------------------------------------------
+                    
             if keepalive_handler and self.opts.keepalive:
                 handlers.append( keepalive_handler )
             if range_handlers and (self.opts.range or self.opts.reget):
@@ -971,10 +992,11 @@ _proxy_cache = []
 def CachedProxyHandler(proxies):
     for (pdict, handler) in _proxy_cache:
         if pdict == proxies:
-            return handler
-    handler = urllib2.ProxyHandler(proxies)
-    _proxy_cache.append( (proxies,handler) )
-
+            break
+    else:
+        handler = urllib2.ProxyHandler(proxies)
+        _proxy_cache.append( (proxies, handler) )
+    return handler
 
 #####################################################################
 # DEPRECATED FUNCTIONS

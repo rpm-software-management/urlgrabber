@@ -1,10 +1,7 @@
-ALPHA:
+ALPHA 2:
 
   * web page
-    - examples page
-    - put up the software :)
-
-ALPHA 2:
+    - better examples page
 
   * threading/batch
     - (rt) propose an interface for threaded batch downloads
@@ -24,10 +21,6 @@ ALPHA 2:
   * Add decent debugging code and a URLGRABBER_DEBUG environment
     variable so that users of miscellaneous applications can get the
     debugging output
-
-  * Test proxy support with authenticating proxies (http and ftp).   
-
-  * FTP proxy testing in general.
 
   * Have a plan for KeyboardInterupt exception handling. This is driven by 
     recent chatter on the yum list about Ctrl-C handling. Seth suggests 
@@ -57,8 +50,8 @@ Misc/Maybe:
     CacheFTPHandler reuses connections but this may lead to problems with
     ranges. I've tested CacheFTPHandler with ranges using vsftpd as a 
     server and everything works fine but this needs more exhaustive tests 
-    or a fallback mechanism. Also, CacheFTPHandler breaks in the same way 
-    keepalive breaks with multiple threads.
+    or a fallback mechanism. Also, CacheFTPHandler breaks with multiple 
+    threads.
 
   * Consider some statistics tracking so that urlgrabber can record the 
     speed/reliability of different servers.  This could then be used by

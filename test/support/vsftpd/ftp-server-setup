@@ -1,0 +1,16 @@
+#!/bin/bash
+
+### from this directory, as root, do the following.  You can also run
+### this as a script, but I haven't actually tested that :)
+
+yum -y install vsftpd
+/usr/sbin/adduser -d /var/ftp/ -M -s /sbin/nologin ftptest
+cp vsftpd.conf /etc/vsftpd/
+cp vsftpd.user_list /etc/
+cp vsftpd.ftpusers /etc/
+
+/bin/rm -rf /var/ftp/test
+cp -a ../testdata /var/ftp/test
+
+/sbin/chkconfig vsftpd on
+/sbin/service vsftpd start

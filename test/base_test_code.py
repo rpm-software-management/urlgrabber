@@ -24,3 +24,10 @@ good_mirrors       = ['m1', 'm2', 'm3']
 mirror_files       = ['test1.txt', 'test2.txt']
 bad_mirrors        = ['broken']
 bad_mirror_files   = ['broken.txt']
+
+proxy_proto = 'http'
+proxy_host = 'localhost'
+proxy_port = 8888
+proxy_user = 'proxyuser'
+good_proxy_pass = 'proxypass'
+bad_proxy_pass = 'badproxypass'

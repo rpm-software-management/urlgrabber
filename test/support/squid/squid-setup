@@ -1,0 +1,5 @@
+yum -y install squid
+cp squid.conf /etc/squid
+htpasswd -bc /etc/squid/users.txt proxyuser proxypass
+/sbin/chkconfig squid on
+/sbin/service squid start

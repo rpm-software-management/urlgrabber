@@ -21,12 +21,13 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.23 2005/02/14 22:13:36 mstenner Exp $
+# $Id: test_grabber.py,v 1.24 2005/02/25 00:00:36 mstenner Exp $
 
 import sys
 import os
 import string, tempfile, random, cStringIO, os
 import urllib2
+import socket
 
 from base_test_code import *
 
@@ -433,6 +434,49 @@ class ProFTPDSucksTests(TestCase):
         inst = grabber.URLGrabber()
         rslt = inst.urlread(self.url, range=(500, 1000))
         
+class BaseProxyTests(TestCase):
+    good_p = '%s://%s:%s@%s:%i' % (proxy_proto, proxy_user,
+                                   good_proxy_pass, proxy_host, proxy_port)
+    bad_p = '%s://%s:%s@%s:%i' % (proxy_proto, proxy_user,
+                                  bad_proxy_pass, proxy_host, proxy_port)
+    good_proxies = {'ftp': good_p, 'http': good_p}
+    bad_proxies =  {'ftp': bad_p,  'http': bad_p}
+
+    def have_proxy(self):
+        have_proxy = 1
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((proxy_host, proxy_port))
+            s.close()
+        except socket.error:
+            have_proxy = 0
+        return have_proxy
+
+class ProxyHTTPAuthTests(BaseProxyTests):
+    def setUp(self):
+        self.url = ref_http
+        if not self.have_proxy():
+            self.skip()
+        self.g = URLGrabber()
+
+    def test_good_password(self):
+        self.g.urlopen(self.url, proxies=self.good_proxies)
+
+    def test_bad_password(self):
+        self.assertRaises(URLGrabError, self.g.urlopen,
+                          self.url, proxies=self.bad_proxies)
+
+class ProxyFTPAuthTests(ProxyHTTPAuthTests):
+    def setUp(self):
+        self.url = ref_ftp
+        if not self.have_proxy():
+            self.skip()
+        try:
+            fo = urllib2.urlopen(self.url).close()
+        except IOError:
+            self.skip()
+        self.g = URLGrabber()
+
 def suite():
     tl = TestLoader()
     return tl.loadTestsFromModule(sys.modules[__name__])
