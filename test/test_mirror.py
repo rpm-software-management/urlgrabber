@@ -16,9 +16,10 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan D. Tomayko
 
+"""mirror.py tests"""
+
 import sys
 import os
-import unittest
 import string, tempfile, random, cStringIO, os
 
 import urlgrabber.grabber
@@ -28,14 +29,7 @@ from urlgrabber.mirror import MirrorGroup, MGRandomStart, MGRandomOrder
 
 from base_test_code import *
 
-def suite():
-    classlist = [BasicTests, BadMirrorTests, FailoverTests, CallbackTests,
-                 SubclassTests, ActionTests]
-    s = UGSuite(makeSuites(classlist))
-    s.description = "mirror.py tests"
-    return s
-
-class BasicTests(UGTestCase):
+class BasicTests(TestCase):
     def setUp(self):
         self.g  = URLGrabber()
         fullmirrors = [base_mirror_url + m + '/' for m in good_mirrors]
@@ -69,7 +63,7 @@ class BasicTests(UGTestCase):
 
         self.assertEqual(data, short_reference_data)
 
-class SubclassTests(UGTestCase):
+class SubclassTests(TestCase):
     def setUp(self):
         self.g  = URLGrabber()
         self.fullmirrors = [base_mirror_url + m + '/' for m in good_mirrors]
@@ -95,7 +89,7 @@ class SubclassTests(UGTestCase):
         "MGRandomOrder.urlgrab"
         self.fetchwith(MGRandomOrder)
 
-class CallbackTests(UGTestCase):
+class CallbackTests(TestCase):
     def setUp(self):
         self.g  = URLGrabber()
         fullmirrors = [base_mirror_url + m + '/' for m in \
@@ -118,7 +112,7 @@ class CallbackTests(UGTestCase):
         self.mg.failure_callback = failure_callback
         self.assertRaises(URLGrabError, self.mg.urlread, 'reference')
 
-class BadMirrorTests(UGTestCase):
+class BadMirrorTests(TestCase):
     def setUp(self):
         self.g  = URLGrabber()
         fullmirrors = [base_mirror_url + m + '/' for m in bad_mirrors]
@@ -130,7 +124,7 @@ class BadMirrorTests(UGTestCase):
         url = 'reference'
         self.assertRaises(URLGrabError, self.mg.urlgrab, url, filename)
 
-class FailoverTests(UGTestCase):
+class FailoverTests(TestCase):
     def setUp(self):
         self.g  = URLGrabber()
         fullmirrors = [base_mirror_url + m + '/' for m in \
@@ -162,7 +156,7 @@ class FakeGrabber:
         if isinstance(res, Exception): raise res
         else: return res
 
-class ActionTests(UGTestCase):
+class ActionTests(TestCase):
     def setUp(self):
         self.snarfed_logs = []
         self.debug = urlgrabber.mirror.DEBUG
@@ -257,9 +251,13 @@ class ActionTests(UGTestCase):
         self.assertEquals(self.snarfed_logs, expected_logs)
                 
 
+def suite():
+    tl = TestLoader()
+    return tl.loadTestsFromModule(sys.modules[__name__])
+
 if __name__ == '__main__':
     urlgrabber.grabber.DEBUG = 0
     urlgrabber.mirror.DEBUG = 0
-    runner = unittest.TextTestRunner(descriptions=1,verbosity=2)
+    runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
      

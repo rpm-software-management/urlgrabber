@@ -16,22 +16,16 @@
 
 # Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
 
-import sys
-import unittest
+"""byterange.py tests"""
 
-from unittest import TestCase, TestSuite
+import sys
+
 from StringIO import StringIO
 from urlgrabber.byterange import RangeableFileObject
 
 from base_test_code import *
 
-def suite():
-    classlist = [RangeableFileObjectTestCase, RangeModuleTestCase]
-    s = UGSuite(makeSuites(classlist))
-    s.description = "byterange.py tests"
-    return s
-
-class RangeableFileObjectTestCase(UGTestCase):
+class RangeableFileObjectTestCase(TestCase):
     """Test range.RangeableFileObject class"""
     
     def setUp(self):
@@ -91,7 +85,7 @@ class RangeableFileObjectTestCase(UGTestCase):
         self.rfo.readline()
         self.assertEquals(39,self.rfo.tell())
         
-class RangeModuleTestCase(UGTestCase):
+class RangeModuleTestCase(TestCase):
     """Test module level functions defined in range.py"""
     def setUp(self):
         pass
@@ -153,7 +147,11 @@ class RangeModuleTestCase(UGTestCase):
         except ValueError: pass
         else: self.fail("range_tuple_to_header( (0, 'not an int') ) should have raised ValueError")
                 
+def suite():
+    tl = TestLoader()
+    return tl.loadTestsFromModule(sys.modules[__name__])
+
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner(descriptions=1,verbosity=2)
+    runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
 

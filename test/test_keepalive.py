@@ -16,26 +16,20 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan D. Tomayko
 
+"""keepalive.py tests"""
+
 import sys
-import unittest
 import os
 import time
 import urllib2
 
 from urllib2 import URLError
-from unittest import TestCase, TestSuite
 
 from base_test_code import *
 
 from urlgrabber import keepalive
 
-def suite():
-    classlist = [CorruptionTests, HTTPErrorTests, DroppedConnectionTests]
-    s = UGSuite(makeSuites(classlist))
-    s.description = "keepalive.py tests"
-    return s
-
-class CorruptionTests(UGTestCase):
+class CorruptionTests(TestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
@@ -87,7 +81,7 @@ class CorruptionTests(UGTestCase):
             else: break
         self.assert_(data == reference_data)
 
-class HTTPErrorTests(UGTestCase):
+class HTTPErrorTests(TestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
@@ -138,7 +132,7 @@ class HTTPErrorTests(UGTestCase):
         fo.close()
         self.assertEqual((fo.status, fo.reason), (403, 'Forbidden'))
 
-class DroppedConnectionTests(UGTestCase):
+class DroppedConnectionTests(TestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
@@ -162,7 +156,7 @@ class DroppedConnectionTests(UGTestCase):
         fo.close()
 
         try: time.sleep(60)
-        except KeyboardInterrupt: raise Skip()
+        except KeyboardInterrupt: self.skip()
         
         fo = self.opener.open(ref_http)
         data2 = fo.read()
@@ -178,7 +172,11 @@ class DroppedConnectionTests(UGTestCase):
         self.assert_(data1 == data2)
         self.assert_(self.snarfed_logs == reference_logs)
         
+def suite():
+    tl = TestLoader()
+    return tl.loadTestsFromModule(sys.modules[__name__])
+
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner(descriptions=1,verbosity=2)
+    runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
      

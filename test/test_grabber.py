@@ -16,11 +16,11 @@
 
 # Copyright 2002-2003 Michael D. Stenner, Ryan D. Tomayko
 
+"""grabber.py tests"""
+
 import sys
-import unittest
 import os
 import string, tempfile, random, cStringIO, os
-from unittest import TestCase, TestSuite
 
 from base_test_code import *
 
@@ -29,14 +29,7 @@ import urlgrabber.grabber as grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError
 from urlgrabber.progress import text_progress_meter
 
-def suite():
-    classlist = [FileObjectTests, HTTPTests, URLGrabberModuleTestCase,
-                 URLGrabberTestCase, RegetTests]
-    s = UGSuite(makeSuites(classlist))
-    s.description = "grabber.py tests"
-    return s
-
-class FileObjectTests(UGTestCase):
+class FileObjectTests(TestCase):
     
     def setUp(self):
         self.filename = tempfile.mktemp()
@@ -80,7 +73,7 @@ class FileObjectTests(UGTestCase):
             if not s: break
         self.assertEqual(reference_data, self.fo_output.getvalue())
     
-class HTTPTests(UGTestCase):
+class HTTPTests(TestCase):
     def test_reference_file(self):
         "download refernce file via HTTP"
         filename = tempfile.mktemp()
@@ -92,7 +85,7 @@ class HTTPTests(UGTestCase):
 
         self.assertEqual(contents, reference_data)
 
-class URLGrabberModuleTestCase(UGTestCase):
+class URLGrabberModuleTestCase(TestCase):
     """Test module level functions defined in grabber.py"""
     def setUp(self):
         pass
@@ -117,7 +110,7 @@ class URLGrabberModuleTestCase(UGTestCase):
         s = urlgrabber.urlread('http://www.python.org')
 
        
-class URLGrabberTestCase(UGTestCase):
+class URLGrabberTestCase(TestCase):
     """Test grabber.URLGrabber class"""
     
     def setUp(self):
@@ -190,7 +183,7 @@ class URLGrabberTestCase(UGTestCase):
             (url, parts) = g._parse_url(file)
             self.assertEquals(url, target)
 
-class RegetTests(UGTestCase):
+class RegetTests(TestCase):
     def setUp(self):
         self.ref = short_reference_data
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
@@ -252,8 +245,12 @@ class RegetTests(UGTestCase):
 # I'd like to write some ftp tests as well, but I don't have a
 # reliable ftp server
 
+def suite():
+    tl = TestLoader()
+    return tl.loadTestsFromModule(sys.modules[__name__])
+
 if __name__ == '__main__':
     grabber.DEBUG = 0
-    runner = unittest.TextTestRunner(descriptions=1,verbosity=2)
+    runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
      
