@@ -1,10 +1,65 @@
-2004-03-20 19:41  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* makefile:
+
+	Added "make test" target.
+
+2004-03-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	Fixed documentation error in the range docs.  Temporarily disabled
+	the opener-caching because it seems to not quite work correctly
+	yet.
+
+2004-03-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_keepalive.py:
+
+	Changed the wait time for the dropped-connection test.	The apache
+	keepalive timeout is 15 seconds, so I set the test to 20.
+
+2004-03-28  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* TODO:
+
+	Removed items from TODO list related to options handling as well as
+	the item on reget not working due to how options are copied.
+
+2004-03-28  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* test/test_grabber.py, urlgrabber/grabber.py:
+
+	Modified URLGrabberOptions to use "instance-inheritance" pattern
+	instead of copying all options.
+
+2004-03-28  Ryan Tomayko <rtomayko@naeblis.cx>
+
+	* urlgrabber/mirror.py:
+
+	Fixed real small typo in mirror doc string.
+
+2004-03-28  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	Tidied up some of the callback code.
+
+2004-03-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog, TODO, test/threading/batchgrabber.py,
+	test/threading/urls-keepalive, test/threading/urls-many:
+
+	Updated ChangeLog, TODO.  Played with the batchgrabber stuff a
+	little.
+
+2004-03-21  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/test_keepalive.py:
 
 	added a simple threading test
 
-2004-03-20 19:41  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-21  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/keepalive.py:
 
@@ -12,7 +67,7 @@
 	better with dead connections.  Now it checks ALL "free"
 	connections.
 
-2004-03-19 22:40  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-20  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, urlgrabber/keepalive.py:
 
@@ -21,47 +76,47 @@
 	(although none of them test threading issues).	I need to make some
 	new tests for thread stuff.
 
-2004-03-19 11:05  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-19  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/grabberperf.py:
 
 	Made tests a little cleaner and added "none" test, which is a
 	reasonable "ideal" test case.
 
-2004-03-18 22:30  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-19  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	Removed item on reducing urllib2 opener director creation.
 
-2004-03-18 22:24  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-19  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/grabberperf.py:
 
 	Added proxies to performance tests to ensure that ProxyHandlers are
 	being added to the urllib2 OpenerDirector.
 
-2004-03-18 22:23  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-19  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Caching urllib2 ProxyHandler and OpenerDirectors instead of
 	creating new ones for each request.
 
-2004-03-18 18:48  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-19  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, urlgrabber/grabber.py:
 
 	In grabber.py, fixed a bug with urlread when no limit is specified.
 	 Made the "natural" file translation work for relative pythnames.
 
-2004-03-18 18:46  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-19  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: base_test_code.py, test_grabber.py:
 
 	Added file and ftp tests for reget.
 
-2004-03-18 11:38  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-18  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: base_test_code.py, munittest.py, runtests.py,
 	test_byterange.py, test_grabber.py, test_keepalive.py,
@@ -72,7 +127,7 @@
 	replacement for unittest.py.  The whole test setup is just way cool
 	at this point.
 
-2004-03-17 18:38  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-18  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: base_test_code.py, runtests.py, test_byterange.py,
 	test_grabber.py, test_keepalive.py, test_mirror.py:
@@ -82,20 +137,20 @@
 	there may not be a server available.  None of the available "ok",
 	"FAIL" or "ERROR" were really appropriate.
 
-2004-03-16 20:07  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-17  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/mirror.py:
 
 	Added a little more documentation.
 
-2004-03-16 19:59  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-17  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, test/test_mirror.py, urlgrabber/mirror.py:
 
 	Made the control of MirrorGroup failover action WAY cooler and more
 	flexible.  Added tests
 
-2004-03-16 13:54  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-16  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, test/base_test_code.py, test/test_grabber.py,
 	urlgrabber/grabber.py:
@@ -104,26 +159,26 @@
 	argument to URLGrabber, along with docs and test.  Also documented
 	URLGrabber failure_callback.
 
-2004-03-15 12:18  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-15  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO:
 
 	updated TODO after alpha-huddle
 
-2004-03-14 22:40  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-15  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/test_grabber.py:
 
 	Grabber tests now call package level urlgrab, urlopen, urlread
 	functions.
 
-2004-03-14 22:39  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-15  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/__init__.py:
 
 	Added urlgrab, urlopen, urlread as package level exports.
 
-2004-03-13 22:45  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-14  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* ChangeLog, scripts/urlgrabber, urlgrabber/byterange.py,
 	urlgrabber/grabber.py, urlgrabber/keepalive.py,
@@ -133,13 +188,13 @@
 	the global version information from __init__.py, and updated
 	copyright statements to include 2004 :)
 
-2004-03-13 22:11  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-14  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO:
 
 	updated TODO
 
-2004-03-13 21:56  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-14  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* setup.py, urlgrabber/__init__.py:
 
@@ -148,7 +203,7 @@
 	__init__.py, which we should probably do in the other files as
 	well.
 
-2004-03-13 11:51  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/test_mirror.py, urlgrabber/mirror.py:
 
@@ -156,25 +211,25 @@
 	to yum's roundrobin failover policy) and MGRandomOrder.  Added
 	associated tests for these new classes.
 
-2004-03-13 09:51  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/test_byterange.py:
 
 	converted test_byterange.py to use base_test_code
 
-2004-03-12 22:45  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO:
 
 	updated TODO
 
-2004-03-12 22:42  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: base_test_code.py, test_grabber.py, test_keepalive.py:
 
 	making tests a little nicer
 
-2004-03-12 21:51  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: base_test_code.py, test_grabber.py, test_mirror.py:
 
@@ -188,7 +243,7 @@
 	__attribute munging in python, and I don't think it should ever be
 	used.  Thank you for your attention.
 
-2004-03-12 21:46  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/: grabber.py, mirror.py:
 
@@ -197,31 +252,31 @@
 	retry/failover is occurring and what caused it (the exception is
 	passed to the callback).
 
-2004-03-12 17:40  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/: runtests.py, test_grabber.py, test_keepalive.py:
 
 	added keepalive tests; fixed test_bad_reget_type
 
-2004-03-12 09:16  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/grabber.py:
 
 	Fixed a stupid typo in the splituser fix (from 5 minutes ago)
 
-2004-03-12 09:11  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/.cvsignore:
 
 	Added .cvsignore to urlgrabber/ directory
 
-2004-03-12 09:09  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO:
 
 	Updated TODO.
 
-2004-03-12 09:08  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/: grabber.py, mirror.py:
 
@@ -230,32 +285,32 @@
 	that came about because the python 2.3 urllib2 no longer includes
 	splituser and splitpasswd.
 
-2004-03-11 20:27  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-12  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/test_grabber.py:
 
 	Using a tempfile for urlgrab test instead of named file in cwd.
 
-2004-03-11 20:26  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-12  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Removed ugly code that was suppose to allow a file-object to be
 	passed to urlgrab as the output file.
 
-2004-03-11 20:21  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-12  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/runtests.py:
 
 	Added mirror tests to main test suite.
 
-2004-03-11 17:58  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/test_grabber.py, urlgrabber/grabber.py:
 
 	Added first attempt at reget support.  Created test suite for http.
 
-2004-03-10 19:46  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-11  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* ChangeLog, MANIFEST.in, README, makefile, setup.py,
 	maint/cvs2cl.pl, maint/usermap:
@@ -265,7 +320,7 @@
 	address for cvs2cl.pl).  Also created a "ChangeLog" target in the
 	makefile to build the Changelog.
 
-2004-03-10 18:56  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-11  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, urlgrabber/keepalive.py:
 
@@ -277,7 +332,7 @@
 	test code in keepalive.py.  For now, I'd like to keep this code in
 	keepalive.py for convenient diagnostics from users.
 
-2004-03-10 13:40  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-10  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* TODO, test/test_mirror.py, urlgrabber/grabber.py,
 	urlgrabber/keepalive.py, urlgrabber/mirror.py:
@@ -292,7 +347,7 @@
 	[keepalive.py] fixed problem with the new python 2.3 httplib.  They
 	now raise BadStatusLine from a new place.
 
-2004-03-09 23:18  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-10  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/: grabberperf.py, test_byterange.py, test_grabber.py:
 
@@ -300,14 +355,14 @@
 	sys.path hackery has been removed so you will need	 to setup
 	PYTHONPATH manually before running test scripts.
 
-2004-03-09 23:08  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-10  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* setup.py:
 
 	Fixed up for new cvs structure. Tried to simplify a bit while I was
 	here.
 
-2004-03-09 22:08  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-03-10  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* ChangeLog:
 
@@ -329,44 +384,44 @@
 	things to be in other places.  Things I can think of: test code,
 	setup.py.
 
-2004-03-08 00:46  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	raise exceptions for invalid ranges DONE.
 
-2004-03-08 00:44  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Added support for RangeError to URLGrabError handling (errno 9).
 	Also, default is _not_ to retry grabs resulting in RangeError.
 
-2004-03-08 00:42  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/byterange.py:
 
 	Fixed try/except without an explicit exception. that's a no-no.
 
-2004-03-08 00:35  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/byterange.py:
 
 	raising RangeError anytime a range is non-satisfiable.
 
-2004-03-07 23:50  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Always copy_local when a byte range is specified to urlgrab.
 
-2004-03-07 23:16  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	urllib2 conditionals were cleaned up a while ago..
 
-2004-03-07 23:12  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-08  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
@@ -376,83 +431,83 @@
 	keepalive/progress_meter w/ multiple threads.  viewcvs DONE.  Test
 	under multiple threads DONE.  Basic performance tests DONE.
 
-2004-03-06 16:33  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-06  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/threading/: urls-keepalive, urls-many:
 
 	Some URLs for batchgrabber.py.
 
-2004-03-06 16:31  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-06  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/threading/batchgrabber.py:
 
 	Module for testing urlgrabber w/ multiple threads.
 
-2004-02-29 17:41  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-01  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Performance tweak to bypass URLGrabberFileObject.read when not
 	using progress_obj or throttle.
 
-2004-02-29 17:40  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-01  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Removed speed test from grabber.py. This test has been moved to
 	test/grabberperf.py
 
-2004-02-29 17:38  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-01  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/grabberperf.py:
 
 	First cut at a module to run through some performance tests for
 	grabber.py
 
-2004-02-29 17:38  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-03-01  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* test/test_grabber.py:
 
 	Clean up temp files after testing urlgrab.
 
-2004-02-28 13:33  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-28  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	Added reget and batch stuff under the 'maybe' section.
 
-2004-02-21 22:32  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-22  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* urlgrabber/grabber.py:
 
 	Brought in fix from yum for user:pass escaping in URLs.
 
-2004-02-21 20:16  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-22  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO, urlgrabber/grabber.py:
 
 	Added checkfunc support to urlread.
 
-2004-02-21 20:01  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-22  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO, urlgrabber/byterange.py:
 
 	Changed all variables/args named 'range' to rangetup or brange to
 	avoid possible python keyword clash.
 
-2004-02-21 19:41  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-22  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	Added item about handling KeyboardInterupt exceptions.
 
-2004-02-21 19:38  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-22  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* TODO:
 
 	Restructured TODO list based on recent email from Michael.
 
-2004-02-13 21:46  Ryan Tomayko <rtomayko@naeblis.cx>
+2004-02-14  Ryan Tomayko <rtomayko@naeblis.cx>
 
 	* .cvsignore, MANIFEST.in, README, TODO, progress_meter.py,
 	setup.py, urlgrabber.py, scripts/urlgrabber, test/.cvsignore,
@@ -464,7 +519,7 @@
 	Mass commit/merge of changes made for urlgrabber restructuring..
 	See ChangeLog for details.
 
-2004-02-11 10:44  Michael D. Stenner <mstenner@linux.duke.edu>
+2004-02-11  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* ChangeLog:
 
@@ -584,20 +639,20 @@
 	  * grabber.py: Initial attempt at retooling the interface to use
 	    kwargs.. *Most* functionality should still be working..
 
-2003-10-12 17:21  Michael D. Stenner <mstenner@linux.duke.edu>
+2003-10-13  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber.py, test/test_urlgrabber.py:
 
 	created test_urlgrabber.py and started moving tests into it
 
-2003-10-11 19:03  Michael D. Stenner <mstenner@linux.duke.edu>
+2003-10-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* README, makefile, progress_meter.py, urlgrabber.py,
 	urlgrabber/keepalive.py, LICENSE, MANIFEST.in, setup.py:
 
 	Initial revision
 
-2003-10-11 19:03  Michael D. Stenner <mstenner@linux.duke.edu>
+2003-10-12  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* README, makefile, progress_meter.py, urlgrabber.py,
 	urlgrabber/keepalive.py, LICENSE, MANIFEST.in, setup.py:

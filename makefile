@@ -4,7 +4,7 @@ WEBPATH = /home/groups/urlgrabber/web/download
 PYTHON = python
 
 ChangeLog: FORCE
-	maint/cvs2cl.pl -S -U maint/usermap
+	maint/cvs2cl.pl -S -U maint/usermap --utc --no-times
 
 dist: ChangeLog
 	$(PYTHON) setup.py sdist --force-manifest
