@@ -1,0 +1,3 @@
+include urlgrabber.py keepalive.py progress_meter.py
+include README
+include LICENSE
