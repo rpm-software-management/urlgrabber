@@ -39,7 +39,7 @@ class HTTPRangeHandler(urllib2.BaseHandler):
     
     Example:
         import urllib2
-        import range
+        import byterange
         
         range_handler = range.HTTPRangeHandler()
         opener = urllib2.build_opener(range_handler)
@@ -78,17 +78,17 @@ class RangeableFileObject:
         >>> fo.read(30)
     """
     
-    def __init__(self, fo, range):
+    def __init__(self, fo, rangetup):
         """Create a RangeableFileObject.
-        fo    -- a file like object. only the read() method need be 
-                 supported but supporting an optimized seek() is 
-                 preferable.
-        range -- a (firstbyte,lastbyte) tuple specifying the range
-                 to work over. 
+        fo       -- a file like object. only the read() method need be 
+                    supported but supporting an optimized seek() is 
+                    preferable.
+        rangetup -- a (firstbyte,lastbyte) tuple specifying the range
+                    to work over.
         The file object provided is assumed to be at byte offset 0.
         """
         self.fo = fo
-        (self.firstbyte,self.lastbyte) = range_tuple_normalize(range)
+        (self.firstbyte, self.lastbyte) = range_tuple_normalize(rangetup)
         self.realpos = 0
         self._do_seek(self.firstbyte)
         
@@ -209,11 +209,11 @@ class FileRangeHandler(urllib2.FileHandler):
             if port or socket.gethostbyname(host) not in self.get_names():
                 raise URLError('file not on local host')
         fo = open(localfile,'rb')
-        range = req.headers.get('Range',None)
-        range = range_header_to_tuple(range)
-        assert range != ()
-        if range:
-            (fb,lb) = range
+        brange = req.headers.get('Range',None)
+        brange = range_header_to_tuple(brange)
+        assert brange != ()
+        if brange:
+            (fb,lb) = brange
             if lb == '': lb = size
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
