@@ -1,6 +1,6 @@
 import unittest
 
-base_http = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/'
+base_http = 'http://www.linux.duke.edu/projects/urlgrabber/test/'
 
 reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
 ref_http = base_http + 'reference'

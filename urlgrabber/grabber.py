@@ -119,6 +119,18 @@ GENERAL ARGUMENTS (kwargs)
     Lastly, if proxies is None, the default environment settings will
     be used.
 
+  prefix = None
+
+    a url prefix that will be prepended to all requested urls.  For
+    example:
+      g = URLGrabber(prefix='http://foo.com/mirror/')
+      g.urlgrab('some/file.txt')
+      ## this will fetch 'http://foo.com/mirror/some/file.txt'
+    This option exists primarily to allow identical behavior to
+    MirrorGroup (and derived) instances.  Note: a '/' will be inserted
+    if necessary, so you cannot specify a prefix that ends with a
+    partial file or directory name.
+
 RETRY RELATED ARGUMENTS
 
   retry = None
@@ -160,6 +172,18 @@ RETRY RELATED ARGUMENTS
 
     NOTE: both the "args" tuple and "kwargs" dict must be present if
     you use this syntax, but either (or both) can be empty.
+
+  failure_callback = None
+
+    The callback that gets called during retries when an attempt to
+    fetch a file fails.  The syntax for specifying the callback is
+    identical to checkfunc, except that it will be passed the raised
+    exception rather than a filename.
+
+    The callback is present primarily to inform the calling program of
+    the failure, but if it raises an exception (including the one it's
+    passed) that exception will NOT be caught and will therefore cause
+    future retries to be aborted.
 
 BANDWIDTH THROTTLING
 
@@ -220,7 +244,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.14 2004/03/14 05:45:21 mstenner Exp $
+# $Id: grabber.py,v 1.15 2004/03/16 20:54:58 mstenner Exp $
 
 import os
 import os.path
@@ -381,6 +405,7 @@ class URLGrabberOptions:
         self.proxies = None
         self.reget = None
         self.failure_callback = None
+        self.prefix = None
         # update all attributes with supplied kwargs
         self._set_attributes(**kwargs)
         
@@ -549,6 +574,11 @@ class URLGrabber:
 
         it returns the (cleaned) url and a tuple of component parts
         """
+        if self.opts.prefix:
+            p = self.opts.prefix
+            if p.endswith('/') or url.startswith('/'): url = p + url
+            else: url = p + '/' + url
+            
         (scheme, host, path, parm, query, frag) = \
                                              urlparse.urlparse(url)
         if not scheme:

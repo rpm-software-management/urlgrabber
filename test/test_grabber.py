@@ -175,6 +175,18 @@ class URLGrabberTestCase(UGTestCase):
         self.assertEquals('', query)
         self.assertEquals('', frag)
 
+    def test_parse_url_with_prefix(self):
+        """grabber.URLGrabber._parse_url() with .prefix"""
+        base = 'http://foo.com/dir'
+        bases = [base, base+'/']
+        file = 'bar/baz'
+        target = base + '/' + file
+        
+        for b in bases:
+            g = URLGrabber(prefix=b)
+            (url, parts) = g._parse_url(file)
+            self.assertEquals(url, target)
+
 class RegetTests(UGTestCase):
     def setUp(self):
         self.ref = short_reference_data
