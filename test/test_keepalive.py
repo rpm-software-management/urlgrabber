@@ -21,7 +21,7 @@
 
 """keepalive.py tests"""
 
-# $Id: test_keepalive.py,v 1.8 2004/03/31 17:02:00 mstenner Exp $
+# $Id: test_keepalive.py,v 1.9 2005/02/14 21:55:06 mstenner Exp $
 
 import sys
 import os
@@ -30,7 +30,7 @@ import urllib2
 import threading
 import re
 
-from urllib2 import URLError
+from urllib2 import URLError, HTTPError
 
 from base_test_code import *
 
@@ -92,6 +92,8 @@ class HTTPErrorTests(TestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
+        import sys
+        self.python_version = map(int, sys.version.split()[0].split('.'))
         
     def tearDown(self):
         self.kh.close_all()
@@ -121,10 +123,15 @@ class HTTPErrorTests(TestCase):
     def test_404_handler_off(self):
         "test that 404 works without fancy handler"
         keepalive.HANDLE_ERRORS = 0
-        fo = self.opener.open(ref_404)
-        data = fo.read()
-        fo.close()
-        self.assertEqual((fo.status, fo.reason), (404, 'Not Found'))
+        ## see the HANDLE_ERRORS note in keepalive.py for discussion of
+        ## the changes in python 2.4
+        if self.python_version >= [2, 4]:
+            self.assertRaises(URLError, self.opener.open, ref_404)
+        else:
+            fo = self.opener.open(ref_404)
+            data = fo.read()
+            fo.close()
+            self.assertEqual((fo.status, fo.reason), (404, 'Not Found'))
 
     def test_403_handler_on(self):
         "test that 403 works with fancy handler"
@@ -134,10 +141,15 @@ class HTTPErrorTests(TestCase):
     def test_403_handler_off(self):
         "test that 403 works without fancy handler"
         keepalive.HANDLE_ERRORS = 0
-        fo = self.opener.open(ref_403)
-        data = fo.read()
-        fo.close()
-        self.assertEqual((fo.status, fo.reason), (403, 'Forbidden'))
+        ## see the HANDLE_ERRORS note in keepalive.py for discussion of
+        ## the changes in python 2.4
+        if self.python_version >= [2, 4]:
+            self.assertRaises(URLError, self.opener.open, ref_403)
+        else:
+            fo = self.opener.open(ref_403)
+            data = fo.read()
+            fo.close()
+            self.assertEqual((fo.status, fo.reason), (403, 'Forbidden'))
 
 class DroppedConnectionTests(TestCase):
     def setUp(self):
