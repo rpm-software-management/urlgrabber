@@ -1,12 +1,10 @@
 ALPHA:
 
-  * opener
-    - fix broken opener caching - the implementation may depend on
-      the next item
-    - can we make it possible to include (or exclude) custom
-      handlers in the openers?  Possibly just provide an "opener"
-      option, although this would preclude the use of the "proxy"
-      option.
+  * web page
+    - examples page
+    - put up the software :)
+
+ALPHA 2:
 
   * threading/batch
     - (rt) propose an interface for threaded batch downloads
@@ -14,12 +12,6 @@ ALPHA:
       multi-file downloads
     - (rt) look at CacheFTPHandler and its implications for batch mode
       and byte-ranges/reget
-
-  * web page
-    - examples page
-    - put up the software :)
-
-ALPHA 2:
 
   * Add decent debugging code and a URLGRABBER_DEBUG environment
     variable so that users of miscellaneous applications can get the
