@@ -23,6 +23,10 @@ default:
 ChangeLog: FORCE
 	maint/cvs2cl.pl -S -U maint/usermap --utc --no-times
 
+# NOTE: do --manifest-only first even though we're about to force it.  The
+# former ensures that MANIFEST exists (touch would also do the trick).  If
+# the file 'MANIFEST' doesn't exist, then it won't be included the next time
+# it's built from MANIFEST.in
 release: FORCE pre-release-test
 	cvs commit -m "release $(VERSION)"
 	$(MAKE) ChangeLog
@@ -32,8 +36,8 @@ release: FORCE pre-release-test
 	$(RM) export release
 	mkdir export release
 	cd export; cvs -d `cat ../CVS/Root` export -r $(CVS_TAG) $(CVS_MODULE)
+	cd export/$(CVS_MODULE); $(PYTHON) setup.py sdist --manifest-only
 	cd export/$(CVS_MODULE); $(PYTHON) setup.py sdist --force-manifest
-	cd export/$(CVS_MODULE); $(PYTHON) setup.py bdist_rpm
 	mv export/$(CVS_MODULE)/dist/* release/
 	scp release/* $(WEBHOST):$(WEBPATH)/
 

@@ -19,7 +19,7 @@ data_files = [('share/doc/' + name + '-' + version,
                ['README','LICENSE', 'TODO', 'ChangeLog'])]
 options = { 'clean' : { 'all' : 1 } }
 classifiers = [
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
