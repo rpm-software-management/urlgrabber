@@ -18,151 +18,205 @@
 
 GENERAL ARGUMENTS (kwargs)
 
-copy_local is ignored except for file:// urls, in which case it
-specifies whether urlgrab should still make a copy of the file, or
-simply point to the existing copy. The module level default for this
-option is 0. 
+  Where possible, the module-level default is indicated, and legal
+  values are provided.
 
-close_connection tells URLGrabber to close the connection after a
-file has been transfered. This is ignored unless the download 
-happens with the http keepalive handler (keepalive=1).  Otherwise, 
-the connection is left open for further use. The module level 
-default for this option is 0 (keepalive connections will not be 
-closed).
+  copy_local = 0   [0|1]
 
-keepalive specifies whether keepalive should be used for HTTP/1.1 
-servers that support it. The module level default for this option is
-1 (keepalive is enabled).
+    ignored except for file:// urls, in which case it specifies
+    whether urlgrab should still make a copy of the file, or simply
+    point to the existing copy. The module level default for this
+    option is 0.
 
-progress_obj is a class instance that supports the following methods:
-po.start(filename, url, basename, length)
-# length will be None if unknown
-po.update(read) # read == bytes read so far
-po.end()
+  close_connection = 0   [0|1]
 
-throttle is a number - if it's an int, it's the bytes/second throttle
-limit.  If it's a float, it is first multiplied by bandwidth.  If
-throttle == 0, throttling is disabled.  If None, the module-level
-default (which can be set on default_grabber.throttle) is used. 
-See BANDWIDTH THROTTLING for more information.
+    tells URLGrabber to close the connection after a file has been
+    transfered. This is ignored unless the download happens with the
+    http keepalive handler (keepalive=1).  Otherwise, the connection
+    is left open for further use. The module level default for this
+    option is 0 (keepalive connections will not be closed).
 
-bandwidth is the nominal max bandwidth in bytes/second.  If throttle
-is a float and bandwidth == 0, throttling is disabled.  If None,
-the module-level default (which can be set on default_grabber.bandwidth) 
-is used. See BANDWIDTH THROTTLING for more information.
+  keepalive = 1   [0|1]
 
-range is a tuple of the form (first_byte, last_byte) describing a 
-byte range to retrieve. Either or both of the values may be specified. 
-If first_byte is None, byte offset 0 is assumed. If last_byte is None,
-the last byte available is assumed. Note that both first and last_byte 
-values are inclusive so a range of (10,11) would return the 10th and 11th
-byte of the resource.
+    specifies whether keepalive should be used for HTTP/1.1 servers
+    that support it. The module level default for this option is 1
+    (keepalive is enabled).
 
-user_agent is a string, usually of the form 'AGENT/VERSION' that is 
-provided to HTTP servers in the User-agent header. The module level
-default for this option is "urlgrabber/VERSION".
+  progress_obj = None
 
-proxies is a dictionary mapping protocol schemes to proxy hosts. For
-example, to use a proxy server on host "foo" port 3128 for http and
-https URLs:
-  proxies={ 'http' : 'http://foo:3128', 'https' : 'http://foo:3128' }
-note that proxy authentication information may be provided using normal
-URL constructs:
-  proxies={ 'http' : 'http://user:host@foo:3128' }
-Lastly, if proxies is None, the default environment settings will be 
-used.
+    a class instance that supports the following methods:
+      po.start(filename, url, basename, length)
+      # length will be None if unknown
+      po.update(read) # read == bytes read so far
+      po.end()
+
+  throttle = 1.0
+
+    a number - if it's an int, it's the bytes/second throttle limit.
+    If it's a float, it is first multiplied by bandwidth.  If throttle
+    == 0, throttling is disabled.  If None, the module-level default
+    (which can be set on default_grabber.throttle) is used. See
+    BANDWIDTH THROTTLING for more information.
+
+  bandwidth = 0
+
+    the nominal max bandwidth in bytes/second.  If throttle is a float
+    and bandwidth == 0, throttling is disabled.  If None, the
+    module-level default (which can be set on
+    default_grabber.bandwidth) is used. See BANDWIDTH THROTTLING for
+    more information.
+
+  range = None
+
+    a tuple of the form (first_byte, last_byte) describing a byte
+    range to retrieve. Either or both of the values may set to
+    None. If first_byte is None, byte offset 0 is assumed. If
+    last_byte is None, the last byte available is assumed. Note that
+    both first and last_byte values are inclusive so a range of
+    (10,11) would return the 10th and 11th byte of the resource.
+
+    If set to None, no range will be used.
+
+    XXX -- is this correct?  It seems like it behaves like
+    python slices (which I think is good) -mds
+    
+  reget = None   [None|'simple'|'check_timestamp']
+
+    whether to attempt to reget a partially-downloaded file.  Reget
+    only applies to .urlgrab and (obviously) only if there is a
+    partially downloaded file.  Reget has two modes:
+
+      'simple' -- the local file will always be trusted.  If there
+        are 100 bytes in the local file, then the download will always
+        begin 100 bytes into the requested file.
+
+      'check_timestamp' -- the timestamp of the server file will be
+        compared to the timestamp of the local file.  ONLY if the
+        local file is newer than or the same age as the server file
+        will reget be used.  If the server file is newer, or the
+        timestamp is not returned, the entire file will be fetched.
+
+    NOTE: urlgrabber can do very little to verify that the partial
+    file on disk is identical to the beginning of the remote file.
+    You may want to either employ a custom "checkfunc" or simply avoid
+    using reget in situations where corruption is a concern.
+
+  user_agent = 'urlgrabber/VERSION'
+
+    a string, usually of the form 'AGENT/VERSION' that is provided to
+    HTTP servers in the User-agent header. The module level default
+    for this option is "urlgrabber/VERSION".
+
+  proxies = None
+
+    a dictionary that maps protocol schemes to proxy hosts. For
+    example, to use a proxy server on host "foo" port 3128 for http
+    and https URLs:
+      proxies={ 'http' : 'http://foo:3128', 'https' : 'http://foo:3128' }
+    note that proxy authentication information may be provided using
+    normal URL constructs:
+      proxies={ 'http' : 'http://user:host@foo:3128' }
+    Lastly, if proxies is None, the default environment settings will
+    be used.
 
 RETRY RELATED ARGUMENTS
 
-retry is the number of times to retry the grab before bailing.  If 
-this is zero, it will retry forever. This was intentional... really,
-it was :). If this value is not supplied or is supplied but is None
-retrying does not occur.
+  retry = None
 
-retrycodes is a sequence of errorcodes (values of e.errno) for which 
-it should retry. See the doc on URLGrabError for more details on this. 
-retrycodes defaults to [-1,2,4,5,6,7] if not specified explicitly.
+    the number of times to retry the grab before bailing.  If this is
+    zero, it will retry forever. This was intentional... really, it
+    was :). If this value is not supplied or is supplied but is None
+    retrying does not occur.
 
-checkfunc is a function to do additional checks. This defaults to None,
-which means no additional checking.  The function should simply
-return on a successful check.  It should raise URLGrabError on
-and unsuccessful check.  Raising of any other exception will
-be considered immediate failure and no retries will occur.
+  retrycodes = [-1,2,4,5,6,7]
 
-Negative error numbers are reserved for use by these passed in
-functions.  By default, -1 results in a retry, but this can be
-customized with retrycodes.
+    a sequence of errorcodes (values of e.errno) for which it should
+    retry. See the doc on URLGrabError for more details on
+    this. retrycodes defaults to [-1,2,4,5,6,7] if not specified
+    explicitly.
 
-If you simply pass in a function, it will be given exactly one
-argument: the local file name as returned by urlgrab.  If you
-need to pass in other arguments,  you can do so like this:
+  checkfunc = None
 
-    checkfunc=(function, ('arg1', 2), {'kwarg': 3})
+    a function to do additional checks. This defaults to None, which
+    means no additional checking.  The function should simply return
+    on a successful check.  It should raise URLGrabError on an
+    unsuccessful check.  Raising of any other exception will be
+    considered immediate failure and no retries will occur.
 
-if the downloaded file as filename /tmp/stuff, then this will
-result in this call:
+    Negative error numbers are reserved for use by these passed in
+    functions.  By default, -1 results in a retry, but this can be
+    customized with retrycodes.
 
-    function('/tmp/stuff', 'arg1', 2, kwarg=3)
+    If you simply pass in a function, it will be given exactly one
+    argument: the local file name as returned by urlgrab.  If you need
+    to pass in other arguments, you can do so like this:
 
-NOTE: both the "args" tuple and "kwargs" dict must be present
-if you use this syntax, but either (or both) can be empty.    
+      checkfunc=(function, ('arg1', 2), {'kwarg': 3})
+
+    if the downloaded file as filename /tmp/stuff, then this will
+    result in this call:
+
+      function('/tmp/stuff', 'arg1', 2, kwarg=3)
+
+    NOTE: both the "args" tuple and "kwargs" dict must be present if
+    you use this syntax, but either (or both) can be empty.
 
 BANDWIDTH THROTTLING
 
-urlgrabber supports throttling via two values: throttle and bandwidth
-Between the two, you can either specify and absolute throttle threshold
-or specify a theshold as a fraction of maximum available bandwidth.
+  urlgrabber supports throttling via two values: throttle and
+  bandwidth Between the two, you can either specify and absolute
+  throttle threshold or specify a theshold as a fraction of maximum
+  available bandwidth.
 
-throttle is a number - if it's an int, it's the bytes/second throttle
-limit.  If it's a float, it is first multiplied by bandwidth.  If
-throttle == 0, throttling is disabled.  If None, the module-level
-default (which can be set with set_throttle) is used.
+  throttle is a number - if it's an int, it's the bytes/second
+  throttle limit.  If it's a float, it is first multiplied by
+  bandwidth.  If throttle == 0, throttling is disabled.  If None, the
+  module-level default (which can be set with set_throttle) is used.
 
-bandwidth is the nominal max bandwidth in bytes/second.  If throttle
-is a float and bandwidth == 0, throttling is disabled.  If None,
-the module-level default (which can be set with set_bandwidth) is
-used.
+  bandwidth is the nominal max bandwidth in bytes/second.  If throttle
+  is a float and bandwidth == 0, throttling is disabled.  If None, the
+  module-level default (which can be set with set_bandwidth) is used.
 
-THROTTLING EXAMPLES:
+  THROTTLING EXAMPLES:
 
-Lets say you have a 100 Mbps connection.  This is (about) 10^8 bits
-per second, or 12,500,000 Bytes per second.  You have a number of
-throttling options:
+  Lets say you have a 100 Mbps connection.  This is (about) 10^8 bits
+  per second, or 12,500,000 Bytes per second.  You have a number of
+  throttling options:
 
-*) set_bandwidth(12500000); set_throttle(0.5) # throttle is a float
+  *) set_bandwidth(12500000); set_throttle(0.5) # throttle is a float
 
-    This will limit urlgrab to use half of your available bandwidth.
+     This will limit urlgrab to use half of your available bandwidth.
 
-*) set_throttle(6250000) # throttle is an int
+  *) set_throttle(6250000) # throttle is an int
 
-    This will also limit urlgrab to use half of your available
-    bandwidth, regardless of what bandwidth is set to.
+     This will also limit urlgrab to use half of your available
+     bandwidth, regardless of what bandwidth is set to.
 
-*) set_throttle(6250000); set_throttle(1.0) # float
+  *) set_throttle(6250000); set_throttle(1.0) # float
 
-    Use half your bandwidth
+     Use half your bandwidth
 
-*) set_throttle(6250000); set_throttle(2.0) # float
+  *) set_throttle(6250000); set_throttle(2.0) # float
 
     Use up to 12,500,000 Bytes per second (your nominal max bandwidth)
 
-*) set_throttle(6250000); set_throttle(0) # throttle = 0
+  *) set_throttle(6250000); set_throttle(0) # throttle = 0
 
-    Disable throttling - this is more efficient than a very large
-    throttle setting.
+     Disable throttling - this is more efficient than a very large
+     throttle setting.
 
-*) set_throttle(0); set_throttle(1.0) # throttle is float, bandwidth = 0
+  *) set_throttle(0); set_throttle(1.0) # throttle is float, bandwidth = 0
 
-    Disable throttling - this is the default when the module is loaded.
+     Disable throttling - this is the default when the module is loaded.
 
-SUGGESTED AUTHOR IMPLEMENTATION (THROTTLING)
+  SUGGESTED AUTHOR IMPLEMENTATION (THROTTLING)
 
-While this is flexible, it's not extremely obvious to the user.  I
-suggest you implement a float throttle as a percent to make the
-distinction between absolute and relative throttling very explicit.
+  While this is flexible, it's not extremely obvious to the user.  I
+  suggest you implement a float throttle as a percent to make the
+  distinction between absolute and relative throttling very explicit.
 
-Also, you may want to convert the units to something more convenient
-than bytes/second, such as kbps or kB/s, etc.
+  Also, you may want to convert the units to something more convenient
+  than bytes/second, such as kbps or kB/s, etc.
 
 """
 
@@ -180,7 +234,7 @@ from stat import *  # S_* and ST_*
 auth_handler = urllib2.HTTPBasicAuthHandler( \
      urllib2.HTTPPasswordMgrWithDefaultRealm())
 
-DEBUG=1
+DEBUG=0
 VERSION='0.2'
 
 try:
@@ -232,6 +286,7 @@ class URLGrabError(IOError):
         8    - Exceeded read limit (for urlread)
         9    - Requested byte range not satisfiable.
         10   - Byte range requested, but range support unavailable
+        11   - Illegal reget mode
 
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -354,7 +409,9 @@ class URLGrabberOptions:
         if have_range and kwargs.has_key('range'):
             # normalize the supplied range value
             self.range = range_tuple_normalize(self.range)
-
+        if not self.reget in [None, 'simple', 'check_timestamp']:
+            raise URLGrabError(11, _('Illegal reget mode: %s') \
+                               % (self.reget, ))
 
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -491,8 +548,8 @@ class URLGrabber:
         path = os.path.normpath(path)
         if '@' in host and auth_handler and scheme in ['http', 'https']:
             try:
-                user_password, host = urllib2.splituser(host)
-                user, password = urllib2.splitpasswd(user_password)
+                user_password, host = user_pass, host = host.split('@', 1)
+                if ':' in user_pass: user, password = user_pass.split(':', 1)
             except ValueError, e:
                 raise URLGrabError(1, _('Bad URL: %s') % url)
             if DEBUG: print 'adding HTTP auth: %s, %s' % (user, password)

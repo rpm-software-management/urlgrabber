@@ -134,7 +134,7 @@ class MirrorGroup:
     #   removal of the wrong mirror.
 
     def _join_url(self, base_url, rel_url):
-        if base_url.endswith('/') or rel_url.startswith(/):
+        if base_url.endswith('/') or rel_url.startswith('/'):
             return base_url + rel_url
         else:
             return baseurl + '/' + rel_url
