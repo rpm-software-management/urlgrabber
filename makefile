@@ -22,7 +22,7 @@ default:
 ChangeLog: FORCE
 	maint/cvs2cl.pl -S -U maint/usermap --utc --no-times
 
-release: pre-release-test
+release: FORCE pre-release-test
 	cvs commit -m "release $(VERSION)"
 	$(MAKE) ChangeLog
 	cvs commit -m "updated ChangeLog"
@@ -30,7 +30,7 @@ release: pre-release-test
 
 	$(RM) export release
 	mkdir export release
-	cd export; cvs -d `echo ../CVS/Root` export -t $(CVS_TAG) $(CVS_MODULE)
+	cd export; cvs -d `cat ../CVS/Root` export -r $(CVS_TAG) $(CVS_MODULE)
 	cd export/$(CVS_MODULE); $(PYTHON) setup.py sdist --force-manifest
 	cd export/$(CVS_MODULE); $(PYTHON) setup.py bdist_rpm
 	mv export/$(CVS_MODULE)/dist/* release/

@@ -14,33 +14,34 @@
 
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.5 2004/08/21 19:45:38 mstenner Exp $
+# $Id: __init__.py,v 1.6 2004/08/21 19:58:20 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 
 Using urlgrabber, data can be fetched in three basic ways:
 
   urlgrab(url) copy the file to the local filesystem
-  urlopen(url) open the remote file and return a file object (like urllib2.urlopen)
+  urlopen(url) open the remote file and return a file object
+     (like urllib2.urlopen)
   urlread(url) return the contents of the file as a string
 
-When using these functions (or methods), urlgrabber supports the following 
-features:
+When using these functions (or methods), urlgrabber supports the
+following features:
 
   * identical behavior for http://, ftp://, and file:// urls
-  * http keepalive - faster downloads of many files by using only a single 
-    connection
+  * http keepalive - faster downloads of many files by using
+    only a single connection
   * byte ranges - fetch only a portion of the file
   * reget - for a urlgrab, resume a partial download
-  * progress meters - the ability to report download progress automatically, 
-    even when using urlopen!
+  * progress meters - the ability to report download progress
+    automatically, even when using urlopen!
   * throttling - restrict bandwidth usage
-  * retries - automatically retry a download if it fails. The number of retries 
-    and failure types are configurable.
+  * retries - automatically retry a download if it fails. The
+    number of retries and failure types are configurable.
   * authenticated server access for http and ftp
   * proxy support - support for authenticated http and ftp proxies
-  * mirror groups - treat a list of mirrors as a single source, automatically 
-    switching mirrors if there is a failure.
+  * mirror groups - treat a list of mirrors as a single source,
+    automatically switching mirrors if there is a failure.
 """
 
 __version__ = '2.9.0'
