@@ -173,6 +173,7 @@ import rfc822
 import time
 import string
 import urllib2
+from stat import *  # S_* and ST_*
 
 # XXX: leaving this global may cause problems with
 #      multiple threads. -rtomayko
@@ -203,9 +204,9 @@ else:
 
 try:
     # add in range support conditionally too
-    from byterange import HTTPRangeHandler,FileRangeHandler,FTPRangeHandler, \
-                          range_tuple_normalize, range_tuple_to_header, \
-                          RangeError
+    from urlgrabber.byterange import HTTPRangeHandler, FileRangeHandler, \
+         FTPRangeHandler, range_tuple_normalize, range_tuple_to_header, \
+         RangeError
 except ImportError, msg:
     range_handlers = ()
     RangeError = None
@@ -230,6 +231,7 @@ class URLGrabError(IOError):
         7    - HTTPException
         8    - Exceeded read limit (for urlread)
         9    - Requested byte range not satisfiable.
+        10   - Byte range requested, but range support unavailable
 
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -319,6 +321,7 @@ class URLGrabberOptions:
         self.user_agent = 'urlgrabber/%s' % VERSION
         self.keepalive = 1
         self.proxies = None
+        self.reget = None
         # update all attributes with supplied kwargs
         self._set_attributes(**kwargs)
         
@@ -429,6 +432,13 @@ class URLGrabber:
         
         return self._retry(opts, retryfunc, url, filename)
     
+    # NOTES ON REGET
+    #
+    #   See this email and preceeding thread:
+    #     https://lists.dulug.duke.edu/pipermail/yum-devel/2004-February/000042.html
+    #
+    #   If
+
         
     def urlread(self, url, limit=None, **kwargs):
         """read the url into a string, up to 'limit' bytes
@@ -538,7 +548,7 @@ class URLGrabberFileObject:
                 handlers.append( urllib2.ProxyHandler( self.opts.proxies ) )
             if keepalive_handler and self.opts.keepalive:
                 handlers.append( keepalive_handler )
-            if range_handlers and self.opts.range:
+            if range_handlers and (self.opts.range or self.opts.reget):
                 handlers.extend( range_handlers )
             if auth_handler:
                 handlers.append( auth_handler )
@@ -546,30 +556,35 @@ class URLGrabberFileObject:
         return self._opener
         
     def _do_open(self):
+        opener = self._get_opener()
+
         # build request object
         req = urllib2.Request(self.url)
-        if have_range and self.opts.range:
-            req.add_header('Range', range_tuple_to_header(self.opts.range))
         if self.opts.user_agent:
             req.add_header('User-agent', self.opts.user_agent)
-        opener = self._get_opener()
+
+        self._build_range(req) # take care of reget and byterange stuff
+        fo, hdr = self._make_request(req, opener)
+        if self.reget_time and self.opts.reget == 'check_timestamp':
+            fetch_again = 0
+            try:
+                modified_tuple  = hdr.getdate_tz('last-modified')
+                modified_stamp  = rfc822.mktime_tz(modified_tuple)
+                if modified_stamp > self.reget_time: fetch_again = 1
+            except (TypeError,):
+                fetch_again = 1
+            
+            if fetch_again:
+                # the server version is newer than the (incomplete) local
+                # version, so we should abandon the version we're getting
+                # and fetch the whole thing again.
+                fo.close()
+                self.opts.reget = None
+                del req.headers['Range']
+                self._build_range(req)
+                fo, hdr = self._make_request(req, opener)
+
         (scheme, host, path, parm, query, frag) = urlparse.urlparse(self.url)
-        
-        try:
-            fo = opener.open(req)
-            hdr = fo.info()
-        except ValueError, e:
-            raise URLGrabError(1, _('Bad URL: %s') % (e, ))
-        except RangeError, e:
-            raise URLGrabError(9, _('%s') % (e, ))
-        except IOError, e:
-            raise URLGrabError(4, _('IOError: %s') % (e, ))
-        except OSError, e:
-            raise URLGrabError(5, _('OSError: %s') % (e, ))
-        except HTTPException, e:
-            raise URLGrabError(7, _('HTTP Error (%s): %s') % \
-                            (e.__class__.__name__, e))
-        
         if not (self.opts.progress_obj or self.opts.raw_throttle()):
             # if we're not using the progress_obj or throttling
             # we can get a performance boost by going directly to
@@ -586,14 +601,61 @@ class URLGrabberFileObject:
             self.opts.progress_obj.update(0)
         (self.fo, self.hdr) = (fo, hdr)
     
+    def _build_range(self, req):
+        self.reget_time = None
+        self.append = 0
+        reget_length = 0
+        rt = None
+        if have_range and self.opts.reget and type(self.filename) == type(''):
+            # we have reget turned on and we're dumping to a file
+            try:
+                s = os.stat(self.filename)
+            except OSError:
+                pass
+            else:
+                self.reget_time = s[ST_MTIME]
+                reget_length = s[ST_SIZE]
+                rt = reget_length, ''
+                self.append = 1
+                
+        if self.opts.range:
+            if not have_range:
+                raise URLGrabError(10, _('Byte range requested but range '\
+                                         'support unavailable'))
+            rt = self.opts.range
+            if rt[0]: rt = (rt[0] + reget_length, rt[1])
+
+        if rt:
+            header = range_tuple_to_header(rt)
+            if header: req.add_header('Range', header)
+
+    def _make_request(self, req, opener):
+        try:
+            fo = opener.open(req)
+            hdr = fo.info()
+        except ValueError, e:
+            raise URLGrabError(1, _('Bad URL: %s') % (e, ))
+        except RangeError, e:
+            raise URLGrabError(9, _('%s') % (e, ))
+        except IOError, e:
+            raise URLGrabError(4, _('IOError: %s') % (e, ))
+        except OSError, e:
+            raise URLGrabError(5, _('OSError: %s') % (e, ))
+        except HTTPException, e:
+            raise URLGrabError(7, _('HTTP Error (%s): %s') % \
+                            (e.__class__.__name__, e))
+        else:
+            return (fo, hdr)
+        
     def _do_grab(self):
         """dump the file to self.filename."""
         assert self.filename is not None
         if hasattr(self.filename, 'read'):
             self.filename = '[fileobject]'
-            new_fo = self.filename
+            new_fo = self.filename  # XXX <-- Does this actually work? -mds
         else:
-            new_fo = open(self.filename, 'wb')
+            if self.append: new_fo = open(self.filename, 'ab')
+            else: new_fo = open(self.filename, 'wb')
         bs = 1024*8
         size = 0
 

@@ -28,15 +28,20 @@ from urlgrabber.progress import text_progress_meter
 
 def suite():
     return TestSuite((
-        unittest.makeSuite(FileObjectTests,'test'),
-        unittest.makeSuite(HTTPTests,'test'),
-        unittest.makeSuite(URLGrabberModuleTestCase,'test'),
-        unittest.makeSuite(URLGrabberTestCase,'test') 
+        unittest.makeSuite(FileObjectTests, 'test'),
+        unittest.makeSuite(HTTPTests, 'test'),
+        unittest.makeSuite(URLGrabberModuleTestCase, 'test'),
+        unittest.makeSuite(URLGrabberTestCase, 'test'),
+        unittest.makeSuite(RegetTests, 'test'),
         ))
 
 import string, tempfile, random, cStringIO, os
 
 reference_data = ''.join( [str(i)+'\n' for i in range(20000) ] )
+short_reference_data = ' '.join( [str(i) for i in range(10) ] )
+base_http = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/'
+ref_http = base_http + 'reference'
+short_ref_http = base_http + 'short_reference'
 
 class FileObjectTests(unittest.TestCase):
     def setUp(self):
@@ -78,12 +83,10 @@ class FileObjectTests(unittest.TestCase):
         self.assertEqual(reference_data, self.fo_output.getvalue())
     
 class HTTPTests(unittest.TestCase):
-    base_url = 'http://www.linux.duke.edu/projects/mini/urlgrabber/test/'
     def test_reference_file(self):
         """test that a reference file can be properly downloaded via http"""
         filename = tempfile.mktemp()
-        url = self.base_url + 'reference'
-        grabber.urlgrab(url, filename)
+        grabber.urlgrab(ref_http, filename)
 
         fo = open(filename)
         contents = fo.read()
@@ -175,6 +178,63 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals('/etc/redhat-release', path)
         self.assertEquals('', query)
         self.assertEquals('', frag)
+
+class RegetTests(TestCase):
+    def setUp(self):
+        self.ref = short_reference_data
+        self.grabber = grabber.URLGrabber(reget='check_timestamp')
+        self.filename = tempfile.mktemp()
+        self.hl = len(self.ref) / 2
+
+    def tearDown(self):
+        try: os.unlink(self.filename)
+        except: pass
+
+    def test_bad_reget_type(self):
+        self.grabber.urlgrab(short_ref_http, self.filename, reget='junk')
+
+    def _make_half_zero_file(self):
+        fo = open(self.filename, 'w')
+        fo.write('0'*self.hl)
+        fo.close()
+
+    def _read_file(self):
+        fo = open(self.filename, 'r')
+        data = fo.read()
+        fo.close()
+        return data
+    
+    def test_basic_reget(self):
+        'test that reget fetches the second half of a file'
+        self._make_half_zero_file()
+        self.grabber.urlgrab(short_ref_http, self.filename, reget='simple')
+        data = self._read_file()
+
+        self.assertEquals(data[:self.hl], '0'*self.hl)
+        self.assertEquals(data[self.hl:], self.ref[self.hl:])
+
+    def test_older_check_timestamp(self):
+        'test that reget is used if server version is older than local'
+        self._make_half_zero_file()
+        ts = 1600000000 # set local timestamp to 2020
+        os.utime(self.filename, (ts, ts)) 
+        self.grabber.urlgrab(short_ref_http,
+                             self.filename, reget='check_timestamp')
+        data = self._read_file()
+
+        self.assertEquals(data[:self.hl], '0'*self.hl)
+        self.assertEquals(data[self.hl:], self.ref[self.hl:])
+
+    def test_newer_check_timestamp(self):
+        'test that whole file is fetched if server version is newer than local'
+        self._make_half_zero_file()
+        ts = 1 # set local timestamp to 1969
+        os.utime(self.filename, (ts, ts)) 
+        self.grabber.urlgrab(short_ref_http,
+                             self.filename, reget='check_timestamp')
+        data = self._read_file()
+
+        self.assertEquals(data, self.ref)
 
 # I'd like to write some ftp tests as well, but I don't have a
 # reliable ftp server
