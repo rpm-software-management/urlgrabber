@@ -14,6 +14,8 @@ OPTIONS:
                          or 0 to disable status output completely.
 """
   
+# $Id: runtests.py,v 1.7 2004/03/31 17:02:00 mstenner Exp $
+
 import sys
 from os.path import dirname, join as joinpath
 from getopt import getopt
