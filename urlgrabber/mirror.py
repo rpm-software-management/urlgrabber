@@ -83,7 +83,7 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.6 2004/03/17 02:59:51 mstenner Exp $
+# $Id: mirror.py,v 1.7 2004/03/17 03:07:05 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
@@ -190,6 +190,12 @@ class MirrorGroup:
         Like default_action, the failure_callback can be set at
         instantiation time or when the urlXXX method is called.  In
         the latter case, it applies only for that fetch.
+
+        The callback can re-raise the exception simply by calling
+        "raise" with no arguments.  For example, this is a perfectly
+        adequate callback function:
+
+          def callback(e): raise
 
         WARNING: do not save the exception object.  As they contain
         stack frame references, they can lead to circular references.
