@@ -649,13 +649,8 @@ class URLGrabberFileObject:
         
     def _do_grab(self):
         """dump the file to self.filename."""
-        assert self.filename is not None
-        if hasattr(self.filename, 'read'):
-            self.filename = '[fileobject]'
-            new_fo = self.filename  # XXX <-- Does this actually work? -mds
-        else:
-            if self.append: new_fo = open(self.filename, 'ab')
-            else: new_fo = open(self.filename, 'wb')
+        if self.append: new_fo = open(self.filename, 'ab')
+        else: new_fo = open(self.filename, 'wb')
         bs = 1024*8
         size = 0
 
