@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.18 2004/08/11 16:45:42 mstenner Exp $
+# $Id: test_grabber.py,v 1.19 2004/08/12 16:08:06 mstenner Exp $
 
 import sys
 import os
@@ -205,6 +205,14 @@ class URLGrabberTestCase(TestCase):
             g = URLGrabber(prefix=b)
             (url, parts) = g._parse_url(file)
             self.assertEquals(url, target)
+
+    def test_make_callback(self):
+        """grabber.URLGrabber._make_callback() tests"""
+        def cb(e): pass
+        tup_cb = (cb, ('stuff'), {'some': 'dict'})
+        g = URLGrabber()
+        self.assertEquals(g._make_callback(cb),     (cb, (), {}))
+        self.assertEquals(g._make_callback(tup_cb), tup_cb)
 
 class FailureTestCase(TestCase):
     """Test grabber.URLGrabber class"""

@@ -255,7 +255,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.26 2004/08/11 16:45:42 mstenner Exp $
+# $Id: grabber.py,v 1.27 2004/08/12 16:08:06 mstenner Exp $
 
 import os
 import os.path
@@ -611,7 +611,7 @@ class URLGrabber:
         if callable(callback_obj):
             return callback_obj, (), {}
         else:
-            return callaopts.checkfunc
+            return callback_obj
 
 # create the default URLGrabber used by urlXXX functions.
 # NOTE: actual defaults are set in URLGrabberOptions
