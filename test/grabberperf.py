@@ -57,6 +57,7 @@ def speedtest(size):
     setuptemp(size)
     full_times = []
     raw_times = []
+    none_times = []
     throttle = 2**40 # throttle to 1 TB/s   :)
 
     try:
@@ -100,26 +101,36 @@ def speedtest(size):
                 copy_local=1, progress_obj=None,
                 throttle=None, proxies=proxies)
         raw_times.append(1000 * (time.time() - t))
-    if DEBUG: print '\r'
-    
-    print "%d KB Results:" % (size / 1024)
-    full_times.sort()
-    full_mean = 0.0
-    for i in full_times: full_mean = full_mean + i
-    full_mean = full_mean/len(full_times)
-    print '[full] mean: %.3f ms, median: %.3f ms, min: %.3f ms, max: %.3f ms' % \
-          (full_mean, full_times[int(len(full_times)/2)], min(full_times),
-           max(full_times))
 
-    raw_times.sort()
-    raw_mean = 0.0
-    for i in raw_times: raw_mean = raw_mean + i
-    raw_mean = raw_mean/len(raw_times)
-    print '[raw]  mean: %.3f ms, median: %.3f ms, min: %.3f ms, max: %.3f ms' % \
-          (raw_mean, raw_times[int(len(raw_times)/2)], min(raw_times),
-           max(raw_times))
+        t = time.time()
+        in_fo = open(tempsrc)
+        out_fo = open(tempdst, 'wb')
+        while 1:
+            s = in_fo.read(1024 * 8)
+            if not s: break
+            out_fo.write(s)
+        in_fo.close()
+        out_fo.close()
+        none_times.append(1000 * (time.time() - t))
+
+    if DEBUG: print '\r'
+
+    print "%d KB Results:" % (size / 1024)
+    print_result('full', full_times)
+    print_result('raw', raw_times)
+    print_result('none', none_times)
 
     grabber.close_all()
+
+def print_result(label, result_list):
+    format = '[%4s] mean: %6.3f ms, median: %6.3f ms, ' \
+             'min: %6.3f ms, max: %6.3f ms'
+    result_list.sort()
+    mean = 0.0
+    for i in result_list: mean += i
+    mean = mean/len(result_list)
+    median = result_list[int(len(result_list)/2)]
+    print format % (label, mean, median, result_list[0], result_list[-1])
 
 if __name__ == '__main__':
     main()
