@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, '.')
 
 import unittest
+import os
 
 from unittest import TestCase, TestSuite
 
@@ -109,6 +110,7 @@ class URLGrabberModuleTestCase(TestCase):
         """grabber.urlgrab()"""
         filename = grabber.urlgrab('http://www.python.org', 
                                     filename='www.python.org')
+        os.unlink('www.python.org')
     
     def test_urlread(self):
         """grabber.urlread()"""
