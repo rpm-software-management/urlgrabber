@@ -109,9 +109,10 @@ class URLGrabberModuleTestCase(TestCase):
     
     def test_urlgrab(self):
         """grabber.urlgrab()"""
+        outfile = tempfile.mktemp()
         filename = grabber.urlgrab('http://www.python.org', 
-                                    filename='www.python.org')
-        os.unlink('www.python.org')
+                                    filename=outfile)
+        os.unlink(outfile)
     
     def test_urlread(self):
         """grabber.urlread()"""
