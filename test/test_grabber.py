@@ -24,9 +24,9 @@ from unittest import TestCase, TestSuite
 
 from base_test_code import *
 
+import urlgrabber
 import urlgrabber.grabber as grabber
-from urlgrabber.grabber import URLGrabber, URLGrabError, \
-     urlgrab, urlopen, urlread
+from urlgrabber.grabber import URLGrabber, URLGrabError
 from urlgrabber.progress import text_progress_meter
 
 def suite():
@@ -99,19 +99,19 @@ class URLGrabberModuleTestCase(UGTestCase):
     
     def test_urlopen(self):
         "module-level urlopen() function"
-        fo = grabber.urlopen('http://www.python.org')
+        fo = urlgrabber.urlopen('http://www.python.org')
         fo.close()
     
     def test_urlgrab(self):
         "module-level urlgrab() function"
         outfile = tempfile.mktemp()
-        filename = grabber.urlgrab('http://www.python.org', 
+        filename = urlgrabber.urlgrab('http://www.python.org', 
                                     filename=outfile)
         os.unlink(outfile)
     
     def test_urlread(self):
         "module-level urlgrab() function"
-        s = grabber.urlread('http://www.python.org')
+        s = urlgrabber.urlread('http://www.python.org')
 
        
 class URLGrabberTestCase(UGTestCase):
