@@ -21,7 +21,7 @@
 
 """keepalive.py tests"""
 
-# $Id: test_keepalive.py,v 1.9 2005/02/14 21:55:06 mstenner Exp $
+# $Id: test_keepalive.py,v 1.10 2005/05/19 18:17:52 mstenner Exp $
 
 import sys
 import os
@@ -93,7 +93,7 @@ class HTTPErrorTests(TestCase):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
         import sys
-        self.python_version = map(int, sys.version.split()[0].split('.'))
+        self.python_version = sys.version_info
         
     def tearDown(self):
         self.kh.close_all()
@@ -125,7 +125,7 @@ class HTTPErrorTests(TestCase):
         keepalive.HANDLE_ERRORS = 0
         ## see the HANDLE_ERRORS note in keepalive.py for discussion of
         ## the changes in python 2.4
-        if self.python_version >= [2, 4]:
+        if self.python_version >= (2, 4):
             self.assertRaises(URLError, self.opener.open, ref_404)
         else:
             fo = self.opener.open(ref_404)
@@ -143,7 +143,7 @@ class HTTPErrorTests(TestCase):
         keepalive.HANDLE_ERRORS = 0
         ## see the HANDLE_ERRORS note in keepalive.py for discussion of
         ## the changes in python 2.4
-        if self.python_version >= [2, 4]:
+        if self.python_version >= (2, 4):
             self.assertRaises(URLError, self.opener.open, ref_403)
         else:
             fo = self.opener.open(ref_403)

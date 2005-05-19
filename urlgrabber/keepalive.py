@@ -99,7 +99,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.11 2005/04/04 21:07:56 mstenner Exp $
+# $Id: keepalive.py,v 1.12 2005/05/19 18:17:52 mstenner Exp $
 
 import urllib2
 import httplib
@@ -110,8 +110,7 @@ DEBUG = 0
 def DBPRINT(*args): print ' '.join(args)
 
 import sys
-_python_version = sys.version.split()[0].split('.')
-if _python_version < ['2', '4']: HANDLE_ERRORS = 1
+if sys.version_info < (2, 4): HANDLE_ERRORS = 1
 else: HANDLE_ERRORS = 0
     
 class ConnectionManager:
