@@ -17,7 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: byterange.py,v 1.9 2005/02/14 21:55:07 mstenner Exp $
+# $Id: byterange.py,v 1.10 2005/06/27 16:02:46 mstenner Exp $
 
 import os
 import stat
@@ -219,7 +219,7 @@ class FileRangeHandler(urllib2.FileHandler):
         if host:
             host, port = urllib.splitport(host)
             if port or socket.gethostbyname(host) not in self.get_names():
-                raise URLError('file not on local host')
+                raise urllib2.URLError('file not on local host')
         fo = open(localfile,'rb')
         brange = req.headers.get('Range',None)
         brange = range_header_to_tuple(brange)
@@ -275,7 +275,7 @@ class FTPRangeHandler(urllib2.FTPHandler):
         try:
             host = socket.gethostbyname(host)
         except socket.error, msg:
-            raise URLError(msg)
+            raise urllib2.URLError(msg)
         path, attrs = splitattr(req.get_selector())
         dirs = path.split('/')
         dirs = map(unquote, dirs)
