@@ -176,7 +176,7 @@ RETRY RELATED ARGUMENTS
     was :). If this value is not supplied or is supplied but is None
     retrying does not occur.
 
-  retrycodes = [-1,2,4,5,6,7,12]
+  retrycodes = [-1,2,4,5,6,7]
 
     a sequence of errorcodes (values of e.errno) for which it should
     retry. See the doc on URLGrabError for more details on this.  You
@@ -187,8 +187,8 @@ RETRY RELATED ARGUMENTS
     this:
 
       retrycodes = urlgrabber.grabber.URLGrabberOptions().retrycodes
-      try: retrycodes.remove(12)
-      except ValueError: pass
+      if 12 not in retrycodes:
+          retrycodes.append(12)
       
   checkfunc = None
 
@@ -229,15 +229,47 @@ RETRY RELATED ARGUMENTS
     The callback that gets called during retries when an attempt to
     fetch a file fails.  The syntax for specifying the callback is
     identical to checkfunc, except for the attributes defined in the
-    CallbackObject instance.  In this case, it will have .exception
-    and .url defined.  As you might suspect, .exception is the
-    exception that was raised.
+    CallbackObject instance.  The attributes for failure_callback are:
+
+      exception = the raised exception
+      url       = the url we're trying to fetch
+      tries     = the number of tries so far (including this one)
+      retry     = the value of the retry option
 
     The callback is present primarily to inform the calling program of
     the failure, but if it raises an exception (including the one it's
     passed) that exception will NOT be caught and will therefore cause
     future retries to be aborted.
 
+    The callback is called for EVERY failure, including the last one.
+    On the last try, the callback can raise an alternate exception,
+    but it cannot (without severe trickiness) prevent the exception
+    from being raised.
+
+  interrupt_callback = None
+
+    This callback is called if KeyboardInterrupt is received at any
+    point in the transfer.  Basically, this callback can have three
+    impacts on the fetch process based on the way it exits:
+
+      1) raise no exception: the current fetch will be aborted, but
+         any further retries will still take place
+
+      2) raise a URLGrabError: if you're using a MirrorGroup, then
+         this will prompt a failover to the next mirror according to
+         the behavior of the MirrorGroup subclass.  It is recommended
+         that you raise URLGrabError with code 15, 'user abort'.  If
+         you are NOT using a MirrorGroup subclass, then this is the
+         same as (3).
+
+      3) raise some other exception (such as KeyboardInterrupt), which
+         will not be caught at either the grabber or mirror levels.
+         That is, it will be raised up all the way to the caller.
+
+    This callback is very similar to failure_callback.  They are
+    passed the same arguments, so you could use the same function for
+    both.
+      
 BANDWIDTH THROTTLING
 
   urlgrabber supports throttling via two values: throttle and
@@ -297,7 +329,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.41 2005/08/17 17:23:28 mstenner Exp $
+# $Id: grabber.py,v 1.42 2005/08/17 21:58:51 mstenner Exp $
 
 import os
 import os.path
@@ -381,6 +413,7 @@ class URLGrabError(IOError):
         12   - Socket timeout
         13   - malformed proxy url
         14   - HTTPError (includes .code and .exception attributes)
+        15   - user abort
         
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -426,7 +459,8 @@ class CallbackObject:
     It is possible that this class will have some greater
     functionality in the future.
     """
-    pass
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 def close_all():
     """close any open keepalive connections"""
@@ -518,7 +552,7 @@ class URLGrabberOptions:
         self.throttle = 1.0
         self.bandwidth = 0
         self.retry = None
-        self.retrycodes = [-1,2,4,5,6,7,12]
+        self.retrycodes = [-1,2,4,5,6,7]
         self.checkfunc = None
         self.copy_local = 0
         self.close_connection = 0
@@ -528,6 +562,7 @@ class URLGrabberOptions:
         self.proxies = None
         self.reget = None
         self.failure_callback = None
+        self.interrupt_callback = None
         self.prefix = None
         self.opener = None
         self.cache_openers = True
@@ -551,24 +586,40 @@ class URLGrabber:
     def _retry(self, opts, func, *args):
         tries = 0
         while 1:
+            # there are only two ways out of this loop.  The second has
+            # several "sub-ways"
+            #   1) via the return in the "try" block
+            #   2) by some exception being raised
+            #      a) an excepton is raised that we don't "except"
+            #      b) a callback raises ANY exception
+            #      c) we're not retry-ing or have run out of retries
+            #      d) the URLGrabError code is not in retrycodes
+            # beware of infinite loops :)
             tries = tries + 1
+            exception = None
+            retrycode = None
+            callback  = None
             try:
                 return apply(func, (opts,) + args, {})
             except URLGrabError, e:
-                if DEBUG: print 'EXCEPTION: %s' % e
-                if (opts.retry is None) \
-                    or (tries == opts.retry) \
-                    or (e.errno not in opts.retrycodes): raise
-                if opts.failure_callback:
-                    cb_func, cb_args, cb_kwargs = \
-                          self._make_callback(opts.failure_callback)
-                    # this is a little icky - for now, the first element
-                    # of args is the url.  we might consider a way to tidy
-                    # that up, though
-                    obj = CallbackObject()
-                    obj.exception = e
-                    obj.url = args[0]
-                    cb_func(obj, *cb_args, **cb_kwargs)
+                exception = e
+                callback = opts.failure_callback
+                retrycode = e.errno
+            except KeyboardInterrupt, e:
+                exception = e
+                callback = opts.interrupt_callback
+
+            if callback:
+                cb_func, cb_args, cb_kwargs = self._make_callback(callback)
+                obj = CallbackObject(exception=exception, url=args[0],
+                                     tries=tries, retry=opts.retry)
+                cb_func(obj, *cb_args, **cb_kwargs)
+
+            if (opts.retry is None) or (tries == opts.retry):
+                raise
+
+            if (retrycode is not None) and (retrycode not in opts.retrycodes):
+                raise
     
     def urlopen(self, url, **kwargs):
         """open the url and return a file object
@@ -1067,7 +1118,7 @@ def set_user_agent(new_user_agent):
     
 def retrygrab(url, filename=None, copy_local=0, close_connection=0,
               progress_obj=None, throttle=None, bandwidth=None,
-              numtries=3, retrycodes=[-1,2,4,5,6,7,12], checkfunc=None):
+              numtries=3, retrycodes=[-1,2,4,5,6,7], checkfunc=None):
     """Deprecated. Use: urlgrab() with the retry arg instead"""
     kwargs = {'copy_local' :  copy_local, 
               'close_connection' : close_connection,

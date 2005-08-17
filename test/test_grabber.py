@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.26 2005/08/17 17:23:28 mstenner Exp $
+# $Id: test_grabber.py,v 1.27 2005/08/17 21:58:50 mstenner Exp $
 
 import sys
 import os
@@ -249,6 +249,42 @@ class FailureTestCase(TestCase):
         self.assertEquals(self.obj.url, ref_404)
         self.assert_(isinstance(self.obj.exception, URLGrabError))
         del self.obj
+
+class InterruptTestCase(TestCase):
+    """Test interrupt callback behavior"""
+
+    class InterruptProgress:
+        def start(self, *args, **kwargs): pass
+        def update(self, *args, **kwargs): raise KeyboardInterrupt
+        def end(self, *args, **kwargs): pass
+
+    class TestException(Exception): pass
+
+    def _interrupt_callback(self, obj, *args, **kwargs):
+        self.interrupt_callback_called = 1
+        self.obj = obj
+        self.args = args
+        self.kwargs = kwargs
+        if kwargs.get('exception', None):
+            raise kwargs['exception']
+        
+    def test_interrupt_callback_called(self):
+        "interrupt callback is called on retry"
+        self.interrupt_callback_called = 0
+        ic = (self._interrupt_callback, (), {})
+        g = grabber.URLGrabber(progress_obj=self.InterruptProgress(),
+                               interrupt_callback=ic)
+        try: g.urlgrab(ref_http)
+        except KeyboardInterrupt: pass
+        self.assertEquals(self.interrupt_callback_called, 1)
+
+    def test_interrupt_callback_raises(self):
+        "interrupt callback raises an exception"
+        ic = (self._interrupt_callback, (),
+              {'exception': self.TestException()})
+        g = grabber.URLGrabber(progress_obj=self.InterruptProgress(),
+                               interrupt_callback=ic)
+        self.assertRaises(self.TestException, g.urlgrab, ref_http)
 
 class CheckfuncTestCase(TestCase):
     """Test checkfunc behavior"""
