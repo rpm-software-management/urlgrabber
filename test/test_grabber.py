@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.25 2005/03/14 18:44:41 mstenner Exp $
+# $Id: test_grabber.py,v 1.26 2005/08/17 17:23:28 mstenner Exp $
 
 import sys
 import os
@@ -227,7 +227,8 @@ class FailureTestCase(TestCase):
     def test_failure_callback_called(self):
         "failure callback is called on retry"
         self.failure_callback_called = 0
-        g = grabber.URLGrabber(retry=2,failure_callback=self._failure_callback)
+        g = grabber.URLGrabber(retry=2, retrycodes=[14],
+                               failure_callback=self._failure_callback)
         try: g.urlgrab(ref_404)
         except URLGrabError: pass
         self.assertEquals(self.failure_callback_called, 1)
@@ -235,7 +236,8 @@ class FailureTestCase(TestCase):
     def test_failure_callback_args(self):
         "failure callback is called with the proper args"
         fc = (self._failure_callback, ('foo',), {'bar': 'baz'})
-        g = grabber.URLGrabber(retry=2,failure_callback=fc)
+        g = grabber.URLGrabber(retry=2, retrycodes=[14],
+                               failure_callback=fc)
         try: g.urlgrab(ref_404)
         except URLGrabError: pass
         self.assert_(hasattr(self, 'obj'))

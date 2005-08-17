@@ -176,13 +176,20 @@ RETRY RELATED ARGUMENTS
     was :). If this value is not supplied or is supplied but is None
     retrying does not occur.
 
-  retrycodes = [-1,2,4,5,6,7]
+  retrycodes = [-1,2,4,5,6,7,12]
 
     a sequence of errorcodes (values of e.errno) for which it should
-    retry. See the doc on URLGrabError for more details on
-    this. retrycodes defaults to [-1,2,4,5,6,7] if not specified
-    explicitly.
+    retry. See the doc on URLGrabError for more details on this.  You
+    might consider modifying a copy of the default codes rather than
+    building yours from scratch so that if the list is extended in the
+    future (or one code is split into two) you can still enjoy the
+    benefits of the default list.  You can do that with something like
+    this:
 
+      retrycodes = urlgrabber.grabber.URLGrabberOptions().retrycodes
+      try: retrycodes.remove(12)
+      except ValueError: pass
+      
   checkfunc = None
 
     a function to do additional checks. This defaults to None, which
@@ -290,7 +297,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.40 2005/03/14 18:44:41 mstenner Exp $
+# $Id: grabber.py,v 1.41 2005/08/17 17:23:28 mstenner Exp $
 
 import os
 import os.path
@@ -371,9 +378,10 @@ class URLGrabError(IOError):
         9    - Requested byte range not satisfiable.
         10   - Byte range requested, but range support unavailable
         11   - Illegal reget mode
-        12   - Socket timeout.
+        12   - Socket timeout
         13   - malformed proxy url
-
+        14   - HTTPError (includes .code and .exception attributes)
+        
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
 
@@ -510,7 +518,7 @@ class URLGrabberOptions:
         self.throttle = 1.0
         self.bandwidth = 0
         self.retry = None
-        self.retrycodes = [-1,2,4,5,6,7]
+        self.retrycodes = [-1,2,4,5,6,7,12]
         self.checkfunc = None
         self.copy_local = 0
         self.close_connection = 0
@@ -888,7 +896,12 @@ class URLGrabberFileObject:
         except ValueError, e:
             raise URLGrabError(1, _('Bad URL: %s') % (e, ))
         except RangeError, e:
-            raise URLGrabError(9, _('%s') % (e, ))
+            raise URLGrabError(9, str(e))
+        except urllib2.HTTPError, e:
+            new_e = URLGrabError(14, str(e))
+            new_e.code = e.code
+            new_e.exception = e
+            raise new_e
         except IOError, e:
             if hasattr(e, 'reason') and have_socket_timeout and \
                    isinstance(e.reason, TimeoutError):
@@ -898,7 +911,7 @@ class URLGrabberFileObject:
         except OSError, e:
             raise URLGrabError(5, _('OSError: %s') % (e, ))
         except HTTPException, e:
-            raise URLGrabError(7, _('HTTP Error (%s): %s') % \
+            raise URLGrabError(7, _('HTTP Exception (%s): %s') % \
                             (e.__class__.__name__, e))
         else:
             return (fo, hdr)
@@ -1054,7 +1067,7 @@ def set_user_agent(new_user_agent):
     
 def retrygrab(url, filename=None, copy_local=0, close_connection=0,
               progress_obj=None, throttle=None, bandwidth=None,
-              numtries=3, retrycodes=[-1,2,4,5,6,7], checkfunc=None):
+              numtries=3, retrycodes=[-1,2,4,5,6,7,12], checkfunc=None):
     """Deprecated. Use: urlgrab() with the retry arg instead"""
     kwargs = {'copy_local' :  copy_local, 
               'close_connection' : close_connection,

@@ -21,7 +21,7 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.10 2005/02/14 21:55:06 mstenner Exp $
+# $Id: test_mirror.py,v 1.11 2005/08/17 17:23:28 mstenner Exp $
 
 import sys
 import os
@@ -109,8 +109,8 @@ class CallbackTests(TestCase):
         self.mg.failure_callback = failure_callback, (tricky_list, ), {}
         data = self.mg.urlread('reference')
         self.assert_(data == reference_data)
-        self.assertEquals(tricky_list[0][:33],
-                          '[Errno 4] IOError: HTTP Error 403')
+        self.assertEquals(tricky_list[0][:25],
+                          '[Errno 14] HTTP Error 403')
 
     def test_callback_reraise(self):
         "test that the callback can correctly re-raise the exception"
