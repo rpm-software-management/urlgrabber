@@ -17,7 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: progress.py,v 1.5 2005/01/14 18:21:41 rtomayko Exp $
+# $Id: progress.py,v 1.6 2005/08/18 23:49:14 mstenner Exp $
 
 import sys
 import time
@@ -514,10 +514,10 @@ def format_number(number, SI=0, space=' '):
         number = number / step
         
     # just in case someone needs more than 1000 yottabytes!
-    diff = depth - len(symbols) + 1
+    diff = depth - (len(symbols) - 1)
     if diff > 0:
-        depth = depth - diff
-        number = number * thresh**depth
+        depth = len(symbols) - 1
+        number = number * step**diff
 
     if type(number) == type(1) or type(number) == type(1L):
         format = '%i%s%s'
