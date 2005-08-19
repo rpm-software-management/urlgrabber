@@ -17,7 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: progress.py,v 1.6 2005/08/18 23:49:14 mstenner Exp $
+# $Id: progress.py,v 1.7 2005/08/19 21:59:07 mstenner Exp $
 
 import sys
 import time
@@ -507,19 +507,18 @@ def format_number(number, SI=0, space=' '):
 
     thresh = 999
     depth = 0
+    max_depth = len(symbols) - 1
     
-    # we want numbers between 
-    while number > thresh:
+    # we want numbers between 0 and thresh, but don't exceed the length
+    # of our list.  In that event, the formatting will be screwed up,
+    # but it'll still show the right number.
+    while number > thresh and depth < max_depth:
         depth  = depth + 1
         number = number / step
-        
-    # just in case someone needs more than 1000 yottabytes!
-    diff = depth - (len(symbols) - 1)
-    if diff > 0:
-        depth = len(symbols) - 1
-        number = number * step**diff
 
     if type(number) == type(1) or type(number) == type(1L):
+        # it's an int or a long, which means it didn't get divided,
+        # which means it's already short enough
         format = '%i%s%s'
     elif number < 9.95:
         # must use 9.95 for proper sizing.  For example, 9.99 will be
