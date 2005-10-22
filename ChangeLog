@@ -1,3 +1,69 @@
+2005-10-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_grabber.py, test/test_keepalive.py,
+	test/test_mirror.py, test/support/testdata/test_post.php,
+	urlgrabber/byterange.py, urlgrabber/grabber.py,
+	urlgrabber/keepalive.py, urlgrabber/mirror.py:
+
+	Added some slick logging support to urlgrabber.  It can be
+	controlled by the calling application or enabled from an
+	environment variable.
+
+	Allowed for HTTP POSTs by passing in the kwarg "data", just as for
+	urllib2.
+
+2005-08-19  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/progress.py:
+
+	Another minor simplification offered by the WTF folks.
+
+2005-08-18  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/progress.py:
+
+	Fixed a minor formatting bug, helpfully pointed out by the nice
+	folks at the daily WTF:
+	http://thedailywtf.com/forums/41204/ShowPost.aspx
+
+2005-08-17  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_grabber.py, urlgrabber/grabber.py:
+
+	Added Menno's idea for catching KeyboardInterrupt.  This allows the
+	program to do things like hit the next retry, jump to the next
+	mirror, etc. when the user hits ctrl-c.
+
+	Also modified the behavior of failure_callback slightly.  It now
+	gets called for EVERY failure, even the last one.  That is, if
+	there's a failure on the last try, the failure callback gets called
+	and (assuming it doesn't raise anything) the exception gets raised.
+	 Previously, it would not be called on the last failure.  This is
+	another MINOR compatibility break.
+
+2005-08-17  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/test_grabber.py, test/test_mirror.py, urlgrabber/grabber.py:
+
+	except HTTPError, which basically means all HTTP return codes that
+	are not 200 and not handled internally (such as the 401
+	Unauthorized code).  Previously, these were caught as IOErrors (of
+	which HTTPError is an indirect subclass) and re-raised as
+	URLGrabErrors with errno 4.  They are NOW reraised as URLGrabErrors
+	with errno 14, and with the .code and .exception attributes set to
+	the HTTP status code and HTTPError exception object respectively.
+
+	This represents a minor compatibility break, as these "errors" are
+	now not handled the same way.  They will be raised with a different
+	errno and errno 14 is not in the default list of retrycodes
+	(whereas 4 is).
+
+2005-06-27  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog, urlgrabber/byterange.py:
+
+	Fixed two namespace-related bugs.
+
 2005-05-19  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* test/test_keepalive.py, urlgrabber/keepalive.py:

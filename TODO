@@ -18,22 +18,12 @@ ALPHA 2:
     - starting a download with some parts already read (with reget, 
       for example)
 
-  * Add decent debugging code and a URLGRABBER_DEBUG environment
-    variable so that users of miscellaneous applications can get the
-    debugging output
-
-  * Have a plan for KeyboardInterupt exception handling. This is driven by 
-    recent chatter on the yum list about Ctrl-C handling. Seth suggests 
-    Ctrl-C as a "Skip to Next Mirror" trigger when processing MirrorGroups.
-
   * look at making the 'check_timestamp' reget mode work with ftp.
     Currently, we NEVER get a timestamp back, so we can't compare.
     We'll probably need to subclass/replace either the urllib2 FTP handler
     or the ftplib FTP object (or both, but I doubt it).  It may or may not
     be worth it just for this one mode of reget.  It fails safely - by
     getting the entire file.
-
-  * ipv6
 
   * cache dns lookups -- for a possible approach, see
     https://lists.dulug.duke.edu/pipermail/yum-devel/2004-March/000136.html
