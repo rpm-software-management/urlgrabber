@@ -1,5 +1,11 @@
 2005-10-22  Michael D. Stenner <mstenner@linux.duke.edu>
 
+	* ChangeLog, TODO, urlgrabber/__init__.py:
+
+	Updated TODO and preparing for release.
+
+2005-10-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
 	* test/test_grabber.py, test/test_keepalive.py,
 	test/test_mirror.py, test/support/testdata/test_post.php,
 	urlgrabber/byterange.py, urlgrabber/grabber.py,
