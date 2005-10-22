@@ -86,15 +86,12 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.12 2004/09/07 21:19:54 mstenner Exp $
+# $Id: mirror.py,v 1.13 2005/10/22 21:57:28 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
 
-from grabber import URLGrabError, CallbackObject
-
-DEBUG=0
-def DBPRINT(*args): print ' '.join(args)
+from grabber import URLGrabError, CallbackObject, DEBUG
 
 try:
     from i18n import _
@@ -360,9 +357,9 @@ class MirrorGroup:
 
         if DEBUG:
             grm = [m['mirror'] for m in gr.mirrors]
-            DBPRINT('GR   mirrors: [%s] %i' % (' '.join(grm), gr._next))
+            DEBUG.info('GR   mirrors: [%s] %i', ' '.join(grm), gr._next)
             selfm = [m['mirror'] for m in self.mirrors]
-            DBPRINT('MAIN mirrors: [%s] %i' % (' '.join(selfm), self._next))
+            DEBUG.info('MAIN mirrors: [%s] %i', ' '.join(selfm), self._next)
 
     #####################################################################
     # NON-CONFIGURATION METHODS
@@ -395,11 +392,11 @@ class MirrorGroup:
             kwargs.update(kw)
             grabber = mirrorchoice.get('grabber') or self.grabber
             func_ref = getattr(grabber, func)
-            if DEBUG: DBPRINT('MIRROR: trying %s -> %s' % (url, fullurl))
+            if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
-                if DEBUG: DBPRINT('MIRROR: failed')
+                if DEBUG: DEBUG.info('MIRROR: failed')
                 obj = CallbackObject()
                 obj.exception = e
                 obj.mirror = mirrorchoice['mirror']

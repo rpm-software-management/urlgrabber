@@ -167,6 +167,19 @@ GENERAL ARGUMENTS (kwargs)
     chain integrity.  You are responsible for ensuring that any
     extension handlers are present if said features are required.
     
+  data = None
+
+    Only relevant for the HTTP family (and ignored for other
+    protocols), this allows HTTP POSTs.  When the data kwarg is
+    present (and not None), an HTTP request will automatically become
+    a POST rather than GET.  This is done by direct passthrough to
+    urllib2.  If you use this, you may also want to set the
+    'Content-length' and 'Content-type' headers with the http_headers
+    option.  Note that python 2.2 handles the case of these
+    badly and if you do not use the proper case (shown here), your
+    values will be overridden with the defaults.
+    
+
 RETRY RELATED ARGUMENTS
 
   retry = None
@@ -329,10 +342,11 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.42 2005/08/17 21:58:51 mstenner Exp $
+# $Id: grabber.py,v 1.43 2005/10/22 21:57:28 mstenner Exp $
 
 import os
 import os.path
+import sys
 import urlparse
 import rfc822
 import time
@@ -341,6 +355,9 @@ import urllib
 import urllib2
 from stat import *  # S_* and ST_*
 
+########################################################################
+#                     MODULE INITIALIZATION
+########################################################################
 try:
     exec('from ' + (__name__.split('.'))[0] + ' import __version__')
 except:
@@ -348,8 +365,6 @@ except:
 
 auth_handler = urllib2.HTTPBasicAuthHandler( \
      urllib2.HTTPPasswordMgrWithDefaultRealm())
-
-DEBUG=0
 
 try:
     from i18n import _
@@ -364,6 +379,7 @@ except ImportError, msg:
 try:
     # This is a convenient way to make keepalive optional.
     # Just rename the module so it can't be imported.
+    import keepalive
     from keepalive import HTTPHandler
 except ImportError, msg:
     keepalive_handler = None
@@ -372,7 +388,8 @@ else:
 
 try:
     # add in range support conditionally too
-    from urlgrabber.byterange import HTTPRangeHandler, FileRangeHandler, \
+    import byterange
+    from byterange import HTTPRangeHandler, FileRangeHandler, \
          FTPRangeHandler, range_tuple_normalize, range_tuple_to_header, \
          RangeError
 except ImportError, msg:
@@ -392,6 +409,85 @@ try:
 except AttributeError:
     TimeoutError = None
     have_socket_timeout = False
+
+########################################################################
+# functions for debugging output.  These functions are here because they
+# are also part of the module initialization.
+DEBUG = None
+def set_logger(DBOBJ):
+    """Set the DEBUG object.  This is called by _init_default_logger when
+    the environment variable URLGRABBER_DEBUG is set, but can also be
+    called by a calling program.  Basically, if the calling program uses
+    the logging module and would like to incorporate urlgrabber logging,
+    then it can do so this way.  It's probably not necessary as most
+    internal logging is only for debugging purposes.
+
+    The passed-in object should be a logging.Logger instance.  It will
+    be pushed into the keepalive and byterange modules if they're
+    being used.  The mirror module pulls this object in on import, so
+    you will need to manually push into it.  In fact, you may find it
+    tidier to simply push your logging object (or objects) into each
+    of these modules independently.
+    """
+
+    global DEBUG
+    DEBUG = DBOBJ
+    if keepalive_handler and keepalive.DEBUG is None:
+        keepalive.DEBUG = DBOBJ
+    if have_range and byterange.DEBUG is None:
+        byterange.DEBUG = DBOBJ
+
+def _init_default_logger():
+    '''Examines the environment variable URLGRABBER_DEBUG and creates
+    a logging object (logging.logger) based on the contents.  It takes
+    the form
+
+      URLGRABBER_DEBUG=level,filename
+      
+    where "level" can be either an integer or a log level from the
+    logging module (DEBUG, INFO, etc).  If the integer is zero or
+    less, logging will be disabled.  Filename is the filename where
+    logs will be sent.  If it is "-", then stdout will be used.  If
+    the filename is empty or missing, stderr will be used.  If the
+    variable cannot be processed or the logging module cannot be
+    imported (python < 2.3) then logging will be disabled.  Here are
+    some examples:
+
+      URLGRABBER_DEBUG=1,debug.txt   # log everything to debug.txt
+      URLGRABBER_DEBUG=WARNING,-     # log warning and higher to stdout
+      URLGRABBER_DEBUG=INFO          # log info and higher to stderr
+      
+    This funtion is called during module initialization.  It is not
+    intended to be called from outside.  The only reason it is a
+    function at all is to keep the module-level namespace tidy and to
+    collect the code into a nice block.'''
+
+    try:
+        dbinfo = os.environ['URLGRABBER_DEBUG'].split(',')
+        import logging
+        level = logging._levelNames.get(dbinfo[0], int(dbinfo[0]))
+        if level < 1: raise ValueError()
+
+        formatter = logging.Formatter('%(asctime)s %(message)s')
+        if len(dbinfo) > 1: filename = dbinfo[1]
+        else: filename = ''
+        if filename == '': handler = logging.StreamHandler(sys.stderr)
+        elif filename == '-': handler = logging.StreamHandler(sys.stdout)
+        else:  handler = logging.FileHandler(filename)
+        handler.setFormatter(formatter)
+        DBOBJ = logging.getLogger('urlgrabber')
+        DBOBJ.addHandler(handler)
+        DBOBJ.setLevel(level)
+    except (KeyError, ImportError, ValueError):
+        DBOBJ = None
+    set_logger(DBOBJ)
+
+_init_default_logger()
+########################################################################
+#                 END MODULE INITIALIZATION
+########################################################################
+
+
 
 class URLGrabError(IOError):
     """
@@ -570,6 +666,7 @@ class URLGrabberOptions:
         self.text = None
         self.http_headers = None
         self.ftp_headers = None
+        self.data = None
 
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -599,8 +696,12 @@ class URLGrabber:
             exception = None
             retrycode = None
             callback  = None
+            if DEBUG: DEBUG.info('attempt %i/%s: %s',
+                                 tries, opts.retry, args[0])
             try:
-                return apply(func, (opts,) + args, {})
+                r = apply(func, (opts,) + args, {})
+                if DEBUG: DEBUG.info('success')
+                return r
             except URLGrabError, e:
                 exception = e
                 callback = opts.failure_callback
@@ -609,16 +710,21 @@ class URLGrabber:
                 exception = e
                 callback = opts.interrupt_callback
 
+            if DEBUG: DEBUG.info('exception: %s', exception)
             if callback:
+                if DEBUG: DEBUG.info('calling callback: %s', callback)
                 cb_func, cb_args, cb_kwargs = self._make_callback(callback)
                 obj = CallbackObject(exception=exception, url=args[0],
                                      tries=tries, retry=opts.retry)
                 cb_func(obj, *cb_args, **cb_kwargs)
 
             if (opts.retry is None) or (tries == opts.retry):
+                if DEBUG: DEBUG.info('retries exceeded, re-raising')
                 raise
 
             if (retrycode is not None) and (retrycode not in opts.retrycodes):
+                if DEBUG: DEBUG.info('retrycode (%i) not in list %s, re-raising',
+                                     retrycode, opts.retrycodes)
                 raise
     
     def urlopen(self, url, **kwargs):
@@ -746,7 +852,7 @@ class URLGrabber:
                 if ':' in user_pass: user, password = user_pass.split(':', 1)
             except ValueError, e:
                 raise URLGrabError(1, _('Bad URL: %s') % url)
-            if DEBUG: print 'adding HTTP auth: %s, %s' % (user, password)
+            if DEBUG: DEBUG.info('adding HTTP auth: %s, %s', user, password)
             auth_handler.add_password(None, host, user, password)
         parts = (scheme, host, path, parm, query, frag)
         url = urlparse.urlunparse(parts)
@@ -847,7 +953,7 @@ class URLGrabberFileObject:
     def _do_open(self):
         opener = self._get_opener()
 
-        req = urllib2.Request(self.url) # build request object
+        req = urllib2.Request(self.url, self.opts.data) # build request object
         self._add_headers(req) # add misc headers that we need
         self._build_range(req) # take care of reget and byterange stuff
 
@@ -1086,6 +1192,7 @@ _proxy_cache = []
 def CachedProxyHandler(proxies):
     for (pdict, handler) in _proxy_cache:
         if pdict == proxies:
+            if DEBUG: DEBUG.debug('re-using proxy settings: %s', proxies)
             break
     else:
         for k, v in proxies.items():
@@ -1094,6 +1201,7 @@ def CachedProxyHandler(proxies):
             if (utype is None) or (host is None):
                 raise URLGrabError(13, _('Bad proxy URL: %s') % v)
 
+        if DEBUG: DEBUG.info('creating new proxy handler: %s', proxies)
         handler = urllib2.ProxyHandler(proxies)
         _proxy_cache.append( (proxies, handler) )
     return handler
@@ -1178,8 +1286,6 @@ def _retry_test():
     except ImportError, e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
-    global DEBUG
-    #DEBUG = 1
     def cfunc(filename, hello, there='foo'):
         print hello, there
         import random

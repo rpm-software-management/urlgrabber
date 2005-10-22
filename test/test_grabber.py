@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.27 2005/08/17 21:58:50 mstenner Exp $
+# $Id: test_grabber.py,v 1.28 2005/10/22 21:57:27 mstenner Exp $
 
 import sys
 import os
@@ -91,6 +91,15 @@ class HTTPTests(TestCase):
         fo.close()
 
         self.assertEqual(contents, reference_data)
+
+    def test_post(self):
+        "do an HTTP post"
+        headers = (('Content-type', 'text/plain'),)
+        ret = grabber.urlread(base_http + 'test_post.php',
+                              data=short_reference_data,
+                              http_headers=headers)
+
+        self.assertEqual(ret, short_reference_data)
 
 class URLGrabberModuleTestCase(TestCase):
     """Test module level functions defined in grabber.py"""

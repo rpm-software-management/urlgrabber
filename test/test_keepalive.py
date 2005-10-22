@@ -21,7 +21,7 @@
 
 """keepalive.py tests"""
 
-# $Id: test_keepalive.py,v 1.10 2005/05/19 18:17:52 mstenner Exp $
+# $Id: test_keepalive.py,v 1.11 2005/10/22 21:57:27 mstenner Exp $
 
 import sys
 import os
@@ -35,6 +35,13 @@ from urllib2 import URLError, HTTPError
 from base_test_code import *
 
 from urlgrabber import keepalive
+
+class FakeLogger:
+    def __init__(self):
+        self.logs = []
+    def debug(self, msg, *args):
+        self.logs.append(msg % args)
+    warn = warning = info = error = debug
 
 class CorruptionTests(TestCase):
     def setUp(self):
@@ -155,18 +162,12 @@ class DroppedConnectionTests(TestCase):
     def setUp(self):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
-        self.snarfed_logs = []
-        self.dbp = keepalive.DBPRINT
-        keepalive.DBPRINT = self.logsnarf
-        keepalive.DEBUG = 1
+        self.db = keepalive.DEBUG
+        keepalive.DEBUG = FakeLogger()
         
     def tearDown(self):
         self.kh.close_all()
-        keepalive.DBPRINT = self.dbp
-        keepalive.DEBUG = 0
-        
-    def logsnarf(self, message):
-        self.snarfed_logs.append(message)
+        keepalive.DEBUG = self.db
         
     def test_dropped_connection(self):
         "testing connection restarting (20-second delay, ctrl-c to skip)"
@@ -191,7 +192,7 @@ class DroppedConnectionTests(TestCase):
             ]
         self.assert_(data1 == data2)
         l = [ re.sub(r'\s+\(-?\d+\)$', r'', line) for \
-              line in self.snarfed_logs ]
+              line in keepalive.DEBUG.logs ]
         self.assert_(l == reference_logs)
         
 class ThreadingTests(TestCase):
@@ -199,17 +200,12 @@ class ThreadingTests(TestCase):
         self.kh = keepalive.HTTPHandler()
         self.opener = urllib2.build_opener(self.kh)
         self.snarfed_logs = []
-        self.dbp = keepalive.DBPRINT
-        keepalive.DBPRINT = self.logsnarf
-        keepalive.DEBUG = 1
+        self.db = keepalive.DEBUG
+        keepalive.DEBUG = FakeLogger()
 
     def tearDown(self):
         self.kh.close_all()
-        keepalive.DBPRINT = self.dbp
-        keepalive.DEBUG = 0
-        
-    def logsnarf(self, message):
-        self.snarfed_logs.append(message)
+        keepalive.DEBUG = self.db
 
     def test_basic_threading(self):
         "use 3 threads, each getting a file 4 times"
@@ -221,18 +217,20 @@ class ThreadingTests(TestCase):
             t.start()
             self.threads.append(t)
         for t in self.threads: t.join()
-        l = [ re.sub(r'\s+\(-?\d+\)$', r'', line) for line in self.snarfed_logs ]
+        l = [ re.sub(r'\s+\(-?\d+\)$', r'', line) for \
+              line in keepalive.DEBUG.logs ]
         l.sort()
         creating = ['creating new connection to www.linux.duke.edu'] * 3
         status = ['STATUS: 200, OK'] * 12
         reuse = ['re-using connection to www.linux.duke.edu'] * 9
         reference_logs = creating + status + reuse
         reference_logs.sort()
-        #print '--------------------'
-        #for log in l: print log
-        #print '--------------------'
-        #for log in reference_logs: print log
-        #print '--------------------'
+        if 0:
+            print '--------------------'
+            for log in l: print log
+            print '--------------------'
+            for log in reference_logs: print log
+            print '--------------------'
         self.assert_(l == reference_logs)
             
 class Fetcher(threading.Thread):

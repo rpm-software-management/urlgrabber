@@ -17,13 +17,15 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: byterange.py,v 1.10 2005/06/27 16:02:46 mstenner Exp $
+# $Id: byterange.py,v 1.11 2005/10/22 21:57:28 mstenner Exp $
 
 import os
 import stat
 import urllib
 import urllib2
 import rfc822
+
+DEBUG = None
 
 try:    
     from cStringIO import StringIO

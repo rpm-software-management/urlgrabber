@@ -21,7 +21,7 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.11 2005/08/17 17:23:28 mstenner Exp $
+# $Id: test_mirror.py,v 1.12 2005/10/22 21:57:27 mstenner Exp $
 
 import sys
 import os
@@ -33,6 +33,13 @@ import urlgrabber.mirror
 from urlgrabber.mirror import MirrorGroup, MGRandomStart, MGRandomOrder
 
 from base_test_code import *
+
+class FakeLogger:
+    def __init__(self):
+        self.logs = []
+    def debug(self, msg, *args):
+        self.logs.append(msg % args)
+    warn = warning = info = error = debug
 
 class BasicTests(TestCase):
     def setUp(self):
@@ -172,20 +179,14 @@ class FakeGrabber:
 class ActionTests(TestCase):
     def setUp(self):
         self.snarfed_logs = []
-        self.debug = urlgrabber.mirror.DEBUG
-        urlgrabber.mirror.DEBUG = 1
-        self.dbprint = urlgrabber.mirror.DBPRINT
-        urlgrabber.mirror.DBPRINT = self.logsnarf
+        self.db = urlgrabber.mirror.DEBUG
+        urlgrabber.mirror.DEBUG = FakeLogger()
         self.mirrors = ['a', 'b', 'c', 'd', 'e', 'f']
         self.g = FakeGrabber([URLGrabError(3), URLGrabError(3), 'filename'])
         self.mg = MirrorGroup(self.g, self.mirrors)
 
-    def logsnarf(self, message):
-        self.snarfed_logs.append(message)
-
     def tearDown(self):
-        urlgrabber.mirror.DEBUG = self.debug
-        urlgrabber.mirror.DBPRINT = self.dbprint
+        urlgrabber.mirror.DEBUG = self.db
         
     def test_defaults(self):
         'test default action policy'
@@ -204,7 +205,7 @@ class ActionTests(TestCase):
              'MIRROR: trying somefile -> c/somefile']
             
         self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(self.snarfed_logs, expected_logs)
+        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
     def test_instance_action(self):
         'test the effects of passed-in default_action'
@@ -224,7 +225,7 @@ class ActionTests(TestCase):
              'MIRROR: trying somefile -> c/somefile']
             
         self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(self.snarfed_logs, expected_logs)
+        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
     def test_method_action(self):
         'test the effects of method-level default_action'
@@ -243,7 +244,7 @@ class ActionTests(TestCase):
              'MIRROR: trying somefile -> c/somefile']
             
         self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(self.snarfed_logs, expected_logs)
+        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
 
     def callback(self, e): return {'fail': 1}
@@ -261,7 +262,7 @@ class ActionTests(TestCase):
                        'MAIN mirrors: [a b c d e f] 1']
 
         self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(self.snarfed_logs, expected_logs)
+        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
 
 def suite():
@@ -269,8 +270,6 @@ def suite():
     return tl.loadTestsFromModule(sys.modules[__name__])
 
 if __name__ == '__main__':
-    urlgrabber.grabber.DEBUG = 0
-    urlgrabber.mirror.DEBUG = 0
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
      

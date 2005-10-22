@@ -99,15 +99,14 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.12 2005/05/19 18:17:52 mstenner Exp $
+# $Id: keepalive.py,v 1.13 2005/10/22 21:57:28 mstenner Exp $
 
 import urllib2
 import httplib
 import socket
 import thread
 
-DEBUG = 0
-def DBPRINT(*args): print ' '.join(args)
+DEBUG = None
 
 import sys
 if sys.version_info < (2, 4): HANDLE_ERRORS = 1
@@ -233,8 +232,8 @@ class HTTPHandler(urllib2.HTTPHandler):
             else:
                 # no (working) free connections were found.  Create a new one.
                 h = http_class(host)
-                if DEBUG: DBPRINT("creating new connection to %s (%d)" % \
-                                  (host, id(h)))
+                if DEBUG: DEBUG.info("creating new connection to %s (%d)",
+                                     host, id(h))
                 self._cm.add(host, h, 0)
                 self._start_transaction(h, req)
                 r = h.getresponse()
@@ -244,7 +243,7 @@ class HTTPHandler(urllib2.HTTPHandler):
         # if not a persistent connection, don't try to reuse it
         if r.will_close: self._cm.remove(h)
 
-        if DEBUG: DBPRINT("STATUS: %s, %s" % (r.status, r.reason))
+        if DEBUG: DEBUG.info("STATUS: %s, %s", r.status, r.reason)
         r._handler = self
         r._host = host
         r._url = req.get_full_url()
@@ -281,8 +280,8 @@ class HTTPHandler(urllib2.HTTPHandler):
             # same exception was raised, etc.  The tradeoff is
             # that it's now possible this call will raise
             # a DIFFERENT exception
-            if DEBUG: DBPRINT("unexpected exception - " \
-                              "closing connection to %s (%d)" % (host, id(h)))
+            if DEBUG: DEBUG.error("unexpected exception - closing " + \
+                                  "connection to %s (%d)", host, id(h))
             self._cm.remove(h)
             h.close()
             raise
@@ -292,11 +291,11 @@ class HTTPHandler(urllib2.HTTPHandler):
             # bad header back.  This is most likely to happen if
             # the socket has been closed by the server since we
             # last used the connection.
-            if DEBUG: DBPRINT("failed to re-use connection to %s (%d)" \
-                              % (host, id(h)))
+            if DEBUG: DEBUG.info("failed to re-use connection to %s (%d)",
+                                 host, id(h))
             r = None
         else:
-            if DEBUG: DBPRINT("re-using connection to %s (%d)" % (host, id(h)))
+            if DEBUG: DEBUG.info("re-using connection to %s (%d)", host, id(h))
 
         return r
 
@@ -507,6 +506,7 @@ def comp(N, url):
     print '  improvement factor: %.2f' % (t1/t2, )
     
 def fetch(N, url, delay=0):
+    import time
     lens = []
     starttime = time.time()
     for i in range(N):
@@ -526,10 +526,12 @@ def fetch(N, url, delay=0):
     return diff
 
 def test_timeout(url):
-    global DEBUG, DBPRINT
-    dbp = DBPRINT
-    def DBPRINT(*args): print '    ' + ' '.join(args)
-    DEBUG=1
+    global DEBUG
+    dbbackup = DEBUG
+    class FakeLogger:
+        def debug(self, msg, *args): print msg % args
+        info = warning = error = debug
+    DEBUG = FakeLogger()
     print "  fetching the file to establish a connection"
     fo = urllib2.urlopen(url)
     data1 = fo.read()
@@ -554,8 +556,7 @@ def test_timeout(url):
     else:
         print '  ERROR: DATA DIFFER'
 
-    DEBUG=0
-    DBPRINT = dbp
+    DEBUG = dbbackup
 
     
 def test(url, N=10):
