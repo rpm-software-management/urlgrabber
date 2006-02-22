@@ -1,3 +1,23 @@
+2006-02-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.8
+
+2006-02-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/: grabber.py, mirror.py:
+
+	Added a reget progress bar patch from Menno, and fixed the annoying
+	_next IndexError bug.  Thanks to Edinelson Keiji Shimokawa for
+	getting me looking in the right direction.
+
+2005-10-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2005-10-22  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* ChangeLog, TODO, urlgrabber/__init__.py:
