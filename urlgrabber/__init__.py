@@ -12,9 +12,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-# Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
+# Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.15 2005/10/22 22:05:12 mstenner Exp $
+# $Id: __init__.py,v 1.16 2006/02/22 18:27:51 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 
@@ -44,8 +44,8 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '2.9.7'
-__date__    = '2005/10/22'
+__version__ = '2.9.8'
+__date__    = '2006/02/22'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>'
 __url__     = 'http://linux.duke.edu/projects/urlgrabber/'
