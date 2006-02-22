@@ -86,7 +86,7 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.13 2005/10/22 21:57:28 mstenner Exp $
+# $Id: mirror.py,v 1.14 2006/02/22 18:26:46 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
@@ -346,14 +346,14 @@ class MirrorGroup:
                 del self.mirrors[ind]
             elif self._next == ind and action.get('increment_master', 1):
                 self._next += 1
-                if self._next >= len(self.mirrors): self._next = 0
+            if self._next >= len(self.mirrors): self._next = 0
         self._lock.release()
         
         if action.get('remove', 1):
             del gr.mirrors[gr._next]
         elif action.get('increment', 1):
             gr._next += 1
-            if gr._next >= len(gr.mirrors): gr._next = 0
+        if gr._next >= len(gr.mirrors): gr._next = 0
 
         if DEBUG:
             grm = [m['mirror'] for m in gr.mirrors]

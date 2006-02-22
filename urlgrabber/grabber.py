@@ -342,7 +342,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.43 2005/10/22 21:57:28 mstenner Exp $
+# $Id: grabber.py,v 1.44 2006/02/22 18:26:46 mstenner Exp $
 
 import os
 import os.path
@@ -989,8 +989,12 @@ class URLGrabberFileObject:
             if hasattr(fo, 'readline'):
                 self.readline = fo.readline
         elif self.opts.progress_obj:
-            try:    length = int(hdr['Content-Length'])
-            except: length = None
+            try:    
+                length = int(hdr['Content-Length'])
+                length = length + self._amount_read     # Account for regets
+            except (KeyError, ValueError, TypeError): 
+                length = None
+
             self.opts.progress_obj.start(str(self.filename), self.url, 
                                          os.path.basename(path), 
                                          length,
@@ -1024,6 +1028,10 @@ class URLGrabberFileObject:
             else:
                 self.reget_time = s[ST_MTIME]
                 reget_length = s[ST_SIZE]
+
+                # Set initial length when regetting
+                self._amount_read = reget_length    
+
                 rt = reget_length, ''
                 self.append = 1
                 
