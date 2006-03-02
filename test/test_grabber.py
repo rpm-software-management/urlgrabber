@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.29 2006/03/02 20:56:56 mstenner Exp $
+# $Id: test_grabber.py,v 1.30 2006/03/02 21:06:00 mstenner Exp $
 
 import sys
 import os
@@ -214,7 +214,11 @@ class URLParserTestCase(TestCase):
 
     def _test_url(self, urllist):
         g = URLGrabber()
+        try: quote = urllist[3]
+        except IndexError: quote = None
+        g.opts.quote = quote
         (url, parts) = g.opts.urlparser.parse(urllist[0], g.opts)
+        
         if 1:
             self.assertEquals(url, urllist[1])
             self.assertEquals(parts, urllist[2])
@@ -243,6 +247,12 @@ class URLParserTestCase(TestCase):
         ['http://host.com/Already%20Quoted',
          'http://host.com/Already%20Quoted',
          ('http', 'host.com', '/Already%20Quoted', '', '', '')],
+        ['http://host.com/Should Be Quoted',
+         'http://host.com/Should Be Quoted',
+         ('http', 'host.com', '/Should Be Quoted', '', '', ''), 0],
+        ['http://host.com/Should%20Not',
+         'http://host.com/Should%2520Not',
+         ('http', 'host.com', '/Should%2520Not', '', '', ''), 1],
         )
         
     url_tests_posix = (
