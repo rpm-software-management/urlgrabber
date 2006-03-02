@@ -21,7 +21,7 @@
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.28 2005/10/22 21:57:27 mstenner Exp $
+# $Id: test_grabber.py,v 1.29 2006/03/02 20:56:56 mstenner Exp $
 
 import sys
 import os
@@ -33,30 +33,34 @@ from base_test_code import *
 
 import urlgrabber
 import urlgrabber.grabber as grabber
-from urlgrabber.grabber import URLGrabber, URLGrabError, CallbackObject
+from urlgrabber.grabber import URLGrabber, URLGrabError, CallbackObject, \
+     URLParser
 from urlgrabber.progress import text_progress_meter
 
 class FileObjectTests(TestCase):
     
     def setUp(self):
         self.filename = tempfile.mktemp()
-        fo = open(self.filename, 'w')
+        fo = file(self.filename, 'wb')
         fo.write(reference_data)
         fo.close()
 
         self.fo_input = cStringIO.StringIO(reference_data)
         self.fo_output = cStringIO.StringIO()
-        self.wrapper = grabber.URLGrabberFileObject('file://' + self.filename, self.fo_output,
-                             grabber.default_grabber.opts)
+        (url, parts) = grabber.default_grabber.opts.urlparser.parse(
+            self.filename, grabber.default_grabber.opts)
+        self.wrapper = grabber.URLGrabberFileObject(
+            url, self.fo_output, grabber.default_grabber.opts)
 
     def tearDown(self):
+        self.wrapper.close()
         os.unlink(self.filename)
 
     def test_readall(self):
         "URLGrabberFileObject .read() method"
         s = self.wrapper.read()
         self.fo_output.write(s)
-        self.assertEqual(reference_data, self.fo_output.getvalue())
+        self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_readline(self):
         "URLGrabberFileObject .readline() method"
@@ -64,13 +68,13 @@ class FileObjectTests(TestCase):
             s = self.wrapper.readline()
             self.fo_output.write(s)
             if not s: break
-        self.assertEqual(reference_data, self.fo_output.getvalue())
+        self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_readlines(self):
         "URLGrabberFileObject .readlines() method"
         li = self.wrapper.readlines()
         self.fo_output.write(string.join(li, ''))
-        self.assertEqual(reference_data, self.fo_output.getvalue())
+        self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
         "URLGrabberFileObject .read(N) with small N"
@@ -78,7 +82,7 @@ class FileObjectTests(TestCase):
             s = self.wrapper.read(23)
             self.fo_output.write(s)
             if not s: break
-        self.assertEqual(reference_data, self.fo_output.getvalue())
+        self.assert_(reference_data == self.fo_output.getvalue())
     
 class HTTPTests(TestCase):
     def test_reference_file(self):
@@ -86,11 +90,11 @@ class HTTPTests(TestCase):
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 
-        fo = open(filename)
+        fo = file(filename, 'rb')
         contents = fo.read()
         fo.close()
 
-        self.assertEqual(contents, reference_data)
+        self.assert_(contents == reference_data)
 
     def test_post(self):
         "do an HTTP post"
@@ -130,7 +134,8 @@ class URLGrabberTestCase(TestCase):
     """Test grabber.URLGrabber class"""
     
     def setUp(self):
-        self.meter = text_progress_meter( fo=open('/dev/null', 'w') )
+        
+        self.meter = text_progress_meter( fo=cStringIO.StringIO() )
         pass
     
     def tearDown(self):
@@ -180,42 +185,6 @@ class URLGrabberTestCase(TestCase):
         nopts.opener = None
         self.assertEquals( nopts.opener, None )
         
-    def test_parse_url(self):
-        """grabber.URLGrabber._parse_url()"""
-        g = URLGrabber()
-        (url, parts) = g._parse_url('http://user:pass@host.com/path/part/basename.ext?arg1=val1&arg2=val2#hash')
-        (scheme, host, path, parm, query, frag) = parts
-        self.assertEquals('http://host.com/path/part/basename.ext?arg1=val1&arg2=val2#hash',url)
-        self.assertEquals('http', scheme)
-        self.assertEquals('host.com', host)
-        self.assertEquals('/path/part/basename.ext', path)
-        self.assertEquals('arg1=val1&arg2=val2', query)
-        self.assertEquals('hash', frag)
-        
-    def test_parse_url_local_filename(self):
-        """grabber.URLGrabber._parse_url('/local/file/path') """
-        g = URLGrabber()
-        (url, parts) = g._parse_url('/etc/redhat-release')
-        (scheme, host, path, parm, query, frag) = parts
-        self.assertEquals('file:///etc/redhat-release',url)
-        self.assertEquals('file', scheme)
-        self.assertEquals('', host)
-        self.assertEquals('/etc/redhat-release', path)
-        self.assertEquals('', query)
-        self.assertEquals('', frag)
-
-    def test_parse_url_with_prefix(self):
-        """grabber.URLGrabber._parse_url() with .prefix"""
-        base = 'http://foo.com/dir'
-        bases = [base, base+'/']
-        file = 'bar/baz'
-        target = base + '/' + file
-        
-        for b in bases:
-            g = URLGrabber(prefix=b)
-            (url, parts) = g._parse_url(file)
-            self.assertEquals(url, target)
-
     def test_make_callback(self):
         """grabber.URLGrabber._make_callback() tests"""
         def cb(e): pass
@@ -223,6 +192,93 @@ class URLGrabberTestCase(TestCase):
         g = URLGrabber()
         self.assertEquals(g._make_callback(cb),     (cb, (), {}))
         self.assertEquals(g._make_callback(tup_cb), tup_cb)
+
+class URLParserTestCase(TestCase):
+    def setUp(self):
+        pass
+    
+    def tearDown(self):
+        pass
+
+    def test_parse_url_with_prefix(self):
+        """grabber.URLParser.parse() with opts.prefix"""
+        base = 'http://foo.com/dir'
+        bases = [base, base+'/']
+        filename = 'bar/baz'
+        target = base + '/' + filename
+        
+        for b in bases:
+            g = URLGrabber(prefix=b)
+            (url, parts) = g.opts.urlparser.parse(filename, g.opts)
+            self.assertEquals(url, target)
+
+    def _test_url(self, urllist):
+        g = URLGrabber()
+        (url, parts) = g.opts.urlparser.parse(urllist[0], g.opts)
+        if 1:
+            self.assertEquals(url, urllist[1])
+            self.assertEquals(parts, urllist[2])
+        else:
+            if url == urllist[1] and parts == urllist[2]:
+                print 'OK: %s' % urllist[0]
+            else:
+                print 'ERROR: %s' % urllist[0]
+                print '  ' + urllist[1]
+                print '  ' + url
+                print '  ' + urllist[2]
+                print '  ' + parts
+                
+
+    url_tests_all = (
+        ['http://host.com/path/basename.ext?arg1=val1&arg2=val2#hash',
+         'http://host.com/path/basename.ext?arg1=val1&arg2=val2#hash',
+         ('http', 'host.com', '/path/basename.ext', '',
+          'arg1=val1&arg2=val2', 'hash')],
+        ['http://host.com/Path With Spaces/',
+         'http://host.com/Path%20With%20Spaces/',
+         ('http', 'host.com', '/Path%20With%20Spaces/', '', '', '')],
+        ['http://user:pass@host.com:80/',
+         'http://host.com:80/',
+         ('http', 'host.com:80', '/', '', '', '')],
+        ['http://host.com/Already%20Quoted',
+         'http://host.com/Already%20Quoted',
+         ('http', 'host.com', '/Already%20Quoted', '', '', '')],
+        )
+        
+    url_tests_posix = (
+        ['/etc/passwd',
+         'file:///etc/passwd',
+         ('file', '', '/etc/passwd', '', '', '')],
+        )
+    
+    url_tests_nt = (
+        [r'\\foo.com\path\file.ext',
+         'file://foo.com/path/file.ext',
+         ('file', '', '//foo.com/path/file.ext', '', '', '')],
+        [r'C:\path\file.ext',
+         'file:///C|/path/file.ext',
+         ('file', '', '/C|/path/file.ext', '', '', '')],
+        )
+
+    def test_url_parser_all_os(self):
+        """test url parsing common to all OSs"""
+        for f in self.url_tests_all:
+            self._test_url(f)
+
+    def test_url_parser_posix(self):
+        """test url parsing on posix systems"""
+        if not os.name == 'posix':
+            self.skip()
+        for f in self.url_tests_posix:
+            self._test_url(f)
+
+    def test_url_parser_nt(self):
+        """test url parsing on windows systems"""
+        if not os.name == 'nt':
+            self.skip()
+        for f in self.url_tests_nt:
+            self._test_url(f)
+
 
 class FailureTestCase(TestCase):
     """Test failure behavior"""
@@ -383,12 +439,12 @@ class RegetTestBase:
         except: pass
 
     def _make_half_zero_file(self):
-        fo = open(self.filename, 'w')
+        fo = file(self.filename, 'wb')
         fo.write('0'*self.hl)
         fo.close()
 
     def _read_file(self):
-        fo = open(self.filename, 'r')
+        fo = file(self.filename, 'rb')
         data = fo.read()
         fo.close()
         return data
@@ -451,12 +507,14 @@ class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
         tmp = tempfile.mktemp()
-        tmpfo = open(tmp, 'w')
+        tmpfo = file(tmp, 'wb')
         tmpfo.write(self.ref)
         tmpfo.close()
         self.tmp = tmp
         
-        self.url = 'file://' + tmp
+        (url, parts) = grabber.default_grabber.opts.urlparser.parse(
+            tmp, grabber.default_grabber.opts)
+        self.url = url
 
         self.grabber = grabber.URLGrabber(reget='check_timestamp',
                                           copy_local=1)

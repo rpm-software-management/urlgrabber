@@ -283,6 +283,28 @@ RETRY RELATED ARGUMENTS
     passed the same arguments, so you could use the same function for
     both.
       
+  urlparser = URLParser()
+
+    The URLParser class handles pre-processing of URLs, including
+    auth-handling for user/pass encoded in http urls, file handing
+    (that is, filenames not sent as a URL), and URL quoting.  If you
+    want to override any of this behavior, you can pass in a
+    replacement instance.  See also the 'quote' option.
+
+  quote = None
+
+    Whether or not to quote the path portion of a url.
+      quote = 1    ->  quote the URLs (they're not quoted yet)
+      quote = 0    ->  do not quote them (they're already quoted)
+      quote = None ->  guess what to do
+
+    This option only affects proper urls like 'file:///etc/passwd'; it
+    does not affect 'raw' filenames like '/etc/passwd'.  The latter
+    will always be quoted as they are converted to URLs.  Also, only
+    the path part of a url is quoted.  If you need more fine-grained
+    control, you should probably subclass URLParser and pass it in via
+    the 'urlparser' option.
+
 BANDWIDTH THROTTLING
 
   urlgrabber supports throttling via two values: throttle and
@@ -342,7 +364,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.44 2006/02/22 18:26:46 mstenner Exp $
+# $Id: grabber.py,v 1.45 2006/03/02 20:56:57 mstenner Exp $
 
 import os
 import os.path
@@ -593,6 +615,123 @@ def urlread(url, limit=None, **kwargs):
     return default_grabber.urlread(url, limit, **kwargs)
 
 
+class URLParser:
+    """Process the URLs before passing them to urllib2.
+
+    This class does several things:
+
+      * add any prefix
+      * translate a "raw" file to a proper file: url
+      * handle any http or https auth that's encoded within the url
+      * quote the url
+
+    Only the "parse" method is called directly, and it calls sub-methods.
+
+    An instance of this class is held in the options object, which
+    means that it's easy to change the behavior by sub-classing and
+    passing the replacement in.  It need only have a method like:
+
+        url, parts = urlparser.parse(url, opts)
+    """
+
+    def parse(self, url, opts):
+        """parse the url and return the (modified) url and its parts
+
+        Note: a raw file WILL be quoted when it's converted to a URL.
+        However, other urls (ones which come with a proper scheme) may
+        or may not be quoted according to opts.quote
+
+          opts.quote = 1     --> quote it
+          opts.quote = 0     --> do not quote it
+          opts.quote = None  --> guess
+        """
+        quote = opts.quote
+        
+        if opts.prefix:
+            url = self.add_prefix(url, opts.prefix)
+            
+        parts = urlparse.urlparse(url)
+        (scheme, host, path, parm, query, frag) = parts
+
+        if not scheme or (len(scheme) == 1 and scheme in string.letters):
+            # if a scheme isn't specified, we guess that it's "file:"
+            if url[0] not in '/\\': url = os.path.abspath(url)
+            url = 'file:' + urllib.pathname2url(url)
+            parts = urlparse.urlparse(url)
+            quote = 0 # pathname2url quotes, so we won't do it again
+            
+        if scheme in ['http', 'https']:
+            parts = self.process_http(parts)
+            
+        if quote is None:
+            quote = self.guess_should_quote(parts)
+        if quote:
+            parts = self.quote(parts)
+        
+        url = urlparse.urlunparse(parts)
+        return url, parts
+
+    def add_prefix(self, url, prefix):
+        if prefix[-1] == '/' or url[0] == '/':
+            url = prefix + url
+        else:
+            url = prefix + '/' + url
+        return url
+
+    def process_http(self, parts):
+        (scheme, host, path, parm, query, frag) = parts
+
+        if '@' in host and auth_handler:
+            try:
+                user_pass, host = host.split('@', 1)
+                if ':' in user_pass:
+                    user, password = user_pass.split(':', 1)
+            except ValueError, e:
+                raise URLGrabError(1, _('Bad URL: %s') % url)
+            if DEBUG: DEBUG.info('adding HTTP auth: %s, %s', user, password)
+            auth_handler.add_password(None, host, user, password)
+
+        return (scheme, host, path, parm, query, frag)
+
+    def quote(self, parts):
+        """quote the URL
+
+        This method quotes ONLY the path part.  If you need to quote
+        other parts, you should override this and pass in your derived
+        class.  The other alternative is to quote other parts before
+        passing into urlgrabber.
+        """
+        (scheme, host, path, parm, query, frag) = parts
+        path = urllib.quote(path)
+        return (scheme, host, path, parm, query, frag)
+
+    hexvals = '0123456789ABCDEF'
+    def guess_should_quote(self, parts):
+        """
+        Guess whether we should quote a path.  This amounts to
+        guessing whether it's already quoted.
+
+        find ' '   ->  1
+        find '%'   ->  1
+        find '%XX' ->  0
+        else       ->  1
+        """
+        (scheme, host, path, parm, query, frag) = parts
+        if ' ' in path:
+            return 1
+        ind = string.find(path, '%')
+        if ind > -1:
+            while ind > -1:
+                if len(path) < ind+3:
+                    return 1
+                code = path[ind+1:ind+3].upper()
+                if     code[0] not in self.hexvals or \
+                       code[1] not in self.hexvals:
+                    return 1
+                ind = string.find(path, '%', ind+1)
+            return 0
+        return 1
+    
 class URLGrabberOptions:
     """Class to ease kwargs handling."""
 
@@ -667,6 +806,8 @@ class URLGrabberOptions:
         self.http_headers = None
         self.ftp_headers = None
         self.data = None
+        self.urlparser = URLParser()
+        self.quote = None
 
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -735,7 +876,7 @@ class URLGrabber:
         like any other file object.
         """
         opts = self.opts.derive(**kwargs)
-        (url,parts) = self._parse_url(url) 
+        (url,parts) = opts.urlparser.parse(url, opts) 
         def retryfunc(opts, url):
             return URLGrabberFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
@@ -747,16 +888,16 @@ class URLGrabber:
         different from the passed-in filename if copy_local == 0.
         """
         opts = self.opts.derive(**kwargs)
-        (url, parts) = self._parse_url(url)
+        (url,parts) = opts.urlparser.parse(url, opts) 
         (scheme, host, path, parm, query, frag) = parts
         if filename is None:
-            if scheme in [ 'http', 'https' ]:
-                filename = os.path.basename( urllib.unquote(path) )
-            else:
-                filename = os.path.basename( path )
+            filename = os.path.basename( urllib.unquote(path) )
         if scheme == 'file' and not opts.copy_local:
             # just return the name of the local file - don't make a 
             # copy currently
+            path = urllib.url2pathname(path)
+            if host:
+                path = os.path.normpath('//' + host + path)
             if not os.path.exists(path):
                 raise URLGrabError(2, 
                       _('Local file does not exist: %s') % (path, ))
@@ -791,7 +932,7 @@ class URLGrabber:
         into memory, but don't use too much'
         """
         opts = self.opts.derive(**kwargs)
-        (url, parts) = self._parse_url(url)
+        (url,parts) = opts.urlparser.parse(url, opts) 
         if limit is not None:
             limit = limit + 1
             
@@ -822,41 +963,6 @@ class URLGrabber:
             raise URLGrabError(8, 
                         _('Exceeded limit (%i): %s') % (limit, url))
         return s
-        
-    def _parse_url(self,url):
-        """break up the url into its component parts
-
-        This function disassembles a url and
-        1) "normalizes" it, tidying it up a bit
-        2) does any authentication stuff it needs to do
-
-        it returns the (cleaned) url and a tuple of component parts
-        """
-        if self.opts.prefix:
-            p = self.opts.prefix
-            if p[-1] == '/' or url[0] == '/': url = p + url
-            else: url = p + '/' + url
-            
-        (scheme, host, path, parm, query, frag) = \
-                                             urlparse.urlparse(url)
-        if not scheme:
-            if not url[0] == '/': url = os.path.abspath(url)
-            url = 'file:' + url
-            (scheme, host, path, parm, query, frag) = \
-                                             urlparse.urlparse(url)
-        path = os.path.normpath(path)
-        if scheme in ['http', 'https']: path = urllib.quote(path)
-        if '@' in host and auth_handler and scheme in ['http', 'https']:
-            try:
-                user_pass, host = host.split('@', 1)
-                if ':' in user_pass: user, password = user_pass.split(':', 1)
-            except ValueError, e:
-                raise URLGrabError(1, _('Bad URL: %s') % url)
-            if DEBUG: DEBUG.info('adding HTTP auth: %s, %s', user, password)
-            auth_handler.add_password(None, host, user, password)
-        parts = (scheme, host, path, parm, query, frag)
-        url = urlparse.urlunparse(parts)
-        return url, parts
         
     def _make_callback(self, callback_obj):
         if callable(callback_obj):
@@ -980,6 +1086,7 @@ class URLGrabberFileObject:
                 fo, hdr = self._make_request(req, opener)
 
         (scheme, host, path, parm, query, frag) = urlparse.urlparse(self.url)
+        path = urllib.unquote(path)
         if not (self.opts.progress_obj or self.opts.raw_throttle() \
                 or self.opts.timeout):
             # if we're not using the progress_obj, throttling, or timeout
@@ -995,10 +1102,10 @@ class URLGrabberFileObject:
             except (KeyError, ValueError, TypeError): 
                 length = None
 
-            self.opts.progress_obj.start(str(self.filename), self.url, 
+            self.opts.progress_obj.start(str(self.filename),
+                                         urllib.unquote(self.url),
                                          os.path.basename(path), 
-                                         length,
-                                         text=self.opts.text)
+                                         length, text=self.opts.text)
             self.opts.progress_obj.update(0)
         (self.fo, self.hdr) = (fo, hdr)
     

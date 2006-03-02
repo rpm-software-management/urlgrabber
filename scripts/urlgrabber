@@ -62,7 +62,7 @@ RETRY OPTIONS
                        explicitly.
 """
 
-# $Id: urlgrabber,v 1.4 2004/09/07 21:19:54 mstenner Exp $
+# $Id: urlgrabber,v 1.5 2006/03/02 20:56:56 mstenner Exp $
 
 import sys
 import urlgrabber.grabber
@@ -112,7 +112,7 @@ def main():
         print 'URL:    ', url
         print 'FILE:   ', file
         
-    try: from progress import text_progress_meter
+    try: from urlgrabber.progress import text_progress_meter
     except ImportError, e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
     
