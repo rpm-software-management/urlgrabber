@@ -1,3 +1,35 @@
+2006-07-20  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 2.9.10
+
+2006-07-20  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/: byterange.py, grabber.py, keepalive.py:
+
+	Added patch from James Bowes to make keepalive, byteranges, etc.
+	work with https (oops!)
+
+2006-04-04  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/keepalive.py:
+
+	Fixed a minor error reporting bug due to changes in python 2.4.
+
+2006-03-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/grabber.py:
+
+	Patch from Jeremy Katz to catch read errors after the file has been
+	opened.
+
+2006-03-02  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2006-03-02  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/__init__.py:
