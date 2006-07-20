@@ -364,7 +364,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.46 2006/03/22 20:09:33 mstenner Exp $
+# $Id: grabber.py,v 1.47 2006/07/20 20:15:58 mstenner Exp $
 
 import os
 import os.path
@@ -402,24 +402,25 @@ try:
     # This is a convenient way to make keepalive optional.
     # Just rename the module so it can't be imported.
     import keepalive
-    from keepalive import HTTPHandler
+    from keepalive import HTTPHandler, HTTPSHandler
 except ImportError, msg:
-    keepalive_handler = None
+    keepalive_handlers = ()
 else:
-    keepalive_handler = HTTPHandler()
+    keepalive_handlers = (HTTPHandler(), HTTPSHandler())
 
 try:
     # add in range support conditionally too
     import byterange
-    from byterange import HTTPRangeHandler, FileRangeHandler, \
-         FTPRangeHandler, range_tuple_normalize, range_tuple_to_header, \
-         RangeError
+    from byterange import HTTPRangeHandler, HTTPSRangeHandler, \
+         FileRangeHandler, FTPRangeHandler, range_tuple_normalize, \
+         range_tuple_to_header, RangeError
 except ImportError, msg:
     range_handlers = ()
     RangeError = None
     have_range = 0
 else:
-    range_handlers = (HTTPRangeHandler(), FileRangeHandler(), FTPRangeHandler())
+    range_handlers = (HTTPRangeHandler(), HTTPSRangeHandler(),
+        FileRangeHandler(), FTPRangeHandler())
     have_range = 1
 
 
@@ -454,7 +455,7 @@ def set_logger(DBOBJ):
 
     global DEBUG
     DEBUG = DBOBJ
-    if keepalive_handler and keepalive.DEBUG is None:
+    if keepalive_handlers and keepalive.DEBUG is None:
         keepalive.DEBUG = DBOBJ
     if have_range and byterange.DEBUG is None:
         byterange.DEBUG = DBOBJ
@@ -582,7 +583,8 @@ class CallbackObject:
 
 def close_all():
     """close any open keepalive connections"""
-    if keepalive_handler: keepalive_handler.close_all()
+    for handler in keepalive_handlers: 
+        handler.close_all()
 
 def urlgrab(url, filename=None, **kwargs):
     """grab the file at <url> and make a local copy at <filename>
@@ -1012,7 +1014,7 @@ class URLGrabberFileObject:
             return self.opts.opener
         elif self._opener is None:
             handlers = []
-            need_keepalive_handler = (keepalive_handler and self.opts.keepalive)
+            need_keepalive_handler = (keepalive_handlers and self.opts.keepalive)
             need_range_handler = (range_handlers and \
                                   (self.opts.range or self.opts.reget))
             # if you specify a ProxyHandler when creating the opener
@@ -1043,7 +1045,7 @@ class URLGrabberFileObject:
                 # -------------------------------------------------------
                     
             if need_keepalive_handler:
-                handlers.append( keepalive_handler )
+                handlers.extend( keepalive_handlers )
             if need_range_handler:
                 handlers.extend( range_handlers )
             handlers.append( auth_handler )

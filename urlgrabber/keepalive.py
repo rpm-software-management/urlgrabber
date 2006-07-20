@@ -99,7 +99,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.14 2006/04/04 21:00:32 mstenner Exp $
+# $Id: keepalive.py,v 1.15 2006/07/20 20:15:58 mstenner Exp $
 
 import urllib2
 import httplib
@@ -172,7 +172,7 @@ class ConnectionManager:
         else:
             return dict(self._hostmap)
 
-class HTTPHandler(urllib2.HTTPHandler):
+class KeepAliveHandler:
     def __init__(self):
         self._cm = ConnectionManager()
         
@@ -207,9 +207,6 @@ class HTTPHandler(urllib2.HTTPHandler):
         self._cm.remove(connection)
         
     #### Transaction Execution
-    def http_open(self, req):
-        return self.do_open(HTTPConnection, req)
-
     def do_open(self, http_class, req):
         host = req.get_host()
         if not host:
@@ -324,6 +321,20 @@ class HTTPHandler(urllib2.HTTPHandler):
         if req.has_data():
             h.send(data)
 
+class HTTPHandler(KeepAliveHandler, urllib2.HTTPHandler):
+    def __init__(self):
+        KeepAliveHandler.__init__(self)
+
+    def http_open(self, req):
+        return self.do_open(HTTPConnection, req)
+
+class HTTPSHandler(KeepAliveHandler, urllib2.HTTPSHandler):
+    def __init__(self):
+        KeepAliveHandler.__init__(self)
+    
+    def https_open(self, req):
+        return self.do_open(HTTPSConnection, req)
+
 class HTTPResponse(httplib.HTTPResponse):
     # we need to subclass HTTPResponse in order to
     # 1) add readline() and readlines() methods
@@ -424,6 +435,9 @@ class HTTPResponse(httplib.HTTPResponse):
 
 class HTTPConnection(httplib.HTTPConnection):
     # use the modified response class
+    response_class = HTTPResponse
+
+class HTTPSConnection(httplib.HTTPSConnection):
     response_class = HTTPResponse
     
 #########################################################################

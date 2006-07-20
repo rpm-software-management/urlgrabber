@@ -17,7 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: byterange.py,v 1.11 2005/10/22 21:57:28 mstenner Exp $
+# $Id: byterange.py,v 1.12 2006/07/20 20:15:58 mstenner Exp $
 
 import os
 import stat
@@ -70,6 +70,15 @@ class HTTPRangeHandler(urllib2.BaseHandler):
     def http_error_416(self, req, fp, code, msg, hdrs):
         # HTTP's Range Not Satisfiable error
         raise RangeError('Requested Range Not Satisfiable')
+
+class HTTPSRangeHandler(HTTPRangeHandler):
+    """ Range Header support for HTTPS. """
+
+    def https_error_206(self, req, fp, code, msg, hdrs):
+        return self.http_error_206(req, fp, code, msg, hdrs)
+
+    def https_error_416(self, req, fp, code, msg, hdrs):
+        self.https_error_416(req, fp, code, msg, hdrs)
 
 class RangeableFileObject:
     """File object wrapper to enable raw range handling.
