@@ -14,7 +14,7 @@
 
 # Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.17 2006/03/02 21:06:35 mstenner Exp $
+# $Id: __init__.py,v 1.18 2006/07/20 20:17:24 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 
@@ -44,8 +44,8 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '2.9.9'
-__date__    = '2006/03/02'
+__version__ = '2.9.10'
+__date__    = '2006/07/20'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>'
 __url__     = 'http://linux.duke.edu/projects/urlgrabber/'
