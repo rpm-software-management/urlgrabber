@@ -14,7 +14,7 @@
 
 # Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
 
-# $Id: __init__.py,v 1.19 2006/09/21 23:17:36 mstenner Exp $
+# $Id: __init__.py,v 1.20 2006/09/22 00:58:55 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 
@@ -44,7 +44,7 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '3.0.0'
+__version__ = '3.1.0'
 __date__    = '2006/09/21'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>'
