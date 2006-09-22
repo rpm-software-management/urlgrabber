@@ -1,3 +1,22 @@
+2006-09-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* urlgrabber/__init__.py:
+
+	release 3.1.0
+
+2006-09-22  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* test/grabberperf.py, urlgrabber/grabber.py,
+	urlgrabber/keepalive.py, urlgrabber/sslfactory.py:
+
+	Added James Bowes' SSL patch to use M2Crypto when available.
+
+2006-09-21  Michael D. Stenner <mstenner@linux.duke.edu>
+
+	* ChangeLog:
+
+	updated ChangeLog
+
 2006-09-21  Michael D. Stenner <mstenner@linux.duke.edu>
 
 	* urlgrabber/__init__.py:
