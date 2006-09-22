@@ -123,8 +123,6 @@ def speedtest(size):
     print_result('raw', raw_times)
     print_result('none', none_times)
 
-    grabber.close_all()
-
 def print_result(label, result_list):
     format = '[%4s] mean: %6.3f ms, median: %6.3f ms, ' \
              'min: %6.3f ms, max: %6.3f ms'

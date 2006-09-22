@@ -364,7 +364,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.47 2006/07/20 20:15:58 mstenner Exp $
+# $Id: grabber.py,v 1.48 2006/09/22 00:58:05 mstenner Exp $
 
 import os
 import os.path
@@ -385,6 +385,8 @@ try:
 except:
     __version__ = '???'
 
+import sslfactory
+
 auth_handler = urllib2.HTTPBasicAuthHandler( \
      urllib2.HTTPPasswordMgrWithDefaultRealm())
 
@@ -403,10 +405,9 @@ try:
     # Just rename the module so it can't be imported.
     import keepalive
     from keepalive import HTTPHandler, HTTPSHandler
+    have_keepalive = True
 except ImportError, msg:
-    keepalive_handlers = ()
-else:
-    keepalive_handlers = (HTTPHandler(), HTTPSHandler())
+    have_keepalive = False
 
 try:
     # add in range support conditionally too
@@ -455,10 +456,12 @@ def set_logger(DBOBJ):
 
     global DEBUG
     DEBUG = DBOBJ
-    if keepalive_handlers and keepalive.DEBUG is None:
+    if have_keepalive and keepalive.DEBUG is None:
         keepalive.DEBUG = DBOBJ
     if have_range and byterange.DEBUG is None:
         byterange.DEBUG = DBOBJ
+    if sslfactory.DEBUG is None:
+        sslfactory.DEBUG = DBOBJ
 
 def _init_default_logger():
     '''Examines the environment variable URLGRABBER_DEBUG and creates
@@ -580,11 +583,6 @@ class CallbackObject:
     """
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-
-def close_all():
-    """close any open keepalive connections"""
-    for handler in keepalive_handlers: 
-        handler.close_all()
 
 def urlgrab(url, filename=None, **kwargs):
     """grab the file at <url> and make a local copy at <filename>
@@ -810,6 +808,8 @@ class URLGrabberOptions:
         self.data = None
         self.urlparser = URLParser()
         self.quote = None
+        self.ssl_ca_cert = None
+        self.ssl_context = None
 
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
@@ -1007,14 +1007,14 @@ class URLGrabberFileObject:
         if hasattr(self.fo, name):
             return getattr(self.fo, name)
         raise AttributeError, name
-    
+   
     def _get_opener(self):
         """Build a urllib2 OpenerDirector based on request options."""
         if self.opts.opener:
             return self.opts.opener
         elif self._opener is None:
             handlers = []
-            need_keepalive_handler = (keepalive_handlers and self.opts.keepalive)
+            need_keepalive_handler = (have_keepalive and self.opts.keepalive)
             need_range_handler = (range_handlers and \
                                   (self.opts.range or self.opts.reget))
             # if you specify a ProxyHandler when creating the opener
@@ -1043,16 +1043,20 @@ class URLGrabberFileObject:
                 if not need_range_handler:
                     handlers.append( urllib2.FTPHandler() )
                 # -------------------------------------------------------
-                    
+
+            ssl_factory = sslfactory.get_factory(self.opts.ssl_ca_cert,
+                self.opts.ssl_context)
+
             if need_keepalive_handler:
-                handlers.extend( keepalive_handlers )
+                handlers.append(HTTPHandler())
+                handlers.append(HTTPSHandler(ssl_factory))
             if need_range_handler:
                 handlers.extend( range_handlers )
             handlers.append( auth_handler )
             if self.opts.cache_openers:
-              self._opener = CachedOpenerDirector(*handlers)
+                self._opener = CachedOpenerDirector(ssl_factory, *handlers)
             else:
-              self._opener = urllib2.build_opener(*handlers)
+                self._opener = ssl_factory.create_opener(*handlers)
             # OK, I don't like to do this, but otherwise, we end up with
             # TWO user-agent headers.
             self._opener.addheaders = []
@@ -1297,13 +1301,15 @@ class URLGrabberFileObject:
             except: pass
 
 _handler_cache = []
-def CachedOpenerDirector(*handlers):
+def CachedOpenerDirector(ssl_factory = None, *handlers):
     for (cached_handlers, opener) in _handler_cache:
         if cached_handlers == handlers:
             for handler in opener.handlers:
                 handler.add_parent(opener)
             return opener
-    opener = urllib2.build_opener(*handlers)
+    if not ssl_factory:
+        ssl_factory = sslfactory.get_factory()
+    opener = ssl_factory.create_opener(*handlers)
     _handler_cache.append( (handlers, opener) )
     return opener
 
@@ -1418,7 +1424,6 @@ def _retry_test():
         print 'success'
         return
         
-    close_all()
     kwargs['checkfunc'] = (cfunc, ('hello',), {'there':'there'})
     try: name = apply(retrygrab, (url, filename), kwargs)
     except URLGrabError, e: print e

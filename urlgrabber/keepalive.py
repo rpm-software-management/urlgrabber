@@ -99,7 +99,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.15 2006/07/20 20:15:58 mstenner Exp $
+# $Id: keepalive.py,v 1.16 2006/09/22 00:58:05 mstenner Exp $
 
 import urllib2
 import httplib
@@ -107,6 +107,8 @@ import socket
 import thread
 
 DEBUG = None
+
+import sslfactory
 
 import sys
 if sys.version_info < (2, 4): HANDLE_ERRORS = 1
@@ -207,7 +209,7 @@ class KeepAliveHandler:
         self._cm.remove(connection)
         
     #### Transaction Execution
-    def do_open(self, http_class, req):
+    def do_open(self, req):
         host = req.get_host()
         if not host:
             raise urllib2.URLError('no host given')
@@ -228,7 +230,7 @@ class KeepAliveHandler:
                 h = self._cm.get_ready_conn(host)
             else:
                 # no (working) free connections were found.  Create a new one.
-                h = http_class(host)
+                h = self._get_connection(host)
                 if DEBUG: DEBUG.info("creating new connection to %s (%d)",
                                      host, id(h))
                 self._cm.add(host, h, 0)
@@ -321,19 +323,31 @@ class KeepAliveHandler:
         if req.has_data():
             h.send(data)
 
+    def _get_connection(self, host):
+        return NotImplementedError
+
 class HTTPHandler(KeepAliveHandler, urllib2.HTTPHandler):
     def __init__(self):
         KeepAliveHandler.__init__(self)
 
     def http_open(self, req):
-        return self.do_open(HTTPConnection, req)
+        return self.do_open(req)
+
+    def _get_connection(self, host):
+        return HTTPConnection(host)
 
 class HTTPSHandler(KeepAliveHandler, urllib2.HTTPSHandler):
-    def __init__(self):
+    def __init__(self, ssl_factory=None):
         KeepAliveHandler.__init__(self)
+        if not ssl_factory:
+            ssl_factory = sslfactory.get_factory()
+        self._ssl_factory = ssl_factory
     
     def https_open(self, req):
-        return self.do_open(HTTPSConnection, req)
+        return self.do_open(req)
+
+    def _get_connection(self, host):
+        return self._ssl_factory.get_https_connection(host)
 
 class HTTPResponse(httplib.HTTPResponse):
     # we need to subclass HTTPResponse in order to
