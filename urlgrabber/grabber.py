@@ -364,7 +364,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.48 2006/09/22 00:58:05 mstenner Exp $
+# $Id: grabber.py,v 1.49 2006/12/05 23:50:36 mstenner Exp $
 
 import os
 import os.path
@@ -1198,13 +1198,21 @@ class URLGrabberFileObject:
         """dump the file to self.filename."""
         if self.append: new_fo = open(self.filename, 'ab')
         else: new_fo = open(self.filename, 'wb')
+        try:
+            # if we have a known range, only try to read that much.
+            (low, high) = self.opts.range
+            amount = high - low
+        except TypeError, ValueError:
+            amount = None
         bs = 1024*8
         size = 0
 
+        if amount is not None: bs = min(bs, amount - size)
         block = self.read(bs)
         size = size + len(block)
         while block:
             new_fo.write(block)
+            if amount is not None: bs = min(bs, amount - size)
             block = self.read(bs)
             size = size + len(block)
 
