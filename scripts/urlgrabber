@@ -17,108 +17,278 @@
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
-# Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
+# Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
 
-"""Usage: urlgrabber [OPTIONS] URL [FILE]
+"""NAME
+  urlgrabber - a simple client for the urlgrabber python package
 
-OPTIONS
+DESCRIPTION
+  This is a thin client for the urlgrabber python package.  It is
+  provided mainly for helping debug the python package.  It provides
+  low-level access to most urlgrabber features from the shell.
 
-    --copy-local       ignored except for file:// urls, in which case
-                       it specifies whether urlgrab should still make 
-                       a copy of the file, or simply point to the 
-                       existing copy.
-    --throttle=NUMBER  if it's an int, it's the bytes/second throttle 
-                       limit.  If it's a float, it is first multiplied
-                       by bandwidth.  If throttle == 0, throttling is 
-                       disabled.  If None, the module-level default 
-                       (which can be set with set_throttle) is used.
-    --bandwidth=NUMBER the nominal max bandwidth in bytes/second.  If
-                       throttle is a float and bandwidth == 0, 
-                       throttling is disabled.  If None, the 
-                       module-level default (which can be set with 
-                       set_bandwidth) is used.
-    --range=RANGE      a tuple of the form first_byte,last_byte 
-                       describing a byte range to retrieve. Either or 
-                       both of the values may be specified.  If 
-                       first_byte is None, byte offset 0 is assumed. 
-                       If last_byte is None, the last byte available 
-                       is assumed. Note that both first and last_byte 
-                       values are inclusive so a range of (10,11) 
-                       would return the 10th and 11th bytes of the 
-                       resource.
-    --user-agent=STR   the user-agent string provide if the url is HTTP.
+  There are two types of options available for this program.  They are
+  'client options' and 'module options'.  Client options apply
+  specifically to the behavior of this client, whereas module options
+  are built-in options to the urlgrabber module.  Both of these are
+  avaible from the client command line, but they're documented a
+  little differently.  Client options are documented here, and module
+  options are documented through the '--help <option>' syntax.
 
-RETRY OPTIONS
+CLIENT OPTIONS
+  -h, --help
 
-    --retry=NUMBER     the number of times to retry the grab before 
-                       bailing.  If this is zero, it will retry 
-                       forever. This was intentional... really, it was 
-                       :). If this value is not supplied or is supplied
-                       but is None retrying does not occur.
-    --retrycodes       a sequence of errorcodes (values of e.errno) for 
-                       which it should retry. See the doc on 
-                       URLGrabError for more details on this. retrycodes 
-                       defaults to -1,2,4,5,6,7 if not specified 
-                       explicitly.
+     In its short form, (-h) this provides a short usage discription.
+     In its long form, it processes the remaining command line as help
+     topics.  Legal topics are:
+       doc          this info
+       options      a list of module options
+       <option(s)>  documentation for a given module option
+       all          documentation for all module options
+
+     Examples:
+       urlgrabber --help options
+       urlgrabber --help copy_local
+
+  -o FILE
+
+     By default, downloaded data will be written to a file named using
+     the basename of the url.  For example,
+     'http://foo.com/index.html' will be written to 'index.html'.  You
+     can override this for your convenience or when necessary for urls
+     like 'http://foo.com/'
+     
+  -O
+
+     Print the local name of each downloaded file to STDOUT.  This is
+     helpful when not using the '-o' option, but is particularly
+     useful when using --copy_local=0 (the default) on local files
+     because local files will not be copied and the output filename
+     will not be the same as that provided with '-o'.
+
+  -p, --progress
+
+     Use the default text-based progress meter.
+
+  -v, --verbose=N
+
+     Increment the verbosity level with each use of '-v' or set it
+     directly with --verbose=N.  Currently, distinct levels are 0-2.
+     The default is 0.
+
+  -d SPEC, --debug=SPEC
+
+     Turn on internal urlgrabber debugging.  This is equivalent (but
+     overrides) running with the environment variable:
+       URLGRABBER_DEBUG=SPEC 
+     SPEC can be of the form LEVEL,FILENAME, where
+     LEVEL can be string (DEBUG, WARN, etc) or number.
+     FILENAME can be the name of a file or "-" for STDOUT.  The
+     default is STDERR.  Example: -d1,- logs everything to STDOUT.
+     Note: this only works for python > 2.3 because it requires the
+     logging package.
+
+  -D
+
+     A convenience alias for: --verbose=3 --progress --debug=1,- 
+
 """
 
-# $Id: urlgrabber,v 1.5 2006/03/02 20:56:56 mstenner Exp $
+MAINHELP = """usage: urlgrabber [options] <url>
+urlgrabber - a simple client for the urlgrabber python package
+
+options:
+  -h, --help        print this message
+  --help doc        print basic intro and documentation
+  --help options    list available options to the grabber module
+  --help <option>   print documentation for a module option
+  --help all        print documentation for all module options
+  --<option>=VAL    specify a module option. VAL must be a python value,
+                    including quotes in the case of strings.
+                    e.g.  --user_agent='"foobar/2.0"'
+
+  -o FILE           write output to FILE, otherwise the basename of the
+                    url will be used
+  -O                print the names of saved files to STDOUT
+  -p, --progress    use the default text progress meter
+  -v                increment the verbosity level (defaults to 0)
+  --verbose=N       set the verbosity level to N
+  -d SPEC, --debug=SPEC
+                    turn on urlgrabber module debugging with
+                    SPEC=LEVEL,FILENAME.  e.g. -d 1,debug.txt
+  -D                a convenience option equivalent to:
+                    --verbose=3 --progress --debug=1,- 
+  
+  """
+
+# $Id: urlgrabber,v 1.6 2006/12/07 02:26:59 mstenner Exp $
 
 import sys
+import getopt
+import re
+
 import urlgrabber.grabber
-from urlgrabber.grabber import urlgrab
+from urlgrabber.grabber import URLGrabber, URLGrabberOptions, URLGrabError
 
-DEBUG=0
-
-def main():
-    kwargs = {}
-    url = None
-    file = None
-    proxies = {}
+class client_options:
+    def __init__(self):
+        self.ug_options, self.ug_defaults = self.get_ug_options()
+        self.process_command_line()
     
-    for arg in sys.argv[1:]:
-        if arg in ('--help','-h','-?'):
-            print __doc__
-            sys.exit(0)
-        elif arg in ('--debug', '-d'):
-            global DEBUG
-            DEBUG = 1
-        elif arg.startswith('--'):
-            ls = arg[2:].split('=')
-            a,v = (ls[0],len(ls) > 1 and ls[1] or 1)
-            a = a.replace('-','_')
-            if v is None: v = 1
-            if a in ('retrycodes','range'):
-                v = v.split(',')
-            if a.endswith('_proxy'):
-                proxies[ a[0:a.find('_')] ] = v
-                continue
-            if DEBUG: print a, '=', v
-            kwargs[a] = v
-        elif not url:
-            url = arg
-        elif not file:
-            file = arg
-        else:
-            print "Bad usage. Try %s --help"  % (sys.argv[0],)
-            sys.exit(99)
-    if url is None:
-        print "Bad usage. Try %s --help"  % (sys.argv[0],)
-        sys.exit(99)
-    if len(proxies):
-        kwargs['proxies'] = proxies
-    if DEBUG:
-        print 'kwargs: ', kwargs
-        print 'URL:    ', url
-        print 'FILE:   ', file
+    def get_ug_options(self):
+        ugo = URLGrabberOptions()
+        ug_options = ['copy_local', 'keepalive', 'prefix', 'reget',
+                      'data', 'quote', 'throttle', 'bandwidth',
+                      'proxies', 'retry', 'retrycodes',
+                      'range', 'user_agent', 
+                      'http_headers', 'ftp_headers', 
+                      'ssl_ca_cert', 'ssl_context',
+                      'text', 'close_connection',
+                      'cache_openers','timeout']
+        options_exclude = ['delegate', 'interrupt_callback',
+                           'failure_callback', 'urlparser', 'opener',
+                           'checkfunc', 'progress_obj']
+        for k in ugo.__dict__.keys():
+            if (k not in ug_options) and (k not in options_exclude):
+                ug_options.append(k)
+                #print k
+        ug_defaults = {}
+        for k in list(ug_options):
+            try:
+                ug_defaults[k] = repr(getattr(ugo, k))
+            except AttributeError:
+                ug_options.remove(k)
+        return ug_options, ug_defaults
+
+    def process_command_line(self):
+        short_options = 'vd:hoOpD'
+        long_options = ['verbose=', 'debug=', 'help', 'progress']
+        ug_long = [ o + '=' for o in self.ug_options ]
+        optlist, args = getopt.getopt(sys.argv[1:], short_options,
+                                      long_options + ug_long)
+        self.verbose = 0
+        self.debug = None
+        self.outputfile = None
+        self.localfile = 0
+        self.progress = 0
+        self.ugops = {}
+        self.args = args
         
-    try: from urlgrabber.progress import text_progress_meter
-    except ImportError, e: pass
-    else: kwargs['progress_obj'] = text_progress_meter()
-    
-    urlgrabber.grabber.DEBUG = DEBUG
-    filename = urlgrab(url,filename=file,**kwargs)
-    print "file written to %s" % (filename,)
+        ug_dash = [ '--' + o for o in self.ug_options ]
+        if not args: self.help(args)
+        for (o, v) in optlist:
+            if o == '--help' or o == '-h': self.help(args)
+            if o == '--verbose': self.verbose = v
+            if o == '-v':        self.verbose += 1
+            if o == '-o':        self.outputfile = v
+            if o == '-p' or o == '--progress': self.progress = 1
+            if o == '-d' or o == '--debug': self.debug = v
+            if o == '-O': self.localfile = 1
+            if o == '-D':
+                self.verbose = 3
+                self.debug = "1,-"
+                self.progress = 1
+            if o in ug_dash:
+                try:
+                    val = eval(v)
+                except Exception, e:
+                    print "error processing option value: %s" % v
+                    print e
+                    sys.exit(1)
+                else:
+                    self.ugops[o[2:]] = val
+
+    def help(self, args):
+        if not args:
+            print MAINHELP
+        else:
+            for a in args:
+                m = getattr(self, 'help_'+a, None)
+                if m is not None:
+                    m()
+                elif a in self.ug_options:
+                    self.help_ug_option(a)
+                else:
+                    print 'ERROR: no help on command "%s"' % a
+        sys.exit(0)
+
+    def help_doc(self):
+        print __doc__
+
+    def help_options(self):
+        width = max(map(len, self.ug_options))
+        format  = '  %-' + str(width) + 's = %s'
+        hformat = '  %-' + str(width) + 's   %s'
+        print hformat % ('OPTION', 'DEFAULT')
+        print '-'*(width + 20)
+        for k in self.ug_options:
+            print format % (k, self.ug_defaults[k])
+
+    def help_all(self):
+        for k in self.ug_options:
+            self.help_ug_option(k)
+
+    def help_ug_option(self, option):
+        help = ''
+        m = re.search(r'^(  '+option+'.*?)\s*^ {,2}\S',
+                     urlgrabber.grabber.__doc__, re.M|re.S)
+        if m:
+            print m.group(1)
+        else:
+            print '  %s:  no help found for this option' % option
+        print ''
+            
+class ugclient:
+    def run(self):
+        op = client_options()
+        if op.verbose >= 2 and op.ugops:
+            print "Module Options:"
+            width = max(map(len, op.ugops.keys()))
+            format = "  %-" + str(width) + "s = %s"
+            for k, v in op.ugops.items():
+                print format % (k, repr(v))
+
+        if op.debug:
+            self.set_debug_logger(op.debug)
+
+        kwargs = dict(op.ugops)
+        if op.progress:
+            from urlgrabber.progress import text_progress_meter
+            kwargs['progress_obj'] = text_progress_meter()
+
+        g = URLGrabber(**kwargs)
+        if len(op.args) > 1 and op.outputfile is not None:
+            print "ERROR: cannot use -o when grabbing multiple files"
+            sys.exit(1)
+        for url in op.args:
+            if op.verbose: print 'grabbing: %s' % url
+            try:
+                f = g.urlgrab(url, op.outputfile)
+                if op.localfile: print f
+            except URLGrabError, e:
+                print e
+                
+    def set_debug_logger(self, dbspec):
+        try:
+            dbinfo = dbspec.split(',')
+            import logging
+            level = logging._levelNames.get(dbinfo[0], int(dbinfo[0]))
+            if level < 1: raise ValueError()
+            
+            formatter = logging.Formatter('%(asctime)s %(message)s')
+            if len(dbinfo) > 1: filename = dbinfo[1]
+            else: filename = ''
+            if filename == '': handler = logging.StreamHandler(sys.stderr)
+            elif filename == '-': handler = logging.StreamHandler(sys.stdout)
+            else:  handler = logging.FileHandler(filename)
+            handler.setFormatter(formatter)
+            DBOBJ = logging.getLogger('urlgrabber')
+            DBOBJ.addHandler(handler)
+            DBOBJ.setLevel(level)
+        except (KeyError, ImportError, ValueError):
+            DBOBJ = None
+        urlgrabber.grabber.set_logger(DBOBJ)
 
 if __name__ == '__main__':
-    main()
+    ugc = ugclient()
+    ugc.run()

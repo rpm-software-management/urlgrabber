@@ -55,8 +55,9 @@ GENERAL ARGUMENTS (kwargs)
 
   text = None
   
-    specifies an alternativ text item in the beginning of the progress
-    bar line. If not given, the basename of the file is used.
+    specifies alternative text to be passed to the progress meter
+    object.  If not given, the default progress meter will use the
+    basename of the file.
 
   throttle = 1.0
 
@@ -167,6 +168,13 @@ GENERAL ARGUMENTS (kwargs)
     chain integrity.  You are responsible for ensuring that any
     extension handlers are present if said features are required.
     
+  cache_openers = True
+
+    controls whether urllib2 openers should be cached and reused, or
+    whether they should be created each time.  There's a modest
+    overhead in recreating them, but it's slightly safer to do so if
+    you're modifying the handlers between calls.
+
   data = None
 
     Only relevant for the HTTP family (and ignored for other
@@ -178,6 +186,44 @@ GENERAL ARGUMENTS (kwargs)
     option.  Note that python 2.2 handles the case of these
     badly and if you do not use the proper case (shown here), your
     values will be overridden with the defaults.
+    
+  urlparser = URLParser()
+
+    The URLParser class handles pre-processing of URLs, including
+    auth-handling for user/pass encoded in http urls, file handing
+    (that is, filenames not sent as a URL), and URL quoting.  If you
+    want to override any of this behavior, you can pass in a
+    replacement instance.  See also the 'quote' option.
+
+  quote = None
+
+    Whether or not to quote the path portion of a url.
+      quote = 1    ->  quote the URLs (they're not quoted yet)
+      quote = 0    ->  do not quote them (they're already quoted)
+      quote = None ->  guess what to do
+
+    This option only affects proper urls like 'file:///etc/passwd'; it
+    does not affect 'raw' filenames like '/etc/passwd'.  The latter
+    will always be quoted as they are converted to URLs.  Also, only
+    the path part of a url is quoted.  If you need more fine-grained
+    control, you should probably subclass URLParser and pass it in via
+    the 'urlparser' option.
+
+  ssl_ca_cert = None
+
+    this option can be used if M2Crypto is available and will be
+    ignored otherwise.  If provided, it will be used to create an SSL
+    context.  If both ssl_ca_cert and ssl_context are provided, then
+    ssl_context will be ignored and a new context will be created from
+    ssl_ca_cert.
+
+  ssl_context = None
+
+    this option can be used if M2Crypto is available and will be
+    ignored otherwise.  If provided, this SSL context will be used.
+    If both ssl_ca_cert and ssl_context are provided, then ssl_context
+    will be ignored and a new context will be created from
+    ssl_ca_cert.
     
 
 RETRY RELATED ARGUMENTS
@@ -283,28 +329,6 @@ RETRY RELATED ARGUMENTS
     passed the same arguments, so you could use the same function for
     both.
       
-  urlparser = URLParser()
-
-    The URLParser class handles pre-processing of URLs, including
-    auth-handling for user/pass encoded in http urls, file handing
-    (that is, filenames not sent as a URL), and URL quoting.  If you
-    want to override any of this behavior, you can pass in a
-    replacement instance.  See also the 'quote' option.
-
-  quote = None
-
-    Whether or not to quote the path portion of a url.
-      quote = 1    ->  quote the URLs (they're not quoted yet)
-      quote = 0    ->  do not quote them (they're already quoted)
-      quote = None ->  guess what to do
-
-    This option only affects proper urls like 'file:///etc/passwd'; it
-    does not affect 'raw' filenames like '/etc/passwd'.  The latter
-    will always be quoted as they are converted to URLs.  Also, only
-    the path part of a url is quoted.  If you need more fine-grained
-    control, you should probably subclass URLParser and pass it in via
-    the 'urlparser' option.
-
 BANDWIDTH THROTTLING
 
   urlgrabber supports throttling via two values: throttle and
@@ -364,7 +388,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.49 2006/12/05 23:50:36 mstenner Exp $
+# $Id: grabber.py,v 1.50 2006/12/07 02:26:59 mstenner Exp $
 
 import os
 import os.path
@@ -463,7 +487,7 @@ def set_logger(DBOBJ):
     if sslfactory.DEBUG is None:
         sslfactory.DEBUG = DBOBJ
 
-def _init_default_logger():
+def _init_default_logger(logspec=None):
     '''Examines the environment variable URLGRABBER_DEBUG and creates
     a logging object (logging.logger) based on the contents.  It takes
     the form
@@ -489,7 +513,9 @@ def _init_default_logger():
     collect the code into a nice block.'''
 
     try:
-        dbinfo = os.environ['URLGRABBER_DEBUG'].split(',')
+        if logspec is None:
+            logspec = os.environ['URLGRABBER_DEBUG']
+        dbinfo = logspec.split(',')
         import logging
         level = logging._levelNames.get(dbinfo[0], int(dbinfo[0]))
         if level < 1: raise ValueError()
@@ -536,6 +562,7 @@ class URLGrabError(IOError):
         13   - malformed proxy url
         14   - HTTPError (includes .code and .exception attributes)
         15   - user abort
+        16   - error writing to local file
         
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
@@ -1196,8 +1223,16 @@ class URLGrabberFileObject:
         
     def _do_grab(self):
         """dump the file to self.filename."""
-        if self.append: new_fo = open(self.filename, 'ab')
-        else: new_fo = open(self.filename, 'wb')
+        if self.append: mode = 'ab'
+        else: mode = 'wb'
+        if DEBUG: DEBUG.debug('opening local file "%s" with mode %s' % \
+                              (self.filename, mode))
+        try:
+            new_fo = open(self.filename, mode)
+        except IOError, e:
+            raise URLGrabError(16, _(\
+                'error opening local file, IOError: %s') % (e, ))
+
         try:
             # if we have a known range, only try to read that much.
             (low, high) = self.opts.range
@@ -1211,7 +1246,11 @@ class URLGrabberFileObject:
         block = self.read(bs)
         size = size + len(block)
         while block:
-            new_fo.write(block)
+            try:
+                new_fo.write(block)
+            except IOError, e:
+                raise URLGrabError(16, _(\
+                    'error writing to local file, IOError: %s') % (e, ))
             if amount is not None: bs = min(bs, amount - size)
             block = self.read(bs)
             size = size + len(block)
