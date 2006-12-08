@@ -99,7 +99,7 @@ EXTRA ATTRIBUTES AND METHODS
 
 """
 
-# $Id: keepalive.py,v 1.16 2006/09/22 00:58:05 mstenner Exp $
+# $Id: keepalive.py,v 1.17 2006/12/08 00:14:16 mstenner Exp $
 
 import urllib2
 import httplib
@@ -239,10 +239,13 @@ class KeepAliveHandler:
         except (socket.error, httplib.HTTPException), err:
             raise urllib2.URLError(err)
             
-        # if not a persistent connection, don't try to reuse it
-        if r.will_close: self._cm.remove(h)
-
         if DEBUG: DEBUG.info("STATUS: %s, %s", r.status, r.reason)
+
+        # if not a persistent connection, don't try to reuse it
+        if r.will_close:
+            if DEBUG: DEBUG.info('server will close connection, discarding')
+            self._cm.remove(h)
+
         r._handler = self
         r._host = host
         r._url = req.get_full_url()
@@ -347,8 +350,9 @@ class HTTPSHandler(KeepAliveHandler, urllib2.HTTPSHandler):
         return self.do_open(req)
 
     def _get_connection(self, host):
-        return self._ssl_factory.get_https_connection(host)
-
+        try: return self._ssl_factory.get_https_connection(host)
+        except AttributeError: return HTTPSConnection(host)
+        
 class HTTPResponse(httplib.HTTPResponse):
     # we need to subclass HTTPResponse in order to
     # 1) add readline() and readlines() methods

@@ -66,6 +66,10 @@ CLIENT OPTIONS
      because local files will not be copied and the output filename
      will not be the same as that provided with '-o'.
 
+  --repeat=N
+
+     Grab each url N times.  This is mostly for debugging keepalive.
+
   -p, --progress
 
      Use the default text-based progress meter.
@@ -90,7 +94,11 @@ CLIENT OPTIONS
 
   -D
 
-     A convenience alias for: --verbose=3 --progress --debug=1,- 
+     A convenience alias for: --verbose=3 --progress --debug=INFO,- 
+
+  --profile
+
+     Profile the actual fetching and print the results.
 
 """
 
@@ -110,6 +118,7 @@ options:
   -o FILE           write output to FILE, otherwise the basename of the
                     url will be used
   -O                print the names of saved files to STDOUT
+  --repeat=N        grab each URL N times (mostly for debugging keepalive)
   -p, --progress    use the default text progress meter
   -v                increment the verbosity level (defaults to 0)
   --verbose=N       set the verbosity level to N
@@ -117,11 +126,11 @@ options:
                     turn on urlgrabber module debugging with
                     SPEC=LEVEL,FILENAME.  e.g. -d 1,debug.txt
   -D                a convenience option equivalent to:
-                    --verbose=3 --progress --debug=1,- 
-  
+                    --verbose=3 --progress --debug=INFO,- 
+  --profile         profile the actual fetching and print the results
   """
 
-# $Id: urlgrabber,v 1.6 2006/12/07 02:26:59 mstenner Exp $
+# $Id: urlgrabber,v 1.7 2006/12/08 00:14:16 mstenner Exp $
 
 import sys
 import getopt
@@ -162,7 +171,8 @@ class client_options:
 
     def process_command_line(self):
         short_options = 'vd:hoOpD'
-        long_options = ['verbose=', 'debug=', 'help', 'progress']
+        long_options = ['profile', 'repeat=', 'verbose=',
+                        'debug=', 'help', 'progress']
         ug_long = [ o + '=' for o in self.ug_options ]
         optlist, args = getopt.getopt(sys.argv[1:], short_options,
                                       long_options + ug_long)
@@ -170,7 +180,9 @@ class client_options:
         self.debug = None
         self.outputfile = None
         self.localfile = 0
+        self.repeat = 1
         self.progress = 0
+        self.profile = 0
         self.ugops = {}
         self.args = args
         
@@ -183,10 +195,18 @@ class client_options:
             if o == '-o':        self.outputfile = v
             if o == '-p' or o == '--progress': self.progress = 1
             if o == '-d' or o == '--debug': self.debug = v
+            if o == '--profile': self.profile = 1
             if o == '-O': self.localfile = 1
+            if o == '--repeat':
+                try:
+                    self.repeat = int(v)
+                    if self.repeat < 1: raise ValueError()
+                except ValueError:
+                    print 'ERROR: repeat value must be an int >= 1'
+                    sys.exit(1)
             if o == '-D':
                 self.verbose = 3
-                self.debug = "1,-"
+                self.debug = "INFO,-"
                 self.progress = 1
             if o in ug_dash:
                 try:
@@ -197,6 +217,10 @@ class client_options:
                     sys.exit(1)
                 else:
                     self.ugops[o[2:]] = val
+
+        if len(self.args) > 1 and self.outputfile is not None:
+            print "ERROR: cannot use -o when grabbing multiple files"
+            sys.exit(1)
 
     def help(self, args):
         if not args:
@@ -239,8 +263,9 @@ class client_options:
         print ''
             
 class ugclient:
-    def run(self):
+    def __init__(self):
         op = client_options()
+        self.op = op
         if op.verbose >= 2 and op.ugops:
             print "Module Options:"
             width = max(map(len, op.ugops.keys()))
@@ -250,29 +275,32 @@ class ugclient:
 
         if op.debug:
             self.set_debug_logger(op.debug)
+            if hasattr(urlgrabber.grabber, '_log_package_state'):
+                urlgrabber.grabber._log_package_state()
 
         kwargs = dict(op.ugops)
         if op.progress:
             from urlgrabber.progress import text_progress_meter
             kwargs['progress_obj'] = text_progress_meter()
 
-        g = URLGrabber(**kwargs)
-        if len(op.args) > 1 and op.outputfile is not None:
-            print "ERROR: cannot use -o when grabbing multiple files"
-            sys.exit(1)
-        for url in op.args:
-            if op.verbose: print 'grabbing: %s' % url
+        self.g = URLGrabber(**kwargs)
+
+    def run(self):
+        for url in self.op.args:
+            if self.op.verbose: print 'grabbing: %s' % url
             try:
-                f = g.urlgrab(url, op.outputfile)
-                if op.localfile: print f
+                for i in range(0, self.op.repeat):
+                    f = self.g.urlgrab(url, self.op.outputfile)
+                if self.op.localfile: print f
             except URLGrabError, e:
                 print e
-                
+        
     def set_debug_logger(self, dbspec):
         try:
             dbinfo = dbspec.split(',')
             import logging
-            level = logging._levelNames.get(dbinfo[0], int(dbinfo[0]))
+            level = logging._levelNames.get(dbinfo[0], None)
+            if level is None: level = int(dbinfo[0])
             if level < 1: raise ValueError()
             
             formatter = logging.Formatter('%(asctime)s %(message)s')
@@ -291,4 +319,11 @@ class ugclient:
 
 if __name__ == '__main__':
     ugc = ugclient()
-    ugc.run()
+    if ugc.op.profile:
+        import profile
+        import pstats
+        prof = profile.Profile()
+        prof.run('ugc.run()')
+        pstats.Stats(prof).strip_dirs().sort_stats('cumulative').print_stats()
+    else:
+        ugc.run()

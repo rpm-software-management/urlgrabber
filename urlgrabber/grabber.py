@@ -388,7 +388,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.50 2006/12/07 02:26:59 mstenner Exp $
+# $Id: grabber.py,v 1.51 2006/12/08 00:14:16 mstenner Exp $
 
 import os
 import os.path
@@ -399,6 +399,7 @@ import time
 import string
 import urllib
 import urllib2
+import thread
 from stat import *  # S_* and ST_*
 
 ########################################################################
@@ -430,8 +431,10 @@ try:
     import keepalive
     from keepalive import HTTPHandler, HTTPSHandler
     have_keepalive = True
+    keepalive_http_handler = HTTPHandler()
 except ImportError, msg:
     have_keepalive = False
+    keepalive_http_handler = None
 
 try:
     # add in range support conditionally too
@@ -517,7 +520,8 @@ def _init_default_logger(logspec=None):
             logspec = os.environ['URLGRABBER_DEBUG']
         dbinfo = logspec.split(',')
         import logging
-        level = logging._levelNames.get(dbinfo[0], int(dbinfo[0]))
+        level = logging._levelNames.get(dbinfo[0], None)
+        if level is None: level = int(dbinfo[0])
         if level < 1: raise ValueError()
 
         formatter = logging.Formatter('%(asctime)s %(message)s')
@@ -534,7 +538,17 @@ def _init_default_logger(logspec=None):
         DBOBJ = None
     set_logger(DBOBJ)
 
+def _log_package_state():
+    if not DEBUG: return
+    DEBUG.info('urlgrabber version  = %s' % __version__)
+    DEBUG.info('have_m2crypto       = %s' % sslfactory.have_m2crypto)
+    DEBUG.info('trans function "_"  = %s' % _)
+    DEBUG.info('have_keepalive      = %s' % have_keepalive)
+    DEBUG.info('have_range          = %s' % have_range)
+    DEBUG.info('have_socket_timeout = %s' % have_socket_timeout)
+
 _init_default_logger()
+_log_package_state()
 ########################################################################
 #                 END MODULE INITIALIZATION
 ########################################################################
@@ -1048,7 +1062,7 @@ class URLGrabberFileObject:
             # it _must_ come before all other handlers in the list or urllib2
             # chokes.
             if self.opts.proxies:
-                handlers.append( CachedProxyHandler(self.opts.proxies) )
+                handlers.append( _proxy_handler_cache.get(self.opts.proxies) )
 
                 # -------------------------------------------------------
                 # OK, these next few lines are a serious kludge to get
@@ -1071,19 +1085,19 @@ class URLGrabberFileObject:
                     handlers.append( urllib2.FTPHandler() )
                 # -------------------------------------------------------
 
-            ssl_factory = sslfactory.get_factory(self.opts.ssl_ca_cert,
-                self.opts.ssl_context)
 
+            ssl_factory = _ssl_factory_cache.get( (self.opts.ssl_ca_cert,
+                                                   self.opts.ssl_context) )
             if need_keepalive_handler:
-                handlers.append(HTTPHandler())
-                handlers.append(HTTPSHandler(ssl_factory))
+                handlers.append(keepalive_http_handler)
+                handlers.append(_https_handler_cache.get(ssl_factory))
             if need_range_handler:
                 handlers.extend( range_handlers )
             handlers.append( auth_handler )
             if self.opts.cache_openers:
-                self._opener = CachedOpenerDirector(ssl_factory, *handlers)
+                self._opener = _opener_cache.get([ssl_factory,] + handlers)
             else:
-                self._opener = ssl_factory.create_opener(*handlers)
+                self._opener = _opener_cache.create([ssl_factory,] + handlers)
             # OK, I don't like to do this, but otherwise, we end up with
             # TWO user-agent headers.
             self._opener.addheaders = []
@@ -1225,8 +1239,8 @@ class URLGrabberFileObject:
         """dump the file to self.filename."""
         if self.append: mode = 'ab'
         else: mode = 'wb'
-        if DEBUG: DEBUG.debug('opening local file "%s" with mode %s' % \
-                              (self.filename, mode))
+        if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
+                             (self.filename, mode))
         try:
             new_fo = open(self.filename, mode)
         except IOError, e:
@@ -1347,36 +1361,96 @@ class URLGrabberFileObject:
             try: self.fo.close_connection()
             except: pass
 
-_handler_cache = []
-def CachedOpenerDirector(ssl_factory = None, *handlers):
-    for (cached_handlers, opener) in _handler_cache:
-        if cached_handlers == handlers:
-            for handler in opener.handlers:
-                handler.add_parent(opener)
-            return opener
-    if not ssl_factory:
-        ssl_factory = sslfactory.get_factory()
-    opener = ssl_factory.create_opener(*handlers)
-    _handler_cache.append( (handlers, opener) )
-    return opener
+#####################################################################
 
-_proxy_cache = []
-def CachedProxyHandler(proxies):
-    for (pdict, handler) in _proxy_cache:
-        if pdict == proxies:
-            if DEBUG: DEBUG.debug('re-using proxy settings: %s', proxies)
-            break
-    else:
+class NoDefault: pass
+class ObjectCache:
+    def __init__(self, name=None):
+        self.name = name or self.__class__.__name__
+        self._lock = thread.allocate_lock()
+        self._cache = []
+
+    def lock(self):
+        self._lock.acquire()
+
+    def unlock(self):
+        self._lock.release()
+            
+    def get(self, key, create=None, found=None):
+        for (k, v) in self._cache:
+            if k == key:
+                if DEBUG:
+                    DEBUG.debug('%s: found key' % self.name)
+                    DEBUG.debug('%s: key = %s' % (self.name, key))
+                    DEBUG.debug('%s: val = %s' % (self.name, v))
+                found = found or getattr(self, 'found', None)
+                if found: v = found(key, v)
+                return v
+        if DEBUG:
+            DEBUG.debug('%s: no key found' % self.name)
+            DEBUG.debug('%s: key = %s' % (self.name, key))
+        create = create or getattr(self, 'create', None)
+        if create:
+            value = create(key)
+            if DEBUG:
+                DEBUG.info('%s: new value created' % self.name)
+                DEBUG.debug('%s: val = %s' % (self.name, value))
+            self._cache.append( (key, value) )
+            return value
+        else:
+            raise KeyError('key not found: %s' % key)
+
+    def set(self, key, value):
+        if DEBUG:
+            DEBUG.info('%s: inserting key' % self.name)
+            DEBUG.debug('%s: key = %s' % (self.name, key))
+            DEBUG.debug('%s: val = %s' % (self.name, value))
+        self._cache.append( (key, value) )
+
+    def ts_get(self, key, create=None, found=None):
+        self._lock.acquire()
+        try:
+            self.get(key, create, found)
+        finally:
+            self._lock.release()
+        
+    def ts_set(self, key, value):
+        self._lock.acquire()
+        try:
+            self.set(key, value)
+        finally:
+            self._lock.release()
+
+class OpenerCache(ObjectCache):
+    def found(self, factory_and_handlers, opener):
+        for handler in factory_and_handlers[1:]:
+            handler.add_parent(opener)
+        return opener
+    def create(self, factory_and_handlers):
+        factory = factory_and_handlers[0]
+        handlers = factory_and_handlers[1:]
+        return factory.create_opener(*handlers)
+_opener_cache = OpenerCache()
+
+class ProxyHandlerCache(ObjectCache):
+    def create(self, proxies):
         for k, v in proxies.items():
             utype, url = urllib.splittype(v)
             host, other = urllib.splithost(url)
             if (utype is None) or (host is None):
                 raise URLGrabError(13, _('Bad proxy URL: %s') % v)
+        return urllib2.ProxyHandler(proxies)
+_proxy_handler_cache = ProxyHandlerCache()
 
-        if DEBUG: DEBUG.info('creating new proxy handler: %s', proxies)
-        handler = urllib2.ProxyHandler(proxies)
-        _proxy_cache.append( (proxies, handler) )
-    return handler
+class HTTPSHandlerCache(ObjectCache):
+    def create(self, ssl_factory):
+        return HTTPSHandler(ssl_factory)
+_https_handler_cache = HTTPSHandlerCache()
+
+class SSLFactoryCache(ObjectCache):
+    def create(self, cert_and_context):
+        return sslfactory.get_factory(*cert_and_context)
+_ssl_factory_cache = SSLFactoryCache()
 
 #####################################################################
 # DEPRECATED FUNCTIONS
