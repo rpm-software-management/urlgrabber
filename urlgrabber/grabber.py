@@ -388,7 +388,7 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.51 2006/12/08 00:14:16 mstenner Exp $
+# $Id: grabber.py,v 1.52 2006/12/12 19:08:46 mstenner Exp $
 
 import os
 import os.path
@@ -852,6 +852,24 @@ class URLGrabberOptions:
         self.ssl_ca_cert = None
         self.ssl_context = None
 
+    def __repr__(self):
+        return self.format()
+        
+    def format(self, indent='  '):
+        keys = self.__dict__.keys()
+        if self.delegate is not None:
+            keys.remove('delegate')
+        keys.sort()
+        s = '{\n'
+        for k in keys:
+            s = s + indent + '%-15s: %s,\n' % \
+                (repr(k), repr(self.__dict__[k]))
+        if self.delegate:
+            df = self.delegate.format(indent + '  ')
+            s = s + indent + '%-15s: %s\n' % ("'delegate'", df)
+        s = s + indent + '}'
+        return s
+
 class URLGrabber:
     """Provides easy opening of URLs with a variety of options.
     
@@ -919,6 +937,7 @@ class URLGrabber:
         like any other file object.
         """
         opts = self.opts.derive(**kwargs)
+        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         def retryfunc(opts, url):
             return URLGrabberFileObject(url, filename=None, opts=opts)
@@ -931,6 +950,7 @@ class URLGrabber:
         different from the passed-in filename if copy_local == 0.
         """
         opts = self.opts.derive(**kwargs)
+        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         (scheme, host, path, parm, query, frag) = parts
         if filename is None:
@@ -975,6 +995,7 @@ class URLGrabber:
         into memory, but don't use too much'
         """
         opts = self.opts.derive(**kwargs)
+        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         if limit is not None:
             limit = limit + 1
