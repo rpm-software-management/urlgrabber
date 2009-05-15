@@ -608,15 +608,8 @@ class URLGrabError(IOError):
            # or simply
          print e  #### print '[Errno %i] %s' % (e.errno, e.strerror)
     """
-    def __init__(self, errno, strerror=None, filename=None):
-        if not strerror:
-            IOError.__init__(self, errno)
-        else:
-            if not filename:
-                IOError.__init__(self, errno, strerror)
-            else:
-                IOError.__init__(self, errno, strerror, filename)
-
+    def __init__(self, *args):
+        IOError.__init__(self, *args)
         self.url = "No url specified"
 
 class CallbackObject:
