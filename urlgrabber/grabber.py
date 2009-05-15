@@ -608,7 +608,16 @@ class URLGrabError(IOError):
            # or simply
          print e  #### print '[Errno %i] %s' % (e.errno, e.strerror)
     """
-    pass
+    def __init__(self, errno, strerror=None, filename=None):
+        if not strerror:
+            IOError.__init__(self, errno)
+        else:
+            if not filename:
+                IOError.__init__(self, errno, strerror)
+            else:
+                IOError.__init__(self, errno, strerror, filename)
+
+        self.url = "No url specified"
 
 class CallbackObject:
     """Container for returned callback data.
@@ -728,7 +737,9 @@ class URLParser:
                 if ':' in user_pass:
                     user, password = user_pass.split(':', 1)
             except ValueError, e:
-                raise URLGrabError(1, _('Bad URL: %s') % url)
+                err = URLGrabError(1, _('Bad URL: %s') % url)
+                err.url = url
+                raise err
             if DEBUG: DEBUG.info('adding HTTP auth: %s, %s', user, password)
             auth_handler.add_password(None, host, user, password)
 
@@ -962,12 +973,24 @@ class URLGrabber:
             if host:
                 path = os.path.normpath('//' + host + path)
             if not os.path.exists(path):
-                raise URLGrabError(2, 
+                err = URLGrabError(2, 
                       _('Local file does not exist: %s') % (path, ))
+                err.url = url
+                raise err
             elif not os.path.isfile(path):
-                raise URLGrabError(3, 
-                              _('Not a normal file: %s') % (path, ))
+                err = URLGrabError(3, 
+                                 _('Not a normal file: %s') % (path, ))
+                err.url = url
+                raise err
+
             elif not opts.range:
+                if not opts.checkfunc is None:
+                    cb_func, cb_args, cb_kwargs = \
+                       self._make_callback(opts.checkfunc)
+                    obj = CallbackObject()
+                    obj.filename = path
+                    obj.url = url
+                    apply(cb_func, (obj, )+cb_args, cb_kwargs)        
                 return path
         
         def retryfunc(opts, url, filename):
@@ -1024,8 +1047,11 @@ class URLGrabber:
             
         s = self._retry(opts, retryfunc, url, limit)
         if limit and len(s) > limit:
-            raise URLGrabError(8, 
-                        _('Exceeded limit (%i): %s') % (limit, url))
+            err = URLGrabError(8, 
+                               _('Exceeded limit (%i): %s') % (limit, url))
+            err.url = url
+            raise err
+
         return s
         
     def _make_callback(self, callback_obj):
@@ -1212,8 +1238,11 @@ class URLGrabberFileObject:
                 
         if self.opts.range:
             if not have_range:
-                raise URLGrabError(10, _('Byte range requested but range '\
-                                         'support unavailable'))
+                err = URLGrabError(10, _('Byte range requested but range '\
+                                         'support unavailable %s') % self.url)
+                err.url = self.url
+                raise err
+
             rt = self.opts.range
             if rt[0]: rt = (rt[0] + reget_length, rt[1])
 
@@ -1234,25 +1263,42 @@ class URLGrabberFileObject:
                 fo = opener.open(req)
             hdr = fo.info()
         except ValueError, e:
-            raise URLGrabError(1, _('Bad URL: %s') % (e, ))
+            err = URLGrabError(1, _('Bad URL: %s : %s') % (self.url, e, ))
+            err.url = self.url
+            raise err
+
         except RangeError, e:
-            raise URLGrabError(9, str(e))
+            err = URLGrabError(9, _('%s on %s') % (e, self.url))
+            err.url = self.url
+            raise err
         except urllib2.HTTPError, e:
-            new_e = URLGrabError(14, str(e))
+            new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
             new_e.code = e.code
             new_e.exception = e
+            new_e.url = self.url
             raise new_e
         except IOError, e:
             if hasattr(e, 'reason') and have_socket_timeout and \
                    isinstance(e.reason, TimeoutError):
-                raise URLGrabError(12, _('Timeout: %s') % (e, ))
+                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
             else:
-                raise URLGrabError(4, _('IOError: %s') % (e, ))
+                err = URLGrabError(4, _('IOError on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
         except OSError, e:
-            raise URLGrabError(5, _('OSError: %s') % (e, ))
+            err = URLGrabError(5, _('%s on %s') % (e, self.url))
+            err.url = self.url
+            raise err
+
         except HTTPException, e:
-            raise URLGrabError(7, _('HTTP Exception (%s): %s') % \
-                            (e.__class__.__name__, e))
+            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
+                            (e.__class__.__name__, self.url, e))
+            err.url = self.url
+            raise err
+
         else:
             return (fo, hdr)
         
@@ -1265,8 +1311,10 @@ class URLGrabberFileObject:
         try:
             new_fo = open(self.filename, mode)
         except IOError, e:
-            raise URLGrabError(16, _(\
-                'error opening local file, IOError: %s') % (e, ))
+            err = URLGrabError(16, _(\
+              'error opening local file from %s, IOError: %s') % (self.url, e))
+            err.url = self.url
+            raise err
 
         try:
             # if we have a known range, only try to read that much.
@@ -1284,8 +1332,10 @@ class URLGrabberFileObject:
             try:
                 new_fo.write(block)
             except IOError, e:
-                raise URLGrabError(16, _(\
-                    'error writing to local file, IOError: %s') % (e, ))
+                err = URLGrabError(16, _(\
+                 'error writing to local file from %s, IOError: %s') % (self.url, e))
+                err.url = self.url
+                raise err
             if amount is not None: bs = min(bs, amount - size)
             block = self.read(bs)
             size = size + len(block)
@@ -1332,11 +1382,20 @@ class URLGrabberFileObject:
             try:
                 new = self.fo.read(readamount)
             except socket.error, e:
-                raise URLGrabError(4, _('Socket Error: %s') % (e, ))
+                err = URLGrabError(4, _('Socket Error on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
             except TimeoutError, e:
-                raise URLGrabError(12, _('Timeout: %s') % (e, ))
+                raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
             except IOError, e:
-                raise URLGrabError(4, _('IOError: %s') %(e,))
+                raise URLGrabError(4, _('IOError on %s: %s') %(self.url, e))
+                err.url = self.url
+                raise err
+
             newsize = len(new)
             if not newsize: break # no more to read
 
@@ -1459,7 +1518,9 @@ class ProxyHandlerCache(ObjectCache):
             utype, url = urllib.splittype(v)
             host, other = urllib.splithost(url)
             if (utype is None) or (host is None):
-                raise URLGrabError(13, _('Bad proxy URL: %s') % v)
+                err = URLGrabError(13, _('Bad proxy URL: %s') % v)
+                err.url = url
+                raise err
         return urllib2.ProxyHandler(proxies)
 _proxy_handler_cache = ProxyHandlerCache()
 
