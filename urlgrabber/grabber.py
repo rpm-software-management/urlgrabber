@@ -399,8 +399,11 @@ import time
 import string
 import urllib
 import urllib2
+import mimetools
 import thread
 from stat import *  # S_* and ST_*
+import pycurl
+from StringIO import StringIO
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -944,7 +947,7 @@ class URLGrabber:
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         def retryfunc(opts, url):
-            return URLGrabberFileObject(url, filename=None, opts=opts)
+            return PyCurlFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
     
     def urlgrab(self, url, filename=None, **kwargs):
@@ -987,7 +990,7 @@ class URLGrabber:
                 return path
         
         def retryfunc(opts, url, filename):
-            fo = URLGrabberFileObject(url, filename, opts)
+            fo = PyCurlFileObject(url, filename, opts)
             try:
                 fo._do_grab()
                 if not opts.checkfunc is None:
@@ -1017,7 +1020,7 @@ class URLGrabber:
             limit = limit + 1
             
         def retryfunc(opts, url, limit):
-            fo = URLGrabberFileObject(url, filename=None, opts=opts)
+            fo = PyCurlFileObject(url, filename=None, opts=opts)
             s = ''
             try:
                 # this is an unfortunate thing.  Some file-like objects
@@ -1145,6 +1148,10 @@ class URLGrabberFileObject:
         
     def _do_open(self):
         opener = self._get_opener()
+        self.fo = PyCurlFileObject(self.url, self.filename, self.opts)
+        self.append = 0
+        self.reget_time = None
+        return
 
         req = urllib2.Request(self.url, self.opts.data) # build request object
         self._add_headers(req) # add misc headers that we need
@@ -1434,7 +1441,409 @@ class URLGrabberFileObject:
             try: self.fo.close_connection()
             except: pass
 
+
+class PyCurlFileObject():
+    def __init__(self, url, filename, opts):
+        self.fo = None
+        self._hdr_dump = ''
+        self._parsed_hdr = None
+        self.url = url
+        self.filename = filename
+        self.append = False
+        self.opts = opts
+        self._complete = False
+        self.reget_time = None
+        self._rbuf = ''
+        self._rbufsize = 1024*8
+        self._ttime = time.time()
+        self._tsize = 0
+        self._amount_read = 0
+        self._prog_running = False
+        self.size = 0
+        self._do_open()
+        
+        
+    def __getattr__(self, name):
+        """This effectively allows us to wrap at the instance level.
+        Any attribute not found in _this_ object will be searched for
+        in self.fo.  This includes methods."""
+
+        if hasattr(self.fo, name):
+            return getattr(self.fo, name)
+        raise AttributeError, name
+
+    def _retrieve(self, buf):
+        if self._amount_read == 0:
+            if self.opts.progress_obj:
+                self.opts.progress_obj.start(self._prog_reportname, 
+                                             urllib.unquote(self.url), 
+                                             self._prog_basename, 
+                                             size=self.size,
+                                             text=self.opts.text)
+                self._prog_running = True
+                self.opts.progress_obj.update(0)
+
+        self._amount_read += len(buf)
+        self.fo.write(buf)
+        return len(buf)
+    
+    def _hdr_retrieve(self, buf):
+        self._hdr_dump += buf
+        if buf.lower().find('content-length') != -1:
+            length = buf.split(':')[1]
+            self.size = int(length)
+            
+        return len(buf)
+
+    def _return_hdr_obj(self):
+        if self._parsed_hdr:
+            return self._parsed_hdr
+        statusend = self._hdr_dump.find('\n')
+        hdrfp = StringIO()
+        hdrfp.write(self._hdr_dump[statusend:])
+        self._parsed_hdr =  mimetools.Message(hdrfp)
+        return self._parsed_hdr
+    
+    hdr = property(_return_hdr_obj)
+    http_code = property(fget=
+                 lambda self: self.curl_obj.getinfo(pycurl.RESPONSE_CODE))
+
+    def _set_opts(self, opts={}):
+        # XXX
+        if not opts:
+            opts = self.opts
+
+
+        # defaults we're always going to set
+        self.curl_obj.setopt(pycurl.NOPROGRESS, 0)
+        self.curl_obj.setopt(pycurl.WRITEFUNCTION, self._retrieve)
+        self.curl_obj.setopt(pycurl.HEADERFUNCTION, self._hdr_retrieve)
+        self.curl_obj.setopt(pycurl.PROGRESSFUNCTION, self._progress_update)
+        self.curl_obj.setopt(pycurl.FAILONERROR, 1)
+        
+        if DEBUG:
+            self.curl_obj.setopt(pycurl.VERBOSE, True)
+        if opts.user_agent:
+            self.curl_obj.setopt(pycurl.USERAGENT, opts.user_agent)
+        if opts.http_headers:
+            headers = []
+            for (tag, content) in opts.http_headers:
+                headers.append('%s:%s' % (tag, content))
+            self.curl_obj.setopt(pycurl.HTTPHEADER, headers)
+        
+        # maybe to be options later
+        self.curl_obj.setopt(pycurl.FOLLOWLOCATION, 1)
+        self.curl_obj.setopt(pycurl.MAXREDIRS, 5)
+        self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, 30)
+
+        timeout = 300
+        if opts.timeout:
+            timeout = int(opts.timeout)
+        self.curl_obj.setopt(pycurl.TIMEOUT, timeout)
+
+        if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
+            self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
+        
+        # proxy settings
+        
+        # magic ftp settings
+    
+        # our url
+        self.curl_obj.setopt(pycurl.URL, self.url)
+        
+    
+    def _do_perform(self):
+        if self._complete:
+            return
+        
+        try:
+            self.curl_obj.perform()
+        except pycurl.error, e:
+            # XXX - break some of these out a bit more clearly
+            # to other URLGrabErrors from 
+            # http://curl.haxx.se/libcurl/c/libcurl-errors.html
+            # this covers e.args[0] == 22 pretty well - which will be common
+            if str(e.args[1]) == '': # fake it until you make it
+                msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+            else:
+                msg = str(e.args[1])
+            err = URLGrabError(14, msg)
+            err.code = self.http_code
+            err.exception = e
+            # XXX should we rename the .part file? or leave it?
+            raise err
+            
+    def _do_open(self):
+        self.append = False
+        self.reget_time = None
+        self.curl_obj = _curl_cache
+        self.curl_obj.reset() # reset all old settings away, just in case
+        self._set_opts()
+
+        return self.fo
+
+    def _add_headers(self, req):
+        #XXXX
+        return
+        
+        try: req_type = req.get_type()
+        except ValueError: req_type = None
+        if self.opts.http_headers and req_type in ('http', 'https'):
+            for h, v in self.opts.http_headers:
+                req.add_header(h, v)
+        if self.opts.ftp_headers and req_type == 'ftp':
+            for h, v in self.opts.ftp_headers:
+                req.add_header(h, v)
+
+    def _build_range(self, req):
+        #XXXX
+        return
+        
+        self.reget_time = None
+        self.append = False
+        reget_length = 0
+        rt = None
+        if have_range and self.opts.reget and type(self.filename) == type(''):
+            # we have reget turned on and we're dumping to a file
+            try:
+                s = os.stat(self.filename)
+            except OSError:
+                pass
+            else:
+                self.reget_time = s[ST_MTIME]
+                reget_length = s[ST_SIZE]
+
+                # Set initial length when regetting
+                self._amount_read = reget_length    
+
+                rt = reget_length, ''
+                self.append = 1
+                
+        if self.opts.range:
+            if not have_range:
+                err = URLGrabError(10, _('Byte range requested but range '\
+                                         'support unavailable %s') % self.url)
+                err.url = self.url
+                raise err
+
+            rt = self.opts.range
+            if rt[0]: rt = (rt[0] + reget_length, rt[1])
+
+        if rt:
+            header = range_tuple_to_header(rt)
+            if header: req.add_header('Range', header)
+
+    def _make_request(self, req, opener):
+        #XXXX
+        # This doesn't do anything really, but we could use this
+        # instead of do_open() to catch a lot of crap errors as 
+        # mstenner did before here
+        return (self.fo, self.hdr)
+        
+        try:
+            if have_socket_timeout and self.opts.timeout:
+                old_to = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(self.opts.timeout)
+                try:
+                    fo = opener.open(req)
+                finally:
+                    socket.setdefaulttimeout(old_to)
+            else:
+                fo = opener.open(req)
+            hdr = fo.info()
+        except ValueError, e:
+            err = URLGrabError(1, _('Bad URL: %s : %s') % (self.url, e, ))
+            err.url = self.url
+            raise err
+
+        except RangeError, e:
+            err = URLGrabError(9, _('%s on %s') % (e, self.url))
+            err.url = self.url
+            raise err
+        except urllib2.HTTPError, e:
+            new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
+            new_e.code = e.code
+            new_e.exception = e
+            new_e.url = self.url
+            raise new_e
+        except IOError, e:
+            if hasattr(e, 'reason') and have_socket_timeout and \
+                   isinstance(e.reason, TimeoutError):
+                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+            else:
+                err = URLGrabError(4, _('IOError on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
+        except OSError, e:
+            err = URLGrabError(5, _('%s on %s') % (e, self.url))
+            err.url = self.url
+            raise err
+
+        except HTTPException, e:
+            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
+                            (e.__class__.__name__, self.url, e))
+            err.url = self.url
+            raise err
+
+        else:
+            return (fo, hdr)
+        
+    def _do_grab(self):
+        """dump the file to a filename or StringIO buffer"""
+
+        if self._complete:
+            return
+            
+        if self.filename:
+            self._prog_reportname = str(self.filename)
+            self._prog_basename = os.path.basename(self.filename)
+            
+            if self.append: mode = 'ab'
+            else: mode = 'wb'
+
+            if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
+                                 (self.filename + ".part", mode))
+            try:
+                self.fo = open(self.filename + '.part', mode)
+            except IOError, e:
+                err = URLGrabError(16, _(\
+                  'error opening local file from %s, IOError: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
+        else:
+            self._prog_reportname = 'MEMORY'
+            self._prog_basename = 'MEMORY'
+            self.fo = StringIO()
+
+            
+        self._do_perform()
+        
+        if self.filename:
+            # if we're a filename - move the file to final location
+            self.fo.flush()
+            self.fo.close()
+            # XXX - try except and behave quasi-sanely?
+            os.rename(self.filename + '.part', self.filename)
+            mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
+            if mod_time != -1:
+                os.utime(self.filename, (mod_time, mod_time))
+            
+            self.fo = open(self.filename, 'r')
+        else:
+            self.fo.seek(0)
+        
+        self._complete = True
+    
+    def _fill_buffer(self, amt=None):
+        """fill the buffer to contain at least 'amt' bytes by reading
+        from the underlying file object.  If amt is None, then it will
+        read until it gets nothing more.  It updates the progress meter
+        and throttles after every self._rbufsize bytes."""
+        # the _rbuf test is only in this first 'if' for speed.  It's not
+        # logically necessary
+        if self._rbuf and not amt is None:
+            L = len(self._rbuf)
+            if amt > L:
+                amt = amt - L
+            else:
+                return
+
+        # if we've made it here, then we don't have enough in the buffer
+        # and we need to read more.
+        
+        if not self._complete: self._do_grab() #XXX cheater - change on ranges
+        
+        buf = [self._rbuf]
+        bufsize = len(self._rbuf)
+        while amt is None or amt:
+            # first, delay if necessary for throttling reasons
+            if self.opts.raw_throttle():
+                diff = self._tsize/self.opts.raw_throttle() - \
+                       (time.time() - self._ttime)
+                if diff > 0: time.sleep(diff)
+                self._ttime = time.time()
+                
+            # now read some data, up to self._rbufsize
+            if amt is None: readamount = self._rbufsize
+            else:           readamount = min(amt, self._rbufsize)
+            try:
+                new = self.fo.read(readamount)
+            except socket.error, e:
+                err = URLGrabError(4, _('Socket Error on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
+            except TimeoutError, e:
+                raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+
+            except IOError, e:
+                raise URLGrabError(4, _('IOError on %s: %s') %(self.url, e))
+                err.url = self.url
+                raise err
+
+            newsize = len(new)
+            if not newsize: break # no more to read
+
+            if amt: amt = amt - newsize
+            buf.append(new)
+            bufsize = bufsize + newsize
+            self._tsize = newsize
+            self._amount_read = self._amount_read + newsize
+            #if self.opts.progress_obj:
+            #    self.opts.progress_obj.update(self._amount_read)
+
+        self._rbuf = string.join(buf, '')
+        return
+
+    def _progress_update(self, download_total, downloaded, upload_total, uploaded):
+            if self._prog_running:
+                self.opts.progress_obj.update(downloaded)
+
+    def read(self, amt=None):
+        self._fill_buffer(amt)
+        if amt is None:
+            s, self._rbuf = self._rbuf, ''
+        else:
+            s, self._rbuf = self._rbuf[:amt], self._rbuf[amt:]
+        return s
+
+    def readline(self, limit=-1):
+        if not self._complete: self._do_grab()
+        i = string.find(self._rbuf, '\n')
+        while i < 0 and not (0 < limit <= len(self._rbuf)):
+            L = len(self._rbuf)
+            self._fill_buffer(L + self._rbufsize)
+            if not len(self._rbuf) > L: break
+            i = string.find(self._rbuf, '\n', L)
+
+        if i < 0: i = len(self._rbuf)
+        else: i = i+1
+        if 0 <= limit < len(self._rbuf): i = limit
+
+        s, self._rbuf = self._rbuf[:i], self._rbuf[i:]
+        return s
+
+    def close(self):
+        if self._prog_running:
+            self.opts.progress_obj.end(self._amount_read)
+        self.fo.close()
+        
+        # XXX - confident that this does nothing for pycurl
+        #if self.opts.close_connection:
+        #    try: self.fo.close_connection()
+        #    except: pass
+
+
+
 #####################################################################
+
+
 
 class NoDefault: pass
 class ObjectCache:
@@ -1504,6 +1913,8 @@ class OpenerCache(ObjectCache):
         handlers = factory_and_handlers[1:]
         return factory.create_opener(*handlers)
 _opener_cache = OpenerCache()
+
+_curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
 class ProxyHandlerCache(ObjectCache):
     def create(self, proxies):
@@ -1640,7 +2051,7 @@ def _file_object_test(filename=None):
                      _test_file_object_readlines]:
         fo_input = cStringIO.StringIO(s_input)
         fo_output = cStringIO.StringIO()
-        wrapper = URLGrabberFileObject(fo_input, None, 0)
+        wrapper = PyCurlFileObject(fo_input, None, 0)
         print 'testing %-30s ' % testfunc.__name__,
         testfunc(wrapper, fo_output)
         s_output = fo_output.getvalue()
