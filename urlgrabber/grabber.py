@@ -403,6 +403,7 @@ import mimetools
 import thread
 from stat import *  # S_* and ST_*
 import pycurl
+from ftplib import parse150
 from StringIO import StringIO
 
 ########################################################################
@@ -1448,6 +1449,7 @@ class PyCurlFileObject():
         self._hdr_dump = ''
         self._parsed_hdr = None
         self.url = url
+        self.scheme = urlparse.urlsplit(self.url)[0]
         self.filename = filename
         self.append = False
         self.opts = opts
@@ -1489,10 +1491,21 @@ class PyCurlFileObject():
     
     def _hdr_retrieve(self, buf):
         self._hdr_dump += buf
-        if buf.lower().find('content-length') != -1:
+        # we have to get the size before we do the progress obj start
+        # but we can't do that w/o making it do 2 connects, which sucks
+        # so we cheat and stuff it in here in the hdr_retrieve
+        if self.scheme in ['http','https'] and buf.lower().find('content-length') != -1:
             length = buf.split(':')[1]
             self.size = int(length)
-            
+        elif self.scheme in ['ftp']:
+            s = None
+            if buf.startswith('213 '):
+                s = buf[3:].strip()
+            elif buf.startswith('150 '):
+                s = parse150(buf)
+            if s:
+                self.size = s
+        
         return len(buf)
 
     def _return_hdr_obj(self):
