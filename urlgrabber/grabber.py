@@ -1557,6 +1557,10 @@ class PyCurlFileObject():
         if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
             self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
         
+        # throttle/bandwidth
+        if hasattr(opts, 'raw_throttle') and opts.raw_throttle():
+            self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
+            
         # proxy settings
         
         # magic ftp settings
