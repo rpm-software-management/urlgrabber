@@ -1460,6 +1460,7 @@ class PyCurlFileObject():
         self._ttime = time.time()
         self._tsize = 0
         self._amount_read = 0
+        self._reget_length = 0
         self._prog_running = False
         self.size = 0
         self._do_open()
@@ -1475,15 +1476,16 @@ class PyCurlFileObject():
         raise AttributeError, name
 
     def _retrieve(self, buf):
-        if self._amount_read == 0:
+        if not self._prog_running:
             if self.opts.progress_obj:
+                size  = self.size + self._reget_length
                 self.opts.progress_obj.start(self._prog_reportname, 
                                              urllib.unquote(self.url), 
                                              self._prog_basename, 
-                                             size=self.size,
+                                             size=size,
                                              text=self.opts.text)
                 self._prog_running = True
-                self.opts.progress_obj.update(0)
+                self.opts.progress_obj.update(self._amount_read)
 
         self._amount_read += len(buf)
         self.fo.write(buf)
@@ -1538,33 +1540,44 @@ class PyCurlFileObject():
             self.curl_obj.setopt(pycurl.VERBOSE, True)
         if opts.user_agent:
             self.curl_obj.setopt(pycurl.USERAGENT, opts.user_agent)
-        if opts.http_headers:
-            headers = []
-            for (tag, content) in opts.http_headers:
-                headers.append('%s:%s' % (tag, content))
-            self.curl_obj.setopt(pycurl.HTTPHEADER, headers)
         
         # maybe to be options later
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, 1)
         self.curl_obj.setopt(pycurl.MAXREDIRS, 5)
         self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, 30)
-
+        
+        # timeouts
         timeout = 300
         if opts.timeout:
             timeout = int(opts.timeout)
         self.curl_obj.setopt(pycurl.TIMEOUT, timeout)
+        # ssl options
+        if self.scheme == 'https':
+            if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
+                self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
 
-        if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
-            self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
-        
+        #headers:
+        if opts.http_headers and self.scheme in ('http', 'https'):
+            headers = []
+            for (tag, content) in opts.http_headers:
+                headers.append('%s:%s' % (tag, content))
+            self.curl_obj.setopt(pycurl.HTTPHEADER, headers)
+
+        # ranges:
+        if opts.range or opts.reget:
+            range_str = self._build_range()
+            if range_str:
+                self.curl_obj.setopt(pycurl.RANGE, range_str)
+            
         # throttle/bandwidth
         if hasattr(opts, 'raw_throttle') and opts.raw_throttle():
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
             
         # proxy settings
         
-        # magic ftp settings
-    
+        
+        # username/password/auth settings
+        
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
         
@@ -1587,7 +1600,6 @@ class PyCurlFileObject():
             err = URLGrabError(14, msg)
             err.code = self.http_code
             err.exception = e
-            # XXX should we rename the .part file? or leave it?
             raise err
             
     def _do_open(self):
@@ -1595,32 +1607,20 @@ class PyCurlFileObject():
         self.reget_time = None
         self.curl_obj = _curl_cache
         self.curl_obj.reset() # reset all old settings away, just in case
+        # setup any ranges
         self._set_opts()
 
         return self.fo
 
-    def _add_headers(self, req):
-        #XXXX
-        return
+    def _add_headers(self):
+        pass
         
-        try: req_type = req.get_type()
-        except ValueError: req_type = None
-        if self.opts.http_headers and req_type in ('http', 'https'):
-            for h, v in self.opts.http_headers:
-                req.add_header(h, v)
-        if self.opts.ftp_headers and req_type == 'ftp':
-            for h, v in self.opts.ftp_headers:
-                req.add_header(h, v)
-
-    def _build_range(self, req):
-        #XXXX
-        return
-        
+    def _build_range(self):
         self.reget_time = None
         self.append = False
         reget_length = 0
         rt = None
-        if have_range and self.opts.reget and type(self.filename) == type(''):
+        if self.opts.reget and type(self.filename) == type(''):
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1632,6 +1632,7 @@ class PyCurlFileObject():
 
                 # Set initial length when regetting
                 self._amount_read = reget_length    
+                self._reget_length = reget_length # set where we started from, too
 
                 rt = reget_length, ''
                 self.append = 1
@@ -1648,7 +1649,10 @@ class PyCurlFileObject():
 
         if rt:
             header = range_tuple_to_header(rt)
-            if header: req.add_header('Range', header)
+            if header:
+                return header.split('=')[1]
+
+
 
     def _make_request(self, req, opener):
         #XXXX
@@ -1722,9 +1726,9 @@ class PyCurlFileObject():
             else: mode = 'wb'
 
             if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
-                                 (self.filename + ".part", mode))
+                                 (self.filename, mode))
             try:
-                self.fo = open(self.filename + '.part', mode)
+                self.fo = open(self.filename, mode)
             except IOError, e:
                 err = URLGrabError(16, _(\
                   'error opening local file from %s, IOError: %s') % (self.url, e))
@@ -1743,8 +1747,6 @@ class PyCurlFileObject():
             # if we're a filename - move the file to final location
             self.fo.flush()
             self.fo.close()
-            # XXX - try except and behave quasi-sanely?
-            os.rename(self.filename + '.part', self.filename)
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
                 os.utime(self.filename, (mod_time, mod_time))
@@ -1820,6 +1822,7 @@ class PyCurlFileObject():
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
             if self._prog_running:
+                downloaded += self._reget_length
                 self.opts.progress_obj.update(downloaded)
 
     def read(self, amt=None):
