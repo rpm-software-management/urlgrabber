@@ -1585,7 +1585,12 @@ class PyCurlFileObject():
                         self.curl_obj.setopt(pycurl.PROXY, proxy)
         
         # username/password/auth settings
-        
+
+        #posts - simple - expects the fields as they are
+        if opts.data:
+            self.curl_obj.setopt(pycurl.POST, True)
+            self.curl_obj.setopt(pycurl.POSTFIELDS, opts.data)
+            
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
         
