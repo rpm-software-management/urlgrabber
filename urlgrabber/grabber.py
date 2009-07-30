@@ -16,6 +16,7 @@
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
+# Copyright 2009 Red Hat inc, pycurl code written by Seth Vidal
 
 """A high-level cross-protocol url-grabber.
 
@@ -1574,7 +1575,18 @@ class PyCurlFileObject():
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
             
         # proxy settings
-        
+        if opts.proxies:
+            for (scheme, proxy) in opts.proxies.items():
+                if self.scheme in ('ftp'): # only set the ftp proxy for ftp items
+                    if scheme not in ('ftp'):
+                        continue
+                    else:
+                        self.curl_obj.setopt(pycurl.PROXY, proxy)
+                elif self.scheme in ('http', 'https'):
+                    if scheme not in ('http', 'https'):
+                        continue
+                    else:
+                        self.curl_obj.setopt(pycurl.PROXY, proxy)
         
         # username/password/auth settings
         
@@ -1638,12 +1650,6 @@ class PyCurlFileObject():
                 self.append = 1
                 
         if self.opts.range:
-            if not have_range:
-                err = URLGrabError(10, _('Byte range requested but range '\
-                                         'support unavailable %s') % self.url)
-                err.url = self.url
-                raise err
-
             rt = self.opts.range
             if rt[0]: rt = (rt[0] + reget_length, rt[1])
 
