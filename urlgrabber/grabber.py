@@ -1150,10 +1150,6 @@ class URLGrabberFileObject:
         
     def _do_open(self):
         opener = self._get_opener()
-        self.fo = PyCurlFileObject(self.url, self.filename, self.opts)
-        self.append = 0
-        self.reget_time = None
-        return
 
         req = urllib2.Request(self.url, self.opts.data) # build request object
         self._add_headers(req) # add misc headers that we need
