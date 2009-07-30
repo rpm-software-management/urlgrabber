@@ -6,3 +6,4 @@ include LICENSE
 include TODO
 include ChangeLog
 include MANIFEST
+include makefile
