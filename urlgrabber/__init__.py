@@ -13,6 +13,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 # Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
+# Copyright 2009 Red Hat, Inc - pycurl support added by Seth Vidal
 
 # $Id: __init__.py,v 1.20 2006/09/22 00:58:55 mstenner Exp $
 
@@ -44,10 +45,11 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '3.1.0'
-__date__    = '2006/09/21'
+__version__ = '3.9.0'
+__date__    = '2009/07/30'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
-              'Ryan Tomayko <rtomayko@naeblis.cx>'
+              'Ryan Tomayko <rtomayko@naeblis.cx>' \
+              'Seth Vidal <skvidal@fedoraproject.org>' 
 __url__     = 'http://linux.duke.edu/projects/urlgrabber/'
 
 from grabber import urlgrab, urlopen, urlread
