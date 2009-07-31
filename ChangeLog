@@ -1,3 +1,35 @@
+2009-07-31  Seth Vidal <skvidal@fedoraproject.org>
+
+	* urlgrabber/grabber.py: - make readlines() work for mirrorlists in yum (which probably
+	shouldn't be using it anyway) - do a do_grab() in _do_open() which
+	may or may not be a good idea - I could also make the _do_grab()
+	happen when someone attempts to hit a method beyond the file object
+	open
+
+2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
+
+	* urlgrabber/grabber.py: - make basic posts work
+
+2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
+
+	* maint/git2cl: add git2cl
+
+2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
+
+	* urlgrabber/grabber.py: when I first started this I hacked
+	something into URLGrabberFileObject - this reverts that hack
+
+2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
+
+	* ChangeLog, maint/cvs2cl.pl, maint/usermap, test/runtests.py,
+	urlgrabber/__init__.py: - clean up some unused files - update the changelog - bump the
+	version - update the copyright in a couple of places
+
+2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
+
+	* MANIFEST.in, makefile: - make makefile work again without using cvs - add makefile to
+	MANIFEST.in
+
 2009-07-30  Seth Vidal <skvidal@fedoraproject.org>
 
 	* urlgrabber/grabber.py: - make simple/most proxies work - remove unnnecessary 'have_range'
