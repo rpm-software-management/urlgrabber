@@ -406,6 +406,7 @@ from stat import *  # S_* and ST_*
 import pycurl
 from ftplib import parse150
 from StringIO import StringIO
+from tempfile import mkstemp
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -1622,7 +1623,7 @@ class PyCurlFileObject():
         self.curl_obj.reset() # reset all old settings away, just in case
         # setup any ranges
         self._set_opts()
-
+        self._do_grab()
         return self.fo
 
     def _add_headers(self):
@@ -1724,11 +1725,11 @@ class PyCurlFileObject():
 
         if self._complete:
             return
-            
+
         if self.filename:
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
-            
+
             if self.append: mode = 'ab'
             else: mode = 'wb'
 
@@ -1745,23 +1746,28 @@ class PyCurlFileObject():
         else:
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
-            self.fo = StringIO()
+            fh, self._temp_name = mkstemp()
+            
+            self.fo = open(self._temp_name, 'wb')
 
             
         self._do_perform()
         
-        if self.filename:
-            # if we're a filename - move the file to final location
-            self.fo.flush()
-            self.fo.close()
+
+        # close it up
+        self.fo.flush()
+        self.fo.close()
+
+        if self.filename:            
+            # set the time
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
                 os.utime(self.filename, (mod_time, mod_time))
-            
+            # re open it
             self.fo = open(self.filename, 'r')
         else:
-            self.fo.seek(0)
-        
+            self.fo = open(self._temp_name, 'r')
+
         self._complete = True
     
     def _fill_buffer(self, amt=None):
@@ -1842,6 +1848,8 @@ class PyCurlFileObject():
 
     def readline(self, limit=-1):
         if not self._complete: self._do_grab()
+        return self.fo.readline()
+        
         i = string.find(self._rbuf, '\n')
         while i < 0 and not (0 < limit <= len(self._rbuf)):
             L = len(self._rbuf)
