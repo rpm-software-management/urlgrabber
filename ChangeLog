@@ -1,5 +1,13 @@
 2009-07-31  Seth Vidal <skvidal@fedoraproject.org>
 
+	* makefile: add a few more things to be cleaned out
+
+2009-07-31  Seth Vidal <skvidal@fedoraproject.org>
+
+	* ChangeLog: update changelog
+
+2009-07-31  Seth Vidal <skvidal@fedoraproject.org>
+
 	* urlgrabber/grabber.py: - make readlines() work for mirrorlists in yum (which probably
 	shouldn't be using it anyway) - do a do_grab() in _do_open() which
 	may or may not be a good idea - I could also make the _do_grab()

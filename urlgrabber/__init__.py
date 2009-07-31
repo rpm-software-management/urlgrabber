@@ -46,7 +46,7 @@ following features:
 """
 
 __version__ = '3.9.0'
-__date__    = '2009/07/30'
+__date__    = '2009/07/31'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>' \
               'Seth Vidal <skvidal@fedoraproject.org>' 
