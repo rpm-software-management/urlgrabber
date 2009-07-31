@@ -6,8 +6,9 @@ WEBPATH = /home/groups/urlgrabber/web/download
 PYTHON = python
 PY_MODULE = $(PACKAGE)
 SCM_MODULE = $(PACKAGE)
-CLEANFILES = MANIFEST *~ build dist export release daily ChangeLog.bak \
-             *.pyc urlgrabber/*.pyc scripts/*.pyc test/*.pyc
+CLEANFILES = MANIFEST *~ build dist export release daily reference ChangeLog.bak \
+             *.pyc urlgrabber/*.pyc scripts/*.pyc test/*.pyc test/nonexistent_file \
+             test/reference test/reference.part
 ##############################################################################
 VERSION = $(shell $(PYTHON) -c 'import $(PY_MODULE); print $(PY_MODULE).__version__')
 DATE    = $(shell $(PYTHON) -c 'import $(PY_MODULE); print $(PY_MODULE).__date__')
