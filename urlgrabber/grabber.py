@@ -1542,13 +1542,12 @@ class PyCurlFileObject():
         # maybe to be options later
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, 1)
         self.curl_obj.setopt(pycurl.MAXREDIRS, 5)
-        self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, 30)
         
         # timeouts
         timeout = 300
         if opts.timeout:
-            timeout = int(opts.timeout)
-        self.curl_obj.setopt(pycurl.TIMEOUT, timeout)
+            self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
+
         # ssl options
         if self.scheme == 'https':
             if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
@@ -1607,12 +1606,17 @@ class PyCurlFileObject():
             # to other URLGrabErrors from 
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
             # this covers e.args[0] == 22 pretty well - which will be common
+            if e.args[0] == 28:
+                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+            code = self.http_code                
             if str(e.args[1]) == '': # fake it until you make it
                 msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
             else:
                 msg = str(e.args[1])
             err = URLGrabError(14, msg)
-            err.code = self.http_code
+            err.code = code
             err.exception = e
             raise err
             
