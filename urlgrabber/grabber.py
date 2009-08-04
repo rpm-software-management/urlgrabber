@@ -1546,6 +1546,7 @@ class PyCurlFileObject():
         # timeouts
         timeout = 300
         if opts.timeout:
+            timeout = opts.timeout
             self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
 
         # ssl options
