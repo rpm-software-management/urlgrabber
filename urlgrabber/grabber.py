@@ -1528,11 +1528,12 @@ class PyCurlFileObject():
 
 
         # defaults we're always going to set
-        self.curl_obj.setopt(pycurl.NOPROGRESS, 0)
+        self.curl_obj.setopt(pycurl.NOPROGRESS, False)
         self.curl_obj.setopt(pycurl.WRITEFUNCTION, self._retrieve)
         self.curl_obj.setopt(pycurl.HEADERFUNCTION, self._hdr_retrieve)
         self.curl_obj.setopt(pycurl.PROGRESSFUNCTION, self._progress_update)
-        self.curl_obj.setopt(pycurl.FAILONERROR, 1)
+        self.curl_obj.setopt(pycurl.FAILONERROR, True)
+        self.curl_obj.setopt(pycurl.OPT_FILETIME, True)
         
         if DEBUG:
             self.curl_obj.setopt(pycurl.VERBOSE, True)
@@ -1540,13 +1541,13 @@ class PyCurlFileObject():
             self.curl_obj.setopt(pycurl.USERAGENT, opts.user_agent)
         
         # maybe to be options later
-        self.curl_obj.setopt(pycurl.FOLLOWLOCATION, 1)
+        self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
         self.curl_obj.setopt(pycurl.MAXREDIRS, 5)
         
         # timeouts
         timeout = 300
         if opts.timeout:
-            timeout = opts.timeout
+            timeout = int(opts.timeout)
             self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
 
         # ssl options
