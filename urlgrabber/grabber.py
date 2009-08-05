@@ -402,6 +402,7 @@ import urllib
 import urllib2
 import mimetools
 import thread
+import types
 from stat import *  # S_* and ST_*
 import pycurl
 from ftplib import parse150
@@ -1219,7 +1220,7 @@ class URLGrabberFileObject:
         self.append = 0
         reget_length = 0
         rt = None
-        if have_range and self.opts.reget and type(self.filename) == type(''):
+        if have_range and self.opts.reget and type(self.filename) in types.StringTypes:
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1450,6 +1451,7 @@ class PyCurlFileObject():
         self.scheme = urlparse.urlsplit(self.url)[0]
         self.filename = filename
         self.append = False
+        self.reget_time = None
         self.opts = opts
         self._complete = False
         self.reget_time = None
@@ -1623,8 +1625,6 @@ class PyCurlFileObject():
             raise err
             
     def _do_open(self):
-        self.append = False
-        self.reget_time = None
         self.curl_obj = _curl_cache
         self.curl_obj.reset() # reset all old settings away, just in case
         # setup any ranges
@@ -1636,11 +1636,9 @@ class PyCurlFileObject():
         pass
         
     def _build_range(self):
-        self.reget_time = None
-        self.append = False
         reget_length = 0
         rt = None
-        if self.opts.reget and type(self.filename) == type(''):
+        if self.opts.reget and type(self.filename) in types.StringTypes:
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1735,7 +1733,7 @@ class PyCurlFileObject():
         if self.filename:
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
-
+            
             if self.append: mode = 'ab'
             else: mode = 'wb'
 
