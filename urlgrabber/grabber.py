@@ -468,6 +468,13 @@ except AttributeError:
     TimeoutError = None
     have_socket_timeout = False
 
+try:
+    import signal
+    from signal import SIGPIPE, SIG_IGN
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+except ImportError:
+    pass
+
 ########################################################################
 # functions for debugging output.  These functions are here because they
 # are also part of the module initialization.
@@ -1453,8 +1460,9 @@ class PyCurlFileObject():
         self.append = False
         self.reget_time = None
         self.opts = opts
+        if self.opts.reget == 'check_timestamp':
+            raise NotImplementedError, "check_timestamp regets are not implemented in this ver of urlgrabber. Please report this."
         self._complete = False
-        self.reget_time = None
         self._rbuf = ''
         self._rbufsize = 1024*8
         self._ttime = time.time()
@@ -1476,39 +1484,45 @@ class PyCurlFileObject():
         raise AttributeError, name
 
     def _retrieve(self, buf):
-        if not self._prog_running:
-            if self.opts.progress_obj:
-                size  = self.size + self._reget_length
-                self.opts.progress_obj.start(self._prog_reportname, 
-                                             urllib.unquote(self.url), 
-                                             self._prog_basename, 
-                                             size=size,
-                                             text=self.opts.text)
-                self._prog_running = True
-                self.opts.progress_obj.update(self._amount_read)
+        try:
+            if not self._prog_running:
+                if self.opts.progress_obj:
+                    size  = self.size + self._reget_length
+                    self.opts.progress_obj.start(self._prog_reportname, 
+                                                 urllib.unquote(self.url), 
+                                                 self._prog_basename, 
+                                                 size=size,
+                                                 text=self.opts.text)
+                    self._prog_running = True
+                    self.opts.progress_obj.update(self._amount_read)
 
-        self._amount_read += len(buf)
-        self.fo.write(buf)
-        return len(buf)
-    
+            self._amount_read += len(buf)
+            self.fo.write(buf)
+            return len(buf)
+        except KeyboardInterrupt:
+            return pycurl.READFUNC_ABORT
+            
     def _hdr_retrieve(self, buf):
-        self._hdr_dump += buf
-        # we have to get the size before we do the progress obj start
-        # but we can't do that w/o making it do 2 connects, which sucks
-        # so we cheat and stuff it in here in the hdr_retrieve
-        if self.scheme in ['http','https'] and buf.lower().find('content-length') != -1:
-            length = buf.split(':')[1]
-            self.size = int(length)
-        elif self.scheme in ['ftp']:
-            s = None
-            if buf.startswith('213 '):
-                s = buf[3:].strip()
-            elif buf.startswith('150 '):
-                s = parse150(buf)
-            if s:
-                self.size = s
-        
-        return len(buf)
+        try:
+            self._hdr_dump += buf
+            # we have to get the size before we do the progress obj start
+            # but we can't do that w/o making it do 2 connects, which sucks
+            # so we cheat and stuff it in here in the hdr_retrieve
+            if self.scheme in ['http','https'] and buf.lower().find('content-length') != -1:
+                length = buf.split(':')[1]
+                self.size = int(length)
+            elif self.scheme in ['ftp']:
+                s = None
+                if buf.startswith('213 '):
+                    s = buf[3:].strip()
+                elif buf.startswith('150 '):
+                    s = parse150(buf)
+                if s:
+                    self.size = s
+            
+            return len(buf)
+        except KeyboardInterrupt:
+            return pycurl.READFUNC_ABORT
 
     def _return_hdr_obj(self):
         if self._parsed_hdr:
@@ -1531,6 +1545,7 @@ class PyCurlFileObject():
 
         # defaults we're always going to set
         self.curl_obj.setopt(pycurl.NOPROGRESS, False)
+        self.curl_obj.setopt(pycurl.NOSIGNAL, True)
         self.curl_obj.setopt(pycurl.WRITEFUNCTION, self._retrieve)
         self.curl_obj.setopt(pycurl.HEADERFUNCTION, self._hdr_retrieve)
         self.curl_obj.setopt(pycurl.PROGRESSFUNCTION, self._progress_update)
@@ -1610,11 +1625,23 @@ class PyCurlFileObject():
             # to other URLGrabErrors from 
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
             # this covers e.args[0] == 22 pretty well - which will be common
+            code = self.http_code                                
             if e.args[0] == 28:
                 err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
-            code = self.http_code                
+
+            elif e.args[0] == 23 and code >= 200 and code < 299:
+                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
+                err.url = self.url
+                # this is probably wrong but ultimately this is what happens
+                # we have a legit http code and a pycurl 'writer failed' code
+                # which almost always means something aborted it from outside
+                # since we cannot know what it is -I'm banking on it being
+                # a ctrl-c. XXXX - if there's a way of going back two raises to 
+                # figure out what aborted the pycurl process FIXME
+                raise KeyboardInterrupt
+
             if str(e.args[1]) == '': # fake it until you make it
                 msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
             else:
@@ -1623,7 +1650,7 @@ class PyCurlFileObject():
             err.code = code
             err.exception = e
             raise err
-            
+
     def _do_open(self):
         self.curl_obj = _curl_cache
         self.curl_obj.reset() # reset all old settings away, just in case
@@ -1841,6 +1868,7 @@ class PyCurlFileObject():
             if self._prog_running:
                 downloaded += self._reget_length
                 self.opts.progress_obj.update(downloaded)
+
 
     def read(self, amt=None):
         self._fill_buffer(amt)
