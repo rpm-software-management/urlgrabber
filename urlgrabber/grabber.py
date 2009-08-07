@@ -407,7 +407,6 @@ from stat import *  # S_* and ST_*
 import pycurl
 from ftplib import parse150
 from StringIO import StringIO
-from tempfile import mkstemp
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -1777,19 +1776,23 @@ class PyCurlFileObject():
         else:
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
-            fh, self._temp_name = mkstemp()
+
             
-            self.fo = open(self._temp_name, 'wb')
+            self.fo = StringIO()
+            # if this is to be a tempfile instead....
+            # it just makes crap in the tempdir
+            #fh, self._temp_name = mkstemp()
+            #self.fo = open(self._temp_name, 'wb')
 
             
         self._do_perform()
         
 
-        # close it up
-        self.fo.flush()
-        self.fo.close()
 
         if self.filename:            
+            # close it up
+            self.fo.flush()
+            self.fo.close()
             # set the time
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
@@ -1797,7 +1800,8 @@ class PyCurlFileObject():
             # re open it
             self.fo = open(self.filename, 'r')
         else:
-            self.fo = open(self._temp_name, 'r')
+            #self.fo = open(self._temp_name, 'r')
+            self.fo.seek(0)
 
         self._complete = True
     
