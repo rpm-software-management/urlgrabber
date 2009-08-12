@@ -866,8 +866,13 @@ class URLGrabberOptions:
         self.data = None
         self.urlparser = URLParser()
         self.quote = None
-        self.ssl_ca_cert = None
-        self.ssl_context = None
+        self.ssl_ca_cert = None # sets SSL_CAINFO - path to certdb
+        self.ssl_context = None # no-op in pycurl
+        self.ssl_verify_peer = True # check peer's cert for authenticity
+        self.ssl_verify_host = True# make sure who they are and who the cert is for matches
+        self.ssl_key = None # client key
+        self.ssl_cert = None # client cert
+        self.ssl_key_pass = None # password to access the key
 
     def __repr__(self):
         return self.format()
@@ -1570,6 +1575,15 @@ class PyCurlFileObject():
         if self.scheme == 'https':
             if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
                 self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
+                self.curl_obj.setopt(pycurl.CAINFO, opts.ssl_ca_cert)
+            self.curl_obj.setopt(pycurl.SSL_VERIFYPEER, opts.ssl_verify_peer)
+            self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, opts.ssl_verify_host)
+            if opts.ssl_key:
+                self.curl_obj.setopt(pycurl.SSLKEY, opts.ssl_key)
+            if opts.ssl_cert:
+                self.curl_obj.setopt(pycurl.SSLCERT, opts.ssl_cert)
+            if opts.ssl_key_pass:
+                self.curl_obj.setopt(pycurl.SSLKEYPASSWD, opts.ssl_key_pass)
 
         #headers:
         if opts.http_headers and self.scheme in ('http', 'https'):
