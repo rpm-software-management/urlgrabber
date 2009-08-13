@@ -1621,7 +1621,7 @@ class PyCurlFileObject():
         #posts - simple - expects the fields as they are
         if opts.data:
             self.curl_obj.setopt(pycurl.POST, True)
-            self.curl_obj.setopt(pycurl.POSTFIELDS, opts.data)
+            self.curl_obj.setopt(pycurl.POSTFIELDS, self._to_utf8(opts.data))
             
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
@@ -1887,7 +1887,13 @@ class PyCurlFileObject():
                 downloaded += self._reget_length
                 self.opts.progress_obj.update(downloaded)
 
-
+    def _to_utf8(self, obj, errors='replace'):
+        '''convert 'unicode' to an encoded utf-8 byte string '''
+        # stolen from yum.i18n
+        if isinstance(obj, unicode):
+            obj = obj.encode('utf-8', errors)
+        return obj
+        
     def read(self, amt=None):
         self._fill_buffer(amt)
         if amt is None:
