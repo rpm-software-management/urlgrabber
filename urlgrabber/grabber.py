@@ -868,10 +868,12 @@ class URLGrabberOptions:
         self.quote = None
         self.ssl_ca_cert = None # sets SSL_CAINFO - path to certdb
         self.ssl_context = None # no-op in pycurl
-        self.ssl_verify_peer = True # check peer's cert for authenticity
-        self.ssl_verify_host = True# make sure who they are and who the cert is for matches
+        self.ssl_verify_peer = True # check peer's cert for authenticityb
+        self.ssl_verify_host = True # make sure who they are and who the cert is for matches
         self.ssl_key = None # client key
+        self.ssl_key_type = 'PEM' #(or DER)
         self.ssl_cert = None # client cert
+        self.ssl_cert_type = 'PEM' # (or DER)
         self.ssl_key_pass = None # password to access the key
 
     def __repr__(self):
@@ -1580,8 +1582,12 @@ class PyCurlFileObject():
             self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, opts.ssl_verify_host)
             if opts.ssl_key:
                 self.curl_obj.setopt(pycurl.SSLKEY, opts.ssl_key)
+            if opts.ssl_key_type:
+                self.curl_obj.setopt(pycurl.SSLKEYTYPE, opts.ssl_key_type)
             if opts.ssl_cert:
                 self.curl_obj.setopt(pycurl.SSLCERT, opts.ssl_cert)
+            if opts.ssl_cert_type:                
+                self.curl_obj.setopt(pycurl.SSLCERTTYPE, opts.ssl_cert_type)
             if opts.ssl_key_pass:
                 self.curl_obj.setopt(pycurl.SSLKEYPASSWD, opts.ssl_key_pass)
 
@@ -1639,12 +1645,7 @@ class PyCurlFileObject():
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
             # this covers e.args[0] == 22 pretty well - which will be common
             code = self.http_code                                
-            if e.args[0] == 28:
-                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-
-            elif e.args[0] == 23 and code >= 200 and code < 299:
+            if e.args[0] == 23 and code >= 200 and code < 299:
                 err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
                 err.url = self.url
                 # this is probably wrong but ultimately this is what happens
@@ -1654,11 +1655,34 @@ class PyCurlFileObject():
                 # a ctrl-c. XXXX - if there's a way of going back two raises to 
                 # figure out what aborted the pycurl process FIXME
                 raise KeyboardInterrupt
+            
+            elif e.args[0] == 28:
+                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+            elif e.args[0] == 35:
+                msg = _("problem making ssl connection")
+                err = URLGrabError(14, msg)
+                err.url = self.url
+                raise err
+                
+            elif e.args[0] == 58:
+                msg = _("problem with the local client certificate")
+                err = URLGrabError(14, msg)
+                err.url = self.url
+                raise err
 
-            if str(e.args[1]) == '': # fake it until you make it
+            elif e.args[0] == 60:
+                msg = _("client cert cannot be verified or client cert incorrect")
+                err = URLGrabError(14, msg)
+                err.url = self.url
+                raise err
+            
+            elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
                 msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
             else:
-                msg = str(e.args[1])
+                msg = 'PYCURL ERROR %s - "%s"' % (e.args[0], str(e.args[1]))
+                code = e.args[0]
             err = URLGrabError(14, msg)
             err.code = code
             err.exception = e
@@ -1770,7 +1794,7 @@ class PyCurlFileObject():
         if self._complete:
             return
 
-        if self.filename:
+        if self.filename is not None:
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
             
