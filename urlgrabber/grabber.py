@@ -1615,14 +1615,16 @@ class PyCurlFileObject():
                     if scheme not in ('ftp'):
                         continue
                     else:
+                        if proxy == '_none_': proxy = ""
                         self.curl_obj.setopt(pycurl.PROXY, proxy)
                 elif self.scheme in ('http', 'https'):
                     if scheme not in ('http', 'https'):
                         continue
                     else:
+                        if proxy == '_none_': proxy = ""
                         self.curl_obj.setopt(pycurl.PROXY, proxy)
-        
-        # username/password/auth settings
+            
+        # FIXME username/password/auth settings
 
         #posts - simple - expects the fields as they are
         if opts.data:
