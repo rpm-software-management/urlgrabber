@@ -1506,7 +1506,7 @@ class PyCurlFileObject():
             self.fo.write(buf)
             return len(buf)
         except KeyboardInterrupt:
-            return pycurl.READFUNC_ABORT
+            return -1
             
     def _hdr_retrieve(self, buf):
         try:
@@ -1667,6 +1667,22 @@ class PyCurlFileObject():
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
+            elif e.args[0] == 37:
+                msg = _("Could not open/read %s") % (self.url)
+                err = URLGrabError(14, msg)
+                err.url = self.url
+                raise err
+                
+            elif e.args[0] == 42:
+                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
+                err.url = self.url
+                # this is probably wrong but ultimately this is what happens
+                # we have a legit http code and a pycurl 'writer failed' code
+                # which almost always means something aborted it from outside
+                # since we cannot know what it is -I'm banking on it being
+                # a ctrl-c. XXXX - if there's a way of going back two raises to 
+                # figure out what aborted the pycurl process FIXME
+                raise KeyboardInterrupt
                 
             elif e.args[0] == 58:
                 msg = _("problem with the local client certificate")
@@ -1909,9 +1925,12 @@ class PyCurlFileObject():
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
-            if self._prog_running:
-                downloaded += self._reget_length
-                self.opts.progress_obj.update(downloaded)
+            try:
+                if self._prog_running:
+                    downloaded += self._reget_length
+                    self.opts.progress_obj.update(downloaded)
+            except KeyboardInterrupt:
+                return -1
 
     def _to_utf8(self, obj, errors='replace'):
         '''convert 'unicode' to an encoded utf-8 byte string '''
