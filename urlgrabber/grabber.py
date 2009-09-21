@@ -1524,7 +1524,7 @@ class PyCurlFileObject():
                 elif buf.startswith('150 '):
                     s = parse150(buf)
                 if s:
-                    self.size = s
+                    self.size = int(s)
             
             return len(buf)
         except KeyboardInterrupt:
