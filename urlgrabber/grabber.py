@@ -875,7 +875,10 @@ class URLGrabberOptions:
         self.ssl_cert = None # client cert
         self.ssl_cert_type = 'PEM' # (or DER)
         self.ssl_key_pass = None # password to access the key
-
+        self.size = None # if we know how big the thing we're getting is going
+                         # to be.
+        self.max_header_size = 2097152 #2mb seems reasonable for maximum header size
+        
     def __repr__(self):
         return self.format()
         
@@ -1476,6 +1479,7 @@ class PyCurlFileObject():
         self._amount_read = 0
         self._reget_length = 0
         self._prog_running = False
+        self._error = (None, None)
         self.size = 0
         self._do_open()
         
@@ -1509,6 +1513,9 @@ class PyCurlFileObject():
             return -1
             
     def _hdr_retrieve(self, buf):
+        if self._over_max_size(cur=len(self._hdr_dump), 
+                               max=self.opts.max_header_size):
+            return -1            
         try:
             self._hdr_dump += buf
             # we have to get the size before we do the progress obj start
@@ -1646,10 +1653,16 @@ class PyCurlFileObject():
             # to other URLGrabErrors from 
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
             # this covers e.args[0] == 22 pretty well - which will be common
-            code = self.http_code                                
-            if e.args[0] == 23 and code >= 200 and code < 299:
+            
+            code = self.http_code
+            errcode = e.args[0]
+            if self._error[0]:
+                errcode = self._error[0]
+                
+            if errcode == 23 and code >= 200 and code < 299:
                 err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
                 err.url = self.url
+                
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
@@ -1658,22 +1671,22 @@ class PyCurlFileObject():
                 # figure out what aborted the pycurl process FIXME
                 raise KeyboardInterrupt
             
-            elif e.args[0] == 28:
+            elif errcode == 28:
                 err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
-            elif e.args[0] == 35:
+            elif errcode == 35:
                 msg = _("problem making ssl connection")
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
-            elif e.args[0] == 37:
+            elif errcode == 37:
                 msg = _("Could not open/read %s") % (self.url)
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
                 
-            elif e.args[0] == 42:
+            elif errcode == 42:
                 err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
                 err.url = self.url
                 # this is probably wrong but ultimately this is what happens
@@ -1684,23 +1697,32 @@ class PyCurlFileObject():
                 # figure out what aborted the pycurl process FIXME
                 raise KeyboardInterrupt
                 
-            elif e.args[0] == 58:
+            elif errcode == 58:
                 msg = _("problem with the local client certificate")
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
 
-            elif e.args[0] == 60:
+            elif errcode == 60:
                 msg = _("client cert cannot be verified or client cert incorrect")
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
             
+            elif errcode == 63:
+                if self._error[1]:
+                    msg = self._error[1]
+                else:
+                    msg = _("Max download size exceeded on %s") % (self.url)
+                err = URLGrabError(14, msg)
+                err.url = self.url
+                raise err
+                    
             elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
                 msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
             else:
-                msg = 'PYCURL ERROR %s - "%s"' % (e.args[0], str(e.args[1]))
-                code = e.args[0]
+                msg = 'PYCURL ERROR %s - "%s"' % (errcode, str(e.args[1]))
+                code = errcode
             err = URLGrabError(14, msg)
             err.code = code
             err.exception = e
@@ -1925,13 +1947,29 @@ class PyCurlFileObject():
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
-            try:
-                if self._prog_running:
-                    downloaded += self._reget_length
-                    self.opts.progress_obj.update(downloaded)
-            except KeyboardInterrupt:
-                return -1
+        if self._over_max_size(cur=self._amount_read):
+            return -1
 
+        try:
+            if self._prog_running:
+                downloaded += self._reget_length
+                self.opts.progress_obj.update(downloaded)
+        except KeyboardInterrupt:
+            return -1
+    
+    def _over_max_size(self, cur, max=None):
+
+        if not max:
+            max = self.size
+        if self.opts.size: # if we set an opts size use that, no matter what
+            max = self.opts.size
+        if cur > max + max*.10:
+
+            msg = _("Downloaded more than max size for %s: %s > %s") \
+                        % (self.url, cur, max)
+            self._error = (63, msg)
+            return True
+        return False
     def _to_utf8(self, obj, errors='replace'):
         '''convert 'unicode' to an encoded utf-8 byte string '''
         # stolen from yum.i18n
