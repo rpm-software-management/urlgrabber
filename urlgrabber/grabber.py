@@ -1480,7 +1480,7 @@ class PyCurlFileObject():
         self._reget_length = 0
         self._prog_running = False
         self._error = (None, None)
-        self.size = 0
+        self.size = None
         self._do_open()
         
         
@@ -1947,7 +1947,7 @@ class PyCurlFileObject():
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
-        if self._over_max_size(cur=self._amount_read):
+        if self._over_max_size(cur=self._amount_read-self._reget_length):
             return -1
 
         try:
@@ -1963,13 +1963,15 @@ class PyCurlFileObject():
             max = self.size
         if self.opts.size: # if we set an opts size use that, no matter what
             max = self.opts.size
+        if not max: return False # if we have None for all of the Max then this is dumb
         if cur > max + max*.10:
 
             msg = _("Downloaded more than max size for %s: %s > %s") \
                         % (self.url, cur, max)
-            self._error = (63, msg)
+            self._error = (pycurl.E_FILESIZE_EXCEEDED, msg)
             return True
         return False
+        
     def _to_utf8(self, obj, errors='replace'):
         '''convert 'unicode' to an encoded utf-8 byte string '''
         # stolen from yum.i18n
