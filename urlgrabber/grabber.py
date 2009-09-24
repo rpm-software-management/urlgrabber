@@ -220,11 +220,50 @@ GENERAL ARGUMENTS (kwargs)
 
   ssl_context = None
 
+    No-op when using the curl backend (default)
+   
     this option can be used if M2Crypto is available and will be
     ignored otherwise.  If provided, this SSL context will be used.
     If both ssl_ca_cert and ssl_context are provided, then ssl_context
     will be ignored and a new context will be created from
     ssl_ca_cert.
+
+  self.ssl_verify_peer = True 
+
+    Check the server's certificate to make sure it is valid with what our CA validates
+  
+  self.ssl_verify_host = True
+
+    Check the server's hostname to make sure it matches the certificate DN
+
+  self.ssl_key = None
+
+    Path to the key the client should use to connect/authenticate with
+
+  self.ssl_key_type = 'PEM' 
+
+    PEM or DER - format of key
+     
+  self.ssl_cert = None
+
+    Path to the ssl certificate the client should use to to authenticate with
+
+  self.ssl_cert_type = 'PEM' 
+
+    PEM or DER - format of certificate
+    
+  self.ssl_key_pass = None 
+
+    password to access the ssl_key
+    
+  self.size = None
+
+    size (in bytes) or Maximum size of the thing being downloaded. 
+    This is mostly to keep us from exploding with an endless datastream
+  
+  self.max_header_size = 2097152 
+
+    Maximum size (in bytes) of the headers.
     
 
 RETRY RELATED ARGUMENTS
@@ -876,7 +915,7 @@ class URLGrabberOptions:
         self.ssl_cert_type = 'PEM' # (or DER)
         self.ssl_key_pass = None # password to access the key
         self.size = None # if we know how big the thing we're getting is going
-                         # to be.
+                         # to be. this is ultimately a MAXIMUM size for the file
         self.max_header_size = 2097152 #2mb seems reasonable for maximum header size
         
     def __repr__(self):
