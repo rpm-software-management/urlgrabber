@@ -44,8 +44,8 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '3.9.0'
-__date__    = '2009/07/31'
+__version__ = '3.9.1'
+__date__    = '2009/09/25'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>' \
               'Seth Vidal <skvidal@fedoraproject.org>' 
