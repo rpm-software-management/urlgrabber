@@ -6,7 +6,7 @@ WEBPATH = /home/groups/urlgrabber/web/download
 PYTHON = python
 PY_MODULE = $(PACKAGE)
 SCM_MODULE = $(PACKAGE)
-CLEANFILES = MANIFEST *~ build dist export release daily reference ChangeLog.bak \
+CLEANFILES = MANIFEST *~ build dist export release daily reference nonexistent_file ChangeLog.bak \
              *.pyc urlgrabber/*.pyc scripts/*.pyc test/*.pyc test/nonexistent_file \
              test/reference test/reference.part urlgrabber/*~
 ##############################################################################
