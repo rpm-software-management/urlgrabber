@@ -17,7 +17,6 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: byterange.py,v 1.12 2006/07/20 20:15:58 mstenner Exp $
 
 import os
 import stat
@@ -260,7 +259,6 @@ from urllib import splitport, splituser, splitpasswd, splitattr, \
 import ftplib
 import socket
 import sys
-import ftplib
 import mimetypes
 import mimetools
 

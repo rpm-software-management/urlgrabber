@@ -15,7 +15,6 @@
 # Copyright 2002-2006 Michael D. Stenner, Ryan Tomayko
 # Copyright 2009 Red Hat, Inc - pycurl support added by Seth Vidal
 
-# $Id: __init__.py,v 1.20 2006/09/22 00:58:55 mstenner Exp $
 
 """A high-level cross-protocol url-grabber.
 

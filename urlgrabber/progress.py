@@ -17,13 +17,11 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
-# $Id: progress.py,v 1.7 2005/08/19 21:59:07 mstenner Exp $
 
 import sys
 import time
 import math
 import thread
-import types
 import fcntl
 import struct
 import termios

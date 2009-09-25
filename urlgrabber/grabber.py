@@ -159,22 +159,10 @@ GENERAL ARGUMENTS (kwargs)
     partial file or directory name.
 
   opener = None
-  
-    Overrides the default urllib2.OpenerDirector provided to urllib2
-    when making requests.  This option exists so that the urllib2
-    handler chain may be customized.  Note that the range, reget,
-    proxy, and keepalive features require that custom handlers be
-    provided to urllib2 in order to function properly.  If an opener
-    option is provided, no attempt is made by urlgrabber to ensure
-    chain integrity.  You are responsible for ensuring that any
-    extension handlers are present if said features are required.
-    
-  cache_openers = True
+    No-op when using the curl backend (default)
 
-    controls whether urllib2 openers should be cached and reused, or
-    whether they should be created each time.  There's a modest
-    overhead in recreating them, but it's slightly safer to do so if
-    you're modifying the handlers between calls.
+  cache_openers = True
+    No-op when using the curl backend (default)
 
   data = None
 
@@ -222,11 +210,6 @@ GENERAL ARGUMENTS (kwargs)
 
     No-op when using the curl backend (default)
    
-    this option can be used if M2Crypto is available and will be
-    ignored otherwise.  If provided, this SSL context will be used.
-    If both ssl_ca_cert and ssl_context are provided, then ssl_context
-    will be ignored and a new context will be created from
-    ssl_ca_cert.
 
   self.ssl_verify_peer = True 
 
@@ -428,13 +411,11 @@ BANDWIDTH THROTTLING
 
 """
 
-# $Id: grabber.py,v 1.52 2006/12/12 19:08:46 mstenner Exp $
+
 
 import os
-import os.path
 import sys
 import urlparse
-import rfc822
 import time
 import string
 import urllib
@@ -442,10 +423,13 @@ import urllib2
 import mimetools
 import thread
 import types
-from stat import *  # S_* and ST_*
+import stat
 import pycurl
 from ftplib import parse150
 from StringIO import StringIO
+from httplib import HTTPException
+import socket
+from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -454,64 +438,6 @@ try:
     exec('from ' + (__name__.split('.'))[0] + ' import __version__')
 except:
     __version__ = '???'
-
-import sslfactory
-
-auth_handler = urllib2.HTTPBasicAuthHandler( \
-     urllib2.HTTPPasswordMgrWithDefaultRealm())
-
-try:
-    from i18n import _
-except ImportError, msg:
-    def _(st): return st
-
-try:
-    from httplib import HTTPException
-except ImportError, msg:
-    HTTPException = None
-
-try:
-    # This is a convenient way to make keepalive optional.
-    # Just rename the module so it can't be imported.
-    import keepalive
-    from keepalive import HTTPHandler, HTTPSHandler
-    have_keepalive = True
-    keepalive_http_handler = HTTPHandler()
-except ImportError, msg:
-    have_keepalive = False
-    keepalive_http_handler = None
-
-try:
-    # add in range support conditionally too
-    import byterange
-    from byterange import HTTPRangeHandler, HTTPSRangeHandler, \
-         FileRangeHandler, FTPRangeHandler, range_tuple_normalize, \
-         range_tuple_to_header, RangeError
-except ImportError, msg:
-    range_handlers = ()
-    RangeError = None
-    have_range = 0
-else:
-    range_handlers = (HTTPRangeHandler(), HTTPSRangeHandler(),
-        FileRangeHandler(), FTPRangeHandler())
-    have_range = 1
-
-
-# check whether socket timeout support is available (Python >= 2.3)
-import socket
-try:
-    TimeoutError = socket.timeout
-    have_socket_timeout = True
-except AttributeError:
-    TimeoutError = None
-    have_socket_timeout = False
-
-try:
-    import signal
-    from signal import SIGPIPE, SIG_IGN
-    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-except ImportError:
-    pass
 
 ########################################################################
 # functions for debugging output.  These functions are here because they
@@ -535,12 +461,6 @@ def set_logger(DBOBJ):
 
     global DEBUG
     DEBUG = DBOBJ
-    if have_keepalive and keepalive.DEBUG is None:
-        keepalive.DEBUG = DBOBJ
-    if have_range and byterange.DEBUG is None:
-        byterange.DEBUG = DBOBJ
-    if sslfactory.DEBUG is None:
-        sslfactory.DEBUG = DBOBJ
 
 def _init_default_logger(logspec=None):
     '''Examines the environment variable URLGRABBER_DEBUG and creates
@@ -593,14 +513,16 @@ def _init_default_logger(logspec=None):
 def _log_package_state():
     if not DEBUG: return
     DEBUG.info('urlgrabber version  = %s' % __version__)
-    DEBUG.info('have_m2crypto       = %s' % sslfactory.have_m2crypto)
     DEBUG.info('trans function "_"  = %s' % _)
-    DEBUG.info('have_keepalive      = %s' % have_keepalive)
-    DEBUG.info('have_range          = %s' % have_range)
-    DEBUG.info('have_socket_timeout = %s' % have_socket_timeout)
-
+        
 _init_default_logger()
 _log_package_state()
+
+
+# normally this would be from i18n or something like it ...
+def _(st):
+    return st
+
 ########################################################################
 #                 END MODULE INITIALIZATION
 ########################################################################
@@ -756,7 +678,7 @@ class URLParser:
             quote = 0 # pathname2url quotes, so we won't do it again
             
         if scheme in ['http', 'https']:
-            parts = self.process_http(parts)
+            parts = self.process_http(parts, url)
             
         if quote is None:
             quote = self.guess_should_quote(parts)
@@ -773,21 +695,9 @@ class URLParser:
             url = prefix + '/' + url
         return url
 
-    def process_http(self, parts):
+    def process_http(self, parts, url):
         (scheme, host, path, parm, query, frag) = parts
-
-        if '@' in host and auth_handler:
-            try:
-                user_pass, host = host.split('@', 1)
-                if ':' in user_pass:
-                    user, password = user_pass.split(':', 1)
-            except ValueError, e:
-                err = URLGrabError(1, _('Bad URL: %s') % url)
-                err.url = url
-                raise err
-            if DEBUG: DEBUG.info('adding HTTP auth: %s, %s', user, password)
-            auth_handler.add_password(None, host, user, password)
-
+        # TODO: auth-parsing here, maybe? pycurl doesn't really need it
         return (scheme, host, path, parm, query, frag)
 
     def quote(self, parts):
@@ -868,7 +778,7 @@ class URLGrabberOptions:
     def _set_attributes(self, **kwargs):
         """Update object attributes with those provided in kwargs."""
         self.__dict__.update(kwargs)
-        if have_range and kwargs.has_key('range'):
+        if kwargs.has_key('range'):
             # normalize the supplied range value
             self.range = range_tuple_normalize(self.range)
         if not self.reget in [None, 'simple', 'check_timestamp']:
@@ -1119,383 +1029,6 @@ class URLGrabber:
 # NOTE: actual defaults are set in URLGrabberOptions
 default_grabber = URLGrabber()
 
-class URLGrabberFileObject:
-    """This is a file-object wrapper that supports progress objects 
-    and throttling.
-
-    This exists to solve the following problem: lets say you want to
-    drop-in replace a normal open with urlopen.  You want to use a
-    progress meter and/or throttling, but how do you do that without
-    rewriting your code?  Answer: urlopen will return a wrapped file
-    object that does the progress meter and-or throttling internally.
-    """
-
-    def __init__(self, url, filename, opts):
-        self.url = url
-        self.filename = filename
-        self.opts = opts
-        self.fo = None
-        self._rbuf = ''
-        self._rbufsize = 1024*8
-        self._ttime = time.time()
-        self._tsize = 0
-        self._amount_read = 0
-        self._opener = None
-        self._do_open()
-        
-    def __getattr__(self, name):
-        """This effectively allows us to wrap at the instance level.
-        Any attribute not found in _this_ object will be searched for
-        in self.fo.  This includes methods."""
-        if hasattr(self.fo, name):
-            return getattr(self.fo, name)
-        raise AttributeError, name
-   
-    def _get_opener(self):
-        """Build a urllib2 OpenerDirector based on request options."""
-        if self.opts.opener:
-            return self.opts.opener
-        elif self._opener is None:
-            handlers = []
-            need_keepalive_handler = (have_keepalive and self.opts.keepalive)
-            need_range_handler = (range_handlers and \
-                                  (self.opts.range or self.opts.reget))
-            # if you specify a ProxyHandler when creating the opener
-            # it _must_ come before all other handlers in the list or urllib2
-            # chokes.
-            if self.opts.proxies:
-                handlers.append( _proxy_handler_cache.get(self.opts.proxies) )
-
-                # -------------------------------------------------------
-                # OK, these next few lines are a serious kludge to get
-                # around what I think is a bug in python 2.2's
-                # urllib2.  The basic idea is that default handlers
-                # get applied first.  If you override one (like a
-                # proxy handler), then the default gets pulled, but
-                # the replacement goes on the end.  In the case of
-                # proxies, this means the normal handler picks it up
-                # first and the proxy isn't used.  Now, this probably
-                # only happened with ftp or non-keepalive http, so not
-                # many folks saw it.  The simple approach to fixing it
-                # is just to make sure you override the other
-                # conflicting defaults as well.  I would LOVE to see
-                # these go way or be dealt with more elegantly.  The
-                # problem isn't there after 2.2.  -MDS 2005/02/24
-                if not need_keepalive_handler:
-                    handlers.append( urllib2.HTTPHandler() )
-                if not need_range_handler:
-                    handlers.append( urllib2.FTPHandler() )
-                # -------------------------------------------------------
-
-
-            ssl_factory = _ssl_factory_cache.get( (self.opts.ssl_ca_cert,
-                                                   self.opts.ssl_context) )
-            if need_keepalive_handler:
-                handlers.append(keepalive_http_handler)
-                handlers.append(_https_handler_cache.get(ssl_factory))
-            if need_range_handler:
-                handlers.extend( range_handlers )
-            handlers.append( auth_handler )
-            if self.opts.cache_openers:
-                self._opener = _opener_cache.get([ssl_factory,] + handlers)
-            else:
-                self._opener = _opener_cache.create([ssl_factory,] + handlers)
-            # OK, I don't like to do this, but otherwise, we end up with
-            # TWO user-agent headers.
-            self._opener.addheaders = []
-        return self._opener
-        
-    def _do_open(self):
-        opener = self._get_opener()
-
-        req = urllib2.Request(self.url, self.opts.data) # build request object
-        self._add_headers(req) # add misc headers that we need
-        self._build_range(req) # take care of reget and byterange stuff
-
-        fo, hdr = self._make_request(req, opener)
-        if self.reget_time and self.opts.reget == 'check_timestamp':
-            # do this if we have a local file with known timestamp AND
-            # we're in check_timestamp reget mode.
-            fetch_again = 0
-            try:
-                modified_tuple  = hdr.getdate_tz('last-modified')
-                modified_stamp  = rfc822.mktime_tz(modified_tuple)
-                if modified_stamp > self.reget_time: fetch_again = 1
-            except (TypeError,):
-                fetch_again = 1
-            
-            if fetch_again:
-                # the server version is newer than the (incomplete) local
-                # version, so we should abandon the version we're getting
-                # and fetch the whole thing again.
-                fo.close()
-                self.opts.reget = None
-                del req.headers['Range']
-                self._build_range(req)
-                fo, hdr = self._make_request(req, opener)
-
-        (scheme, host, path, parm, query, frag) = urlparse.urlparse(self.url)
-        path = urllib.unquote(path)
-        if not (self.opts.progress_obj or self.opts.raw_throttle() \
-                or self.opts.timeout):
-            # if we're not using the progress_obj, throttling, or timeout
-            # we can get a performance boost by going directly to
-            # the underlying fileobject for reads.
-            self.read = fo.read
-            if hasattr(fo, 'readline'):
-                self.readline = fo.readline
-        elif self.opts.progress_obj:
-            try:    
-                length = int(hdr['Content-Length'])
-                length = length + self._amount_read     # Account for regets
-            except (KeyError, ValueError, TypeError): 
-                length = None
-
-            self.opts.progress_obj.start(str(self.filename),
-                                         urllib.unquote(self.url),
-                                         os.path.basename(path), 
-                                         length, text=self.opts.text)
-            self.opts.progress_obj.update(0)
-        (self.fo, self.hdr) = (fo, hdr)
-    
-    def _add_headers(self, req):
-        if self.opts.user_agent:
-            req.add_header('User-agent', self.opts.user_agent)
-        try: req_type = req.get_type()
-        except ValueError: req_type = None
-        if self.opts.http_headers and req_type in ('http', 'https'):
-            for h, v in self.opts.http_headers:
-                req.add_header(h, v)
-        if self.opts.ftp_headers and req_type == 'ftp':
-            for h, v in self.opts.ftp_headers:
-                req.add_header(h, v)
-
-    def _build_range(self, req):
-        self.reget_time = None
-        self.append = 0
-        reget_length = 0
-        rt = None
-        if have_range and self.opts.reget and type(self.filename) in types.StringTypes:
-            # we have reget turned on and we're dumping to a file
-            try:
-                s = os.stat(self.filename)
-            except OSError:
-                pass
-            else:
-                self.reget_time = s[ST_MTIME]
-                reget_length = s[ST_SIZE]
-
-                # Set initial length when regetting
-                self._amount_read = reget_length    
-
-                rt = reget_length, ''
-                self.append = 1
-                
-        if self.opts.range:
-            if not have_range:
-                err = URLGrabError(10, _('Byte range requested but range '\
-                                         'support unavailable %s') % self.url)
-                err.url = self.url
-                raise err
-
-            rt = self.opts.range
-            if rt[0]: rt = (rt[0] + reget_length, rt[1])
-
-        if rt:
-            header = range_tuple_to_header(rt)
-            if header: req.add_header('Range', header)
-
-    def _make_request(self, req, opener):
-        try:
-            if have_socket_timeout and self.opts.timeout:
-                old_to = socket.getdefaulttimeout()
-                socket.setdefaulttimeout(self.opts.timeout)
-                try:
-                    fo = opener.open(req)
-                finally:
-                    socket.setdefaulttimeout(old_to)
-            else:
-                fo = opener.open(req)
-            hdr = fo.info()
-        except ValueError, e:
-            err = URLGrabError(1, _('Bad URL: %s : %s') % (self.url, e, ))
-            err.url = self.url
-            raise err
-
-        except RangeError, e:
-            err = URLGrabError(9, _('%s on %s') % (e, self.url))
-            err.url = self.url
-            raise err
-        except urllib2.HTTPError, e:
-            new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
-            new_e.code = e.code
-            new_e.exception = e
-            new_e.url = self.url
-            raise new_e
-        except IOError, e:
-            if hasattr(e, 'reason') and have_socket_timeout and \
-                   isinstance(e.reason, TimeoutError):
-                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-            else:
-                err = URLGrabError(4, _('IOError on %s: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-
-        except OSError, e:
-            err = URLGrabError(5, _('%s on %s') % (e, self.url))
-            err.url = self.url
-            raise err
-
-        except HTTPException, e:
-            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
-                            (e.__class__.__name__, self.url, e))
-            err.url = self.url
-            raise err
-
-        else:
-            return (fo, hdr)
-        
-    def _do_grab(self):
-        """dump the file to self.filename."""
-        if self.append: mode = 'ab'
-        else: mode = 'wb'
-        if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
-                             (self.filename, mode))
-        try:
-            new_fo = open(self.filename, mode)
-        except IOError, e:
-            err = URLGrabError(16, _(\
-              'error opening local file from %s, IOError: %s') % (self.url, e))
-            err.url = self.url
-            raise err
-
-        try:
-            # if we have a known range, only try to read that much.
-            (low, high) = self.opts.range
-            amount = high - low
-        except TypeError, ValueError:
-            amount = None
-        bs = 1024*8
-        size = 0
-
-        if amount is not None: bs = min(bs, amount - size)
-        block = self.read(bs)
-        size = size + len(block)
-        while block:
-            try:
-                new_fo.write(block)
-            except IOError, e:
-                err = URLGrabError(16, _(\
-                 'error writing to local file from %s, IOError: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-            if amount is not None: bs = min(bs, amount - size)
-            block = self.read(bs)
-            size = size + len(block)
-
-        new_fo.close()
-        try:
-            modified_tuple  = self.hdr.getdate_tz('last-modified')
-            modified_stamp  = rfc822.mktime_tz(modified_tuple)
-            os.utime(self.filename, (modified_stamp, modified_stamp))
-        except (TypeError,), e: pass
-
-        return size
-    
-    def _fill_buffer(self, amt=None):
-        """fill the buffer to contain at least 'amt' bytes by reading
-        from the underlying file object.  If amt is None, then it will
-        read until it gets nothing more.  It updates the progress meter
-        and throttles after every self._rbufsize bytes."""
-        # the _rbuf test is only in this first 'if' for speed.  It's not
-        # logically necessary
-        if self._rbuf and not amt is None:
-            L = len(self._rbuf)
-            if amt > L:
-                amt = amt - L
-            else:
-                return
-
-        # if we've made it here, then we don't have enough in the buffer
-        # and we need to read more.
-
-        buf = [self._rbuf]
-        bufsize = len(self._rbuf)
-        while amt is None or amt:
-            # first, delay if necessary for throttling reasons
-            if self.opts.raw_throttle():
-                diff = self._tsize/self.opts.raw_throttle() - \
-                       (time.time() - self._ttime)
-                if diff > 0: time.sleep(diff)
-                self._ttime = time.time()
-                
-            # now read some data, up to self._rbufsize
-            if amt is None: readamount = self._rbufsize
-            else:           readamount = min(amt, self._rbufsize)
-            try:
-                new = self.fo.read(readamount)
-            except socket.error, e:
-                err = URLGrabError(4, _('Socket Error on %s: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-
-            except TimeoutError, e:
-                raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-
-            except IOError, e:
-                raise URLGrabError(4, _('IOError on %s: %s') %(self.url, e))
-                err.url = self.url
-                raise err
-
-            newsize = len(new)
-            if not newsize: break # no more to read
-
-            if amt: amt = amt - newsize
-            buf.append(new)
-            bufsize = bufsize + newsize
-            self._tsize = newsize
-            self._amount_read = self._amount_read + newsize
-            if self.opts.progress_obj:
-                self.opts.progress_obj.update(self._amount_read)
-
-        self._rbuf = string.join(buf, '')
-        return
-
-    def read(self, amt=None):
-        self._fill_buffer(amt)
-        if amt is None:
-            s, self._rbuf = self._rbuf, ''
-        else:
-            s, self._rbuf = self._rbuf[:amt], self._rbuf[amt:]
-        return s
-
-    def readline(self, limit=-1):
-        i = string.find(self._rbuf, '\n')
-        while i < 0 and not (0 < limit <= len(self._rbuf)):
-            L = len(self._rbuf)
-            self._fill_buffer(L + self._rbufsize)
-            if not len(self._rbuf) > L: break
-            i = string.find(self._rbuf, '\n', L)
-
-        if i < 0: i = len(self._rbuf)
-        else: i = i+1
-        if 0 <= limit < len(self._rbuf): i = limit
-
-        s, self._rbuf = self._rbuf[:i], self._rbuf[i:]
-        return s
-
-    def close(self):
-        if self.opts.progress_obj:
-            self.opts.progress_obj.end(self._amount_read)
-        self.fo.close()
-        if self.opts.close_connection:
-            try: self.fo.close_connection()
-            except: pass
-
 
 class PyCurlFileObject():
     def __init__(self, url, filename, opts):
@@ -1553,7 +1086,7 @@ class PyCurlFileObject():
             
     def _hdr_retrieve(self, buf):
         if self._over_max_size(cur=len(self._hdr_dump), 
-                               max=self.opts.max_header_size):
+                               max_size=self.opts.max_header_size):
             return -1            
         try:
             self._hdr_dump += buf
@@ -1788,8 +1321,8 @@ class PyCurlFileObject():
             except OSError:
                 pass
             else:
-                self.reget_time = s[ST_MTIME]
-                reget_length = s[ST_SIZE]
+                self.reget_time = s[stat.ST_MTIME]
+                reget_length = s[stat.ST_SIZE]
 
                 # Set initial length when regetting
                 self._amount_read = reget_length    
@@ -1817,7 +1350,7 @@ class PyCurlFileObject():
         return (self.fo, self.hdr)
         
         try:
-            if have_socket_timeout and self.opts.timeout:
+            if self.opts.timeout:
                 old_to = socket.getdefaulttimeout()
                 socket.setdefaulttimeout(self.opts.timeout)
                 try:
@@ -1843,8 +1376,7 @@ class PyCurlFileObject():
             new_e.url = self.url
             raise new_e
         except IOError, e:
-            if hasattr(e, 'reason') and have_socket_timeout and \
-                   isinstance(e.reason, TimeoutError):
+            if hasattr(e, 'reason') and isinstance(e.reason, socket.timeout):
                 err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
@@ -1872,8 +1404,9 @@ class PyCurlFileObject():
 
         if self._complete:
             return
-
-        if self.filename is not None:
+        _was_filename = False
+        if type(self.filename) in types.StringTypes and self.filename:
+            _was_filename = True
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
             
@@ -1906,7 +1439,7 @@ class PyCurlFileObject():
         
 
 
-        if self.filename:            
+        if _was_filename:
             # close it up
             self.fo.flush()
             self.fo.close()
@@ -1961,7 +1494,7 @@ class PyCurlFileObject():
                 err.url = self.url
                 raise err
 
-            except TimeoutError, e:
+            except socket.timeout, e:
                 raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
@@ -1996,17 +1529,17 @@ class PyCurlFileObject():
         except KeyboardInterrupt:
             return -1
     
-    def _over_max_size(self, cur, max=None):
+    def _over_max_size(self, cur, max_size=None):
 
-        if not max:
-            max = self.size
+        if not max_size:
+            max_size = self.size
         if self.opts.size: # if we set an opts size use that, no matter what
-            max = self.opts.size
-        if not max: return False # if we have None for all of the Max then this is dumb
-        if cur > max + max*.10:
+            max_size = self.opts.size
+        if not max_size: return False # if we have None for all of the Max then this is dumb
+        if cur > max_size + max_size*.10:
 
             msg = _("Downloaded more than max size for %s: %s > %s") \
-                        % (self.url, cur, max)
+                        % (self.url, cur, max_size)
             self._error = (pycurl.E_FILESIZE_EXCEEDED, msg)
             return True
         return False
@@ -2049,109 +1582,9 @@ class PyCurlFileObject():
             self.opts.progress_obj.end(self._amount_read)
         self.fo.close()
         
-        # XXX - confident that this does nothing for pycurl
-        #if self.opts.close_connection:
-        #    try: self.fo.close_connection()
-        #    except: pass
-
-
-
-#####################################################################
-
-
-
-class NoDefault: pass
-class ObjectCache:
-    def __init__(self, name=None):
-        self.name = name or self.__class__.__name__
-        self._lock = thread.allocate_lock()
-        self._cache = []
-
-    def lock(self):
-        self._lock.acquire()
-
-    def unlock(self):
-        self._lock.release()
-            
-    def get(self, key, create=None, found=None):
-        for (k, v) in self._cache:
-            if k == key:
-                if DEBUG:
-                    DEBUG.debug('%s: found key' % self.name)
-                    DEBUG.debug('%s: key = %s' % (self.name, key))
-                    DEBUG.debug('%s: val = %s' % (self.name, v))
-                found = found or getattr(self, 'found', None)
-                if found: v = found(key, v)
-                return v
-        if DEBUG:
-            DEBUG.debug('%s: no key found' % self.name)
-            DEBUG.debug('%s: key = %s' % (self.name, key))
-        create = create or getattr(self, 'create', None)
-        if create:
-            value = create(key)
-            if DEBUG:
-                DEBUG.info('%s: new value created' % self.name)
-                DEBUG.debug('%s: val = %s' % (self.name, value))
-            self._cache.append( (key, value) )
-            return value
-        else:
-            raise KeyError('key not found: %s' % key)
-
-    def set(self, key, value):
-        if DEBUG:
-            DEBUG.info('%s: inserting key' % self.name)
-            DEBUG.debug('%s: key = %s' % (self.name, key))
-            DEBUG.debug('%s: val = %s' % (self.name, value))
-        self._cache.append( (key, value) )
-
-    def ts_get(self, key, create=None, found=None):
-        self._lock.acquire()
-        try:
-            self.get(key, create, found)
-        finally:
-            self._lock.release()
-        
-    def ts_set(self, key, value):
-        self._lock.acquire()
-        try:
-            self.set(key, value)
-        finally:
-            self._lock.release()
-
-class OpenerCache(ObjectCache):
-    def found(self, factory_and_handlers, opener):
-        for handler in factory_and_handlers[1:]:
-            handler.add_parent(opener)
-        return opener
-    def create(self, factory_and_handlers):
-        factory = factory_and_handlers[0]
-        handlers = factory_and_handlers[1:]
-        return factory.create_opener(*handlers)
-_opener_cache = OpenerCache()
 
 _curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
-class ProxyHandlerCache(ObjectCache):
-    def create(self, proxies):
-        for k, v in proxies.items():
-            utype, url = urllib.splittype(v)
-            host, other = urllib.splithost(url)
-            if (utype is None) or (host is None):
-                err = URLGrabError(13, _('Bad proxy URL: %s') % v)
-                err.url = url
-                raise err
-        return urllib2.ProxyHandler(proxies)
-_proxy_handler_cache = ProxyHandlerCache()
-
-class HTTPSHandlerCache(ObjectCache):
-    def create(self, ssl_factory):
-        return HTTPSHandler(ssl_factory)
-_https_handler_cache = HTTPSHandlerCache()
-
-class SSLFactoryCache(ObjectCache):
-    def create(self, cert_and_context):
-        return sslfactory.get_factory(*cert_and_context)
-_ssl_factory_cache = SSLFactoryCache()
 
 #####################################################################
 # DEPRECATED FUNCTIONS
@@ -2190,7 +1623,6 @@ def retrygrab(url, filename=None, copy_local=0, close_connection=0,
 #####################################################################
 #  TESTING
 def _main_test():
-    import sys
     try: url, filename = sys.argv[1:3]
     except ValueError:
         print 'usage:', sys.argv[0], \
@@ -2217,7 +1649,6 @@ def _main_test():
 
 
 def _retry_test():
-    import sys
     try: url, filename = sys.argv[1:3]
     except ValueError:
         print 'usage:', sys.argv[0], \
@@ -2252,7 +1683,7 @@ def _retry_test():
     else: print 'LOCAL FILE:', name
 
 def _file_object_test(filename=None):
-    import random, cStringIO, sys
+    import cStringIO
     if filename is None:
         filename = __file__
     print 'using file "%s" for comparisons' % filename

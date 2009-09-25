@@ -29,11 +29,10 @@ def main():
     sys.path.insert(0, joinpath(dn,'..'))
     sys.path.insert(0, dn)
     # it's okay to import now that sys.path is setup.
-    import test_grabber, test_byterange, test_mirror, test_keepalive
+    import test_grabber, test_byterange, test_mirror
     suite = TestSuite( (test_grabber.suite(),
                         test_byterange.suite(), 
-                        test_mirror.suite(),
-                        test_keepalive.suite()) )
+                        test_mirror.suite()) )
     suite.description = 'urlgrabber tests'
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=descriptions,

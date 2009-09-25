@@ -86,17 +86,14 @@ CUSTOMIZATION
 
 """
 
-# $Id: mirror.py,v 1.14 2006/02/22 18:26:46 mstenner Exp $
 
 import random
 import thread  # needed for locking to make this threadsafe
 
 from grabber import URLGrabError, CallbackObject, DEBUG
 
-try:
-    from i18n import _
-except ImportError, msg:
-    def _(st): return st
+def _(st): 
+    return st
 
 class GrabRequest:
     """This is a dummy class used to hold information about the specific
