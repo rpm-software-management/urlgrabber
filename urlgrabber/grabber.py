@@ -1055,6 +1055,11 @@ class PyCurlFileObject():
         self.size = 0
         self._do_open()
         
+
+    def geturl(self):
+        """ Provide the geturl() method, used to be got from
+            urllib.addinfourl, via. urllib.URLopener.* """
+        return self.url
         
     def __getattr__(self, name):
         """This effectively allows us to wrap at the instance level.
