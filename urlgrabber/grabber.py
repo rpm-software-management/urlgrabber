@@ -1589,7 +1589,11 @@ class PyCurlFileObject():
             self.opts.progress_obj.end(self._amount_read)
         self.fo.close()
         
-
+    def geturl(self):
+        """ Provide the geturl() method, used to be got from
+            urllib.addinfourl, via. urllib.URLopener.* """
+        return self.url
+        
 _curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
 
