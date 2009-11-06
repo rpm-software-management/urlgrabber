@@ -1538,9 +1538,11 @@ class PyCurlFileObject():
     def _over_max_size(self, cur, max_size=None):
 
         if not max_size:
-            max_size = self.size
-        if self.opts.size: # if we set an opts size use that, no matter what
-            max_size = self.opts.size
+            if not self.opts.size:
+                max_size = self.size
+            else:
+                max_size = self.opts.size
+
         if not max_size: return False # if we have None for all of the Max then this is dumb
 
         if cur > int(float(max_size) * 1.10):
