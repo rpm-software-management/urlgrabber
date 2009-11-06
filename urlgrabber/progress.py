@@ -658,6 +658,8 @@ def format_time(seconds, use_hours=0):
     if seconds is None or seconds < 0:
         if use_hours: return '--:--:--'
         else:         return '--:--'
+    elif seconds == float('inf'):
+        return 'Infinite'
     else:
         seconds = int(seconds)
         minutes = seconds / 60
