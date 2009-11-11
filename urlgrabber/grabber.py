@@ -1053,6 +1053,7 @@ class PyCurlFileObject():
         self._prog_running = False
         self._error = (None, None)
         self.size = 0
+        self._hdr_ended = False
         self._do_open()
         
         
@@ -1087,8 +1088,12 @@ class PyCurlFileObject():
     def _hdr_retrieve(self, buf):
         if self._over_max_size(cur=len(self._hdr_dump), 
                                max_size=self.opts.max_header_size):
-            return -1            
+            return -1
         try:
+            if self._hdr_ended:
+                self._hdr_dump = ''
+                self._hdr_ended = False
+                
             self._hdr_dump += buf
             # we have to get the size before we do the progress obj start
             # but we can't do that w/o making it do 2 connects, which sucks
@@ -1104,7 +1109,16 @@ class PyCurlFileObject():
                     s = parse150(buf)
                 if s:
                     self.size = int(s)
-            
+                    
+            if buf.lower().find('location') != -1:
+                location = ':'.join(buf.split(':')[1:])
+                location = location.strip()
+                self.scheme = urlparse.urlsplit(location)[0]
+                self.url = location
+                
+            if len(self._hdr_dump) != 0 and buf == '\n\n':
+                self._hdr_ended = True
+                
             return len(buf)
         except KeyboardInterrupt:
             return pycurl.READFUNC_ABORT
@@ -1136,6 +1150,7 @@ class PyCurlFileObject():
         self.curl_obj.setopt(pycurl.PROGRESSFUNCTION, self._progress_update)
         self.curl_obj.setopt(pycurl.FAILONERROR, True)
         self.curl_obj.setopt(pycurl.OPT_FILETIME, True)
+        self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
         
         if DEBUG:
             self.curl_obj.setopt(pycurl.VERBOSE, True)
@@ -1291,7 +1306,12 @@ class PyCurlFileObject():
                 raise err
                     
             elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
-                msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+                if self.scheme in ['http', 'https']:
+                    msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+                elif self.scheme in ['ftp']:
+                    msg = 'FTP Error %s : %s ' % (self.http_code, self.url)
+                else:
+                    msg = "Unknown Error: URL=%s , scheme=%s" % (self.url, self.scheme)
             else:
                 msg = 'PYCURL ERROR %s - "%s"' % (errcode, str(e.args[1]))
                 code = errcode
