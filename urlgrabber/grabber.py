@@ -439,6 +439,12 @@ try:
 except:
     __version__ = '???'
 
+try:
+    # this part isn't going to do much - need to talk to gettext
+    from i18n import _
+except ImportError, msg:
+    def _(st): return st
+    
 ########################################################################
 # functions for debugging output.  These functions are here because they
 # are also part of the module initialization.
@@ -1116,8 +1122,10 @@ class PyCurlFileObject():
                 self.scheme = urlparse.urlsplit(location)[0]
                 self.url = location
                 
-            if len(self._hdr_dump) != 0 and buf == '\n\n':
+            if len(self._hdr_dump) != 0 and buf == '\r\n':
                 self._hdr_ended = True
+                self.size = 0
+                if DEBUG: DEBUG.info('header reset:')                
                 
             return len(buf)
         except KeyboardInterrupt:
