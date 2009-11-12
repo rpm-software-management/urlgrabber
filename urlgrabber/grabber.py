@@ -1092,14 +1092,15 @@ class PyCurlFileObject():
             return -1
             
     def _hdr_retrieve(self, buf):
+        if self._hdr_ended:
+            self._hdr_dump = ''
+            self.size = 0
+            self._hdr_ended = False
+
         if self._over_max_size(cur=len(self._hdr_dump), 
                                max_size=self.opts.max_header_size):
             return -1
         try:
-            if self._hdr_ended:
-                self._hdr_dump = ''
-                self._hdr_ended = False
-                
             self._hdr_dump += buf
             # we have to get the size before we do the progress obj start
             # but we can't do that w/o making it do 2 connects, which sucks
@@ -1124,8 +1125,7 @@ class PyCurlFileObject():
                 
             if len(self._hdr_dump) != 0 and buf == '\r\n':
                 self._hdr_ended = True
-                self.size = 0
-                if DEBUG: DEBUG.info('header reset:')                
+                if DEBUG: DEBUG.info('header ended:')
                 
             return len(buf)
         except KeyboardInterrupt:
