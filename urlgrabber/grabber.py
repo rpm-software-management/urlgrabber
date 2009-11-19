@@ -1480,9 +1480,23 @@ class PyCurlFileObject():
             # set the time
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
-                os.utime(self.filename, (mod_time, mod_time))
+                try:
+                    os.utime(self.filename, (mod_time, mod_time))
+                except OSError, e:
+                    err = URLGrabError(16, _(\
+                      'error setting timestamp on file %s from %s, OSError: %s') 
+                              % (self.filenameself.url, e))
+                    err.url = self.url
+                    raise err
             # re open it
-            self.fo = open(self.filename, 'r')
+            try:
+                self.fo = open(self.filename, 'r')
+            except IOError, e:
+                err = URLGrabError(16, _(\
+                  'error opening file from %s, IOError: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+                
         else:
             #self.fo = open(self._temp_name, 'r')
             self.fo.seek(0)
