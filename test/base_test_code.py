@@ -1,6 +1,6 @@
 from munittest import *
 
-base_http = 'http://www.linux.duke.edu/projects/urlgrabber/test/'
+base_http = 'http://urlgrabber.baseurl.org/test/'
 base_ftp  = 'ftp://localhost/test/'
 
 # set to a proftp server only. we're working around a couple of

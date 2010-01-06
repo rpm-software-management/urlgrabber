@@ -68,14 +68,14 @@ GENERAL ARGUMENTS (kwargs)
     (which can be set on default_grabber.throttle) is used. See
     BANDWIDTH THROTTLING for more information.
 
-  timeout = None
+  timeout = 300
 
-    a positive float expressing the number of seconds to wait for socket
-    operations. If the value is None or 0.0, socket operations will block
-    forever. Setting this option causes urlgrabber to call the settimeout
-    method on the Socket object used for the request. See the Python
-    documentation on settimeout for more information.
-    http://www.python.org/doc/current/lib/socket-objects.html
+    a positive integer expressing the number of seconds to wait before
+    timing out attempts to connect to a server. If the value is None
+    or 0, connection attempts will not time out. The timeout is passed
+    to the underlying pycurl object as its CONNECTTIMEOUT option, see
+    the curl documentation on CURLOPT_CONNECTTIMEOUT for more information.
+    http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTCONNECTTIMEOUT
 
   bandwidth = 0
 
@@ -439,6 +439,12 @@ try:
 except:
     __version__ = '???'
 
+try:
+    # this part isn't going to do much - need to talk to gettext
+    from i18n import _
+except ImportError, msg:
+    def _(st): return st
+    
 ########################################################################
 # functions for debugging output.  These functions are here because they
 # are also part of the module initialization.
@@ -808,7 +814,7 @@ class URLGrabberOptions:
         self.prefix = None
         self.opener = None
         self.cache_openers = True
-        self.timeout = None
+        self.timeout = 300
         self.text = None
         self.http_headers = None
         self.ftp_headers = None
@@ -1053,6 +1059,7 @@ class PyCurlFileObject():
         self._prog_running = False
         self._error = (None, None)
         self.size = 0
+        self._hdr_ended = False
         self._do_open()
         
 
@@ -1090,9 +1097,14 @@ class PyCurlFileObject():
             return -1
             
     def _hdr_retrieve(self, buf):
+        if self._hdr_ended:
+            self._hdr_dump = ''
+            self.size = 0
+            self._hdr_ended = False
+
         if self._over_max_size(cur=len(self._hdr_dump), 
                                max_size=self.opts.max_header_size):
-            return -1            
+            return -1
         try:
             self._hdr_dump += buf
             # we have to get the size before we do the progress obj start
@@ -1109,7 +1121,17 @@ class PyCurlFileObject():
                     s = parse150(buf)
                 if s:
                     self.size = int(s)
-            
+                    
+            if buf.lower().find('location') != -1:
+                location = ':'.join(buf.split(':')[1:])
+                location = location.strip()
+                self.scheme = urlparse.urlsplit(location)[0]
+                self.url = location
+                
+            if len(self._hdr_dump) != 0 and buf == '\r\n':
+                self._hdr_ended = True
+                if DEBUG: DEBUG.info('header ended:')
+                
             return len(buf)
         except KeyboardInterrupt:
             return pycurl.READFUNC_ABORT
@@ -1141,6 +1163,7 @@ class PyCurlFileObject():
         self.curl_obj.setopt(pycurl.PROGRESSFUNCTION, self._progress_update)
         self.curl_obj.setopt(pycurl.FAILONERROR, True)
         self.curl_obj.setopt(pycurl.OPT_FILETIME, True)
+        self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
         
         if DEBUG:
             self.curl_obj.setopt(pycurl.VERBOSE, True)
@@ -1153,9 +1176,9 @@ class PyCurlFileObject():
         
         # timeouts
         timeout = 300
-        if opts.timeout:
-            timeout = int(opts.timeout)
-            self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
+        if hasattr(opts, 'timeout'):
+            timeout = int(opts.timeout or 0)
+        self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
 
         # ssl options
         if self.scheme == 'https':
@@ -1296,7 +1319,12 @@ class PyCurlFileObject():
                 raise err
                     
             elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
-                msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+                if self.scheme in ['http', 'https']:
+                    msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+                elif self.scheme in ['ftp']:
+                    msg = 'FTP Error %s : %s ' % (self.http_code, self.url)
+                else:
+                    msg = "Unknown Error: URL=%s , scheme=%s" % (self.url, self.scheme)
             else:
                 msg = 'PYCURL ERROR %s - "%s"' % (errcode, str(e.args[1]))
                 code = errcode
@@ -1457,9 +1485,23 @@ class PyCurlFileObject():
             # set the time
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
-                os.utime(self.filename, (mod_time, mod_time))
+                try:
+                    os.utime(self.filename, (mod_time, mod_time))
+                except OSError, e:
+                    err = URLGrabError(16, _(\
+                      'error setting timestamp on file %s from %s, OSError: %s') 
+                              % (self.filenameself.url, e))
+                    err.url = self.url
+                    raise err
             # re open it
-            self.fo = open(self.filename, 'r')
+            try:
+                self.fo = open(self.filename, 'r')
+            except IOError, e:
+                err = URLGrabError(16, _(\
+                  'error opening file from %s, IOError: %s') % (self.url, e))
+                err.url = self.url
+                raise err
+                
         else:
             #self.fo = open(self._temp_name, 'r')
             self.fo.seek(0)
@@ -1543,9 +1585,11 @@ class PyCurlFileObject():
     def _over_max_size(self, cur, max_size=None):
 
         if not max_size:
-            max_size = self.size
-        if self.opts.size: # if we set an opts size use that, no matter what
-            max_size = self.opts.size
+            if not self.opts.size:
+                max_size = self.size
+            else:
+                max_size = self.opts.size
+
         if not max_size: return False # if we have None for all of the Max then this is dumb
 
         if cur > int(float(max_size) * 1.10):
@@ -1594,7 +1638,11 @@ class PyCurlFileObject():
             self.opts.progress_obj.end(self._amount_read)
         self.fo.close()
         
-
+    def geturl(self):
+        """ Provide the geturl() method, used to be got from
+            urllib.addinfourl, via. urllib.URLopener.* """
+        return self.url
+        
 _curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
 
