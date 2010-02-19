@@ -68,14 +68,14 @@ GENERAL ARGUMENTS (kwargs)
     (which can be set on default_grabber.throttle) is used. See
     BANDWIDTH THROTTLING for more information.
 
-  timeout = None
+  timeout = 300
 
-    a positive float expressing the number of seconds to wait for socket
-    operations. If the value is None or 0.0, socket operations will block
-    forever. Setting this option causes urlgrabber to call the settimeout
-    method on the Socket object used for the request. See the Python
-    documentation on settimeout for more information.
-    http://www.python.org/doc/current/lib/socket-objects.html
+    a positive integer expressing the number of seconds to wait before
+    timing out attempts to connect to a server. If the value is None
+    or 0, connection attempts will not time out. The timeout is passed
+    to the underlying pycurl object as its CONNECTTIMEOUT option, see
+    the curl documentation on CURLOPT_CONNECTTIMEOUT for more information.
+    http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTCONNECTTIMEOUT
 
   bandwidth = 0
 
@@ -814,7 +814,7 @@ class URLGrabberOptions:
         self.prefix = None
         self.opener = None
         self.cache_openers = True
-        self.timeout = None
+        self.timeout = 300
         self.text = None
         self.http_headers = None
         self.ftp_headers = None
@@ -1171,9 +1171,9 @@ class PyCurlFileObject():
         
         # timeouts
         timeout = 300
-        if opts.timeout:
-            timeout = int(opts.timeout)
-            self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
+        if hasattr(opts, 'timeout'):
+            timeout = int(opts.timeout or 0)
+        self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
 
         # ssl options
         if self.scheme == 'https':
