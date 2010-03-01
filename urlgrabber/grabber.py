@@ -1304,7 +1304,7 @@ class PyCurlFileObject():
                 raise err
 
             elif errcode == 60:
-                msg = _("client cert cannot be verified or client cert incorrect")
+                msg = _("Peer cert cannot be verified or peer cert invalid")
                 err = URLGrabError(14, msg)
                 err.url = self.url
                 raise err
@@ -1645,6 +1645,14 @@ class PyCurlFileObject():
         
 _curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
+def reset_curl_obj():
+    """To make sure curl has reread the network/dns info we force a reload"""
+    global _curl_cache
+    _curl_cache.close()
+    _curl_cache = pycurl.Curl()
+
+
+    
 
 #####################################################################
 # DEPRECATED FUNCTIONS
