@@ -1135,8 +1135,10 @@ class PyCurlFileObject():
         if self._parsed_hdr:
             return self._parsed_hdr
         statusend = self._hdr_dump.find('\n')
+        statusend += 1 # ridiculous as it may seem.
         hdrfp = StringIO()
         hdrfp.write(self._hdr_dump[statusend:])
+        hdrfp.seek(0)
         self._parsed_hdr =  mimetools.Message(hdrfp)
         return self._parsed_hdr
     
