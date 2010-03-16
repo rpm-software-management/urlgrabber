@@ -1062,6 +1062,11 @@ class PyCurlFileObject():
         self._hdr_ended = False
         self._do_open()
         
+
+    def geturl(self):
+        """ Provide the geturl() method, used to be got from
+            urllib.addinfourl, via. urllib.URLopener.* """
+        return self.url
         
     def __getattr__(self, name):
         """This effectively allows us to wrap at the instance level.
@@ -1176,6 +1181,8 @@ class PyCurlFileObject():
         if hasattr(opts, 'timeout'):
             timeout = int(opts.timeout or 0)
         self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
+        self.curl_obj.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        self.curl_obj.setopt(pycurl.LOW_SPEED_TIME, timeout)
 
         # ssl options
         if self.scheme == 'https':
