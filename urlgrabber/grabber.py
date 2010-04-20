@@ -248,6 +248,11 @@ GENERAL ARGUMENTS (kwargs)
 
     Maximum size (in bytes) of the headers.
     
+  self.ip_resolve = 'whatever'
+
+    What type of name to IP resolving to use, default is to do both IPV4 and
+    IPV6.
+
 
 RETRY RELATED ARGUMENTS
 
@@ -806,6 +811,7 @@ class URLGrabberOptions:
         self.close_connection = 0
         self.range = None
         self.user_agent = 'urlgrabber/%s' % __version__
+        self.ip_resolve = None
         self.keepalive = 1
         self.proxies = None
         self.reget = None
@@ -1171,6 +1177,15 @@ class PyCurlFileObject():
             self.curl_obj.setopt(pycurl.VERBOSE, True)
         if opts.user_agent:
             self.curl_obj.setopt(pycurl.USERAGENT, opts.user_agent)
+        if opts.ip_resolve:
+            # Default is: IPRESOLVE_WHATEVER
+            ipr = opts.ip_resolve.lower()
+            if ipr == 'whatever': # Do we need this?
+                self.curl_obj.setopt(pycurl.IPRESOLVE,pycurl.IPRESOLVE_WHATEVER)
+            if ipr == 'ipv4':
+                self.curl_obj.setopt(pycurl.IPRESOLVE, pycurl.IPRESOLVE_V4)
+            if ipr == 'ipv6':
+                self.curl_obj.setopt(pycurl.IPRESOLVE, pycurl.IPRESOLVE_V6)
         
         # maybe to be options later
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
