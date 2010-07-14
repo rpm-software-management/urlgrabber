@@ -175,8 +175,13 @@ class client_options:
         long_options = ['profile', 'repeat=', 'verbose=',
                         'debug=', 'help', 'progress', 'output=']
         ug_long = [ o + '=' for o in self.ug_options ]
-        optlist, args = getopt.getopt(sys.argv[1:], short_options,
-                                      long_options + ug_long)
+        try:
+            optlist, args = getopt.getopt(sys.argv[1:], short_options,
+                                          long_options + ug_long)
+        except getopt.GetoptError, e:
+            print >>sys.stderr, "Error:", e
+            self.help([], ret=1)
+
         self.verbose = 0
         self.debug = None
         self.outputfile = None
@@ -224,7 +229,7 @@ class client_options:
             print "ERROR: cannot use -o when grabbing multiple files"
             sys.exit(1)
 
-    def help(self, args):
+    def help(self, args, ret=0):
         if not args:
             print MAINHELP
         else:
@@ -236,7 +241,7 @@ class client_options:
                     self.help_ug_option(a)
                 else:
                     print 'ERROR: no help on command "%s"' % a
-        sys.exit(0)
+        sys.exit(ret)
 
     def help_doc(self):
         print __doc__
