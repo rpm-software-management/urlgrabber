@@ -170,7 +170,7 @@ class client_options:
         return ug_options, ug_defaults
 
     def process_command_line(self):
-        short_options = 'vd:hoOpD'
+        short_options = 'vd:ho:OpD'
         long_options = ['profile', 'repeat=', 'verbose=',
                         'debug=', 'help', 'progress']
         ug_long = [ o + '=' for o in self.ug_options ]
