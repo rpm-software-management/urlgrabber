@@ -943,6 +943,9 @@ class URLGrabber:
         (scheme, host, path, parm, query, frag) = parts
         if filename is None:
             filename = os.path.basename( urllib.unquote(path) )
+            if not filename:
+                # This is better than nothing.
+                filename = 'index.html'
         if scheme == 'file' and not opts.copy_local:
             # just return the name of the local file - don't make a 
             # copy currently
