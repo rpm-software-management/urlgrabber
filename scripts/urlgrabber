@@ -115,6 +115,7 @@ options:
                     including quotes in the case of strings.
                     e.g.  --user_agent='"foobar/2.0"'
 
+  --output FILE
   -o FILE           write output to FILE, otherwise the basename of the
                     url will be used
   -O                print the names of saved files to STDOUT
@@ -172,7 +173,7 @@ class client_options:
     def process_command_line(self):
         short_options = 'vd:ho:OpD'
         long_options = ['profile', 'repeat=', 'verbose=',
-                        'debug=', 'help', 'progress']
+                        'debug=', 'help', 'progress', 'output=']
         ug_long = [ o + '=' for o in self.ug_options ]
         optlist, args = getopt.getopt(sys.argv[1:], short_options,
                                       long_options + ug_long)
@@ -193,6 +194,7 @@ class client_options:
             if o == '--verbose': self.verbose = v
             if o == '-v':        self.verbose += 1
             if o == '-o':        self.outputfile = v
+            if o == '--output':  self.outputfile = v
             if o == '-p' or o == '--progress': self.progress = 1
             if o == '-d' or o == '--debug': self.debug = v
             if o == '--profile': self.profile = 1
