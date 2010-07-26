@@ -1495,9 +1495,13 @@ class PyCurlFileObject():
             #fh, self._temp_name = mkstemp()
             #self.fo = open(self._temp_name, 'wb')
 
-            
-        self._do_perform()
-        
+        try:            
+            self._do_perform()
+        except URLGrabError, e:
+            self.fo.flush()
+            self.fo.close()
+            raise e
+    
 
 
         if _was_filename:
