@@ -1348,7 +1348,52 @@ class PyCurlFileObject():
                 else:
                     msg = "Unknown Error: URL=%s , scheme=%s" % (self.url, self.scheme)
             else:
-                msg = 'PYCURL ERROR %s - "%s"' % (errcode, str(e.args[1]))
+                pyerr2str = { 5 : _("Couldn't resolve proxy"),
+                              6 : _("Couldn't resolve host"),
+                              7 : _("Couldn't connect"),
+                              8 : _("Bad reply to FTP server"),
+                              9 : _("Access denied"),
+                             11 : _("Bad reply to FTP pass"),
+                             13 : _("Bad reply to FTP pasv"),
+                             14 : _("Bad reply to FTP 227"),
+                             15 : _("Couldn't get FTP host"),
+                             17 : _("Couldn't set FTP type"),
+                             18 : _("Partial file"),
+                             19 : _("FTP RETR command failed"),
+                             22 : _("HTTP returned error"),
+                             23 : _("Write error"),
+                             25 : _("Upload failed"),
+                             26 : _("Read error"),
+                             27 : _("Out of Memory"),
+                             28 : _("Operation timed out"),
+                             30 : _("FTP PORT command failed"),
+                             31 : _("FTP REST command failed"),
+                             33 : _("Range failed"),
+                             34 : _("HTTP POST failed"),
+                             35 : _("SSL CONNECT failed"),
+                             36 : _("Couldn't resume download"),
+                             37 : _("Couldn't read file"),
+                             42 : _("Aborted by callback"),
+                             47 : _("Too many redirects"),
+                             51 : _("Peer certificate failed verification"),
+                             53 : _("SSL engine not found"),
+                             54 : _("SSL engine set failed"),
+                             55 : _("Network error send()"),
+                             56 : _("Network error recv()"),
+                             58 : _("Local certificate failed"),
+                             59 : _("SSL set cipher failed"),
+                             60 : _("Local CA certificate failed"),
+                             61 : _("HTTP bad transfer encoding"),
+                             63 : _("Maximum file size exceeded"),
+                             64 : _("FTP SSL failed"),
+                             67 : _("Authentication failure"),
+                             70 : _("Out of disk space on server"),
+                             73 : _("Remove file exists"),
+                              }
+                errstr = str(e.args[1])
+                if not errstr:
+                    errstr = pyerr2str.get(errcode, '<Unknown>')
+                msg = 'curl#%s - "%s"' % (errcode, errstr)
                 code = errcode
             err = URLGrabError(14, msg)
             err.code = code
