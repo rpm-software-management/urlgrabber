@@ -1561,7 +1561,7 @@ class PyCurlFileObject():
                 except OSError, e:
                     err = URLGrabError(16, _(\
                       'error setting timestamp on file %s from %s, OSError: %s') 
-                              % (self.filenameself.url, e))
+                              % (self.filename, self.url, e))
                     err.url = self.url
                     raise err
             # re open it
