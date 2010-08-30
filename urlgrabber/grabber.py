@@ -198,6 +198,12 @@ GENERAL ARGUMENTS (kwargs)
     control, you should probably subclass URLParser and pass it in via
     the 'urlparser' option.
 
+  username = None
+    username to use for simple http auth - is automatically quoted for special characters
+
+  password = None
+    password to use for simple http auth - is automatically quoted for special characters
+
   ssl_ca_cert = None
 
     this option can be used if M2Crypto is available and will be
@@ -425,6 +431,7 @@ import time
 import string
 import urllib
 import urllib2
+from httplib import responses
 import mimetools
 import thread
 import types
@@ -827,6 +834,8 @@ class URLGrabberOptions:
         self.data = None
         self.urlparser = URLParser()
         self.quote = None
+        self.username = None
+        self.password = None
         self.ssl_ca_cert = None # sets SSL_CAINFO - path to certdb
         self.ssl_context = None # no-op in pycurl
         self.ssl_verify_peer = True # check peer's cert for authenticityb
@@ -1253,7 +1262,14 @@ class PyCurlFileObject():
                         if proxy == '_none_': proxy = ""
                         self.curl_obj.setopt(pycurl.PROXY, proxy)
             
-        # FIXME username/password/auth settings
+        if opts.username and opts.password:
+            if self.scheme in ('http', 'https'):
+                self.curl_obj.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_ANY)
+
+            if opts.username and opts.password:
+                # apparently when applying them as curlopts they do not require quoting of any kind
+                userpwd = '%s:%s' % (opts.username, opts.password)
+                self.curl_obj.setopt(pycurl.USERPWD, userpwd)
 
         #posts - simple - expects the fields as they are
         if opts.data:
@@ -1342,9 +1358,13 @@ class PyCurlFileObject():
                     
             elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
                 if self.scheme in ['http', 'https']:
-                    msg = 'HTTP Error %s : %s ' % (self.http_code, self.url)
+                    if self.http_code in responses:
+                        resp = responses[self.http_code]
+                        msg = 'HTTP Error %s - %s : %s' % (self.http_code, resp, urllib.unquote(self.url))
+                    else:
+                        msg = 'HTTP Error %s : %s ' % (self.http_code, urllib.unquote(self.url))
                 elif self.scheme in ['ftp']:
-                    msg = 'FTP Error %s : %s ' % (self.http_code, self.url)
+                    msg = 'FTP Error %s : %s ' % (self.http_code, urllib.unquote(self.url))
                 else:
                     msg = "Unknown Error: URL=%s , scheme=%s" % (self.url, self.scheme)
             else:
