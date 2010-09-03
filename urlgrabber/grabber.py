@@ -1478,7 +1478,11 @@ class PyCurlFileObject(object):
                 
         if self.opts.range:
             rt = self.opts.range
-            if rt[0]: rt = (rt[0] + reget_length, rt[1])
+            
+            if rt[0] is None:
+                rt = (0, rt[1])
+            rt = (rt[0] + reget_length, rt[1])
+            
 
         if rt:
             header = range_tuple_to_header(rt)
