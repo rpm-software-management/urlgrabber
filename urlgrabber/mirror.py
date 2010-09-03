@@ -90,7 +90,7 @@ CUSTOMIZATION
 import random
 import thread  # needed for locking to make this threadsafe
 
-from grabber import URLGrabError, CallbackObject, DEBUG
+from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
 
 def _(st): 
     return st
@@ -263,7 +263,8 @@ class MirrorGroup:
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
         for m in mirrors:
-            if type(m) == type(''): m = {'mirror': m}
+            if isinstance(m, basestring):
+                m = {'mirror': _to_utf8(m)}
             parsed_mirrors.append(m)
         return parsed_mirrors
     

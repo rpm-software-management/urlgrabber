@@ -545,6 +545,22 @@ def _(st):
 #                 END MODULE INITIALIZATION
 ########################################################################
 
+########################################################################
+#                 UTILITY FUNCTIONS
+########################################################################
+
+# These functions are meant to be utilities for the urlgrabber library to use.
+
+def _to_utf8(obj, errors='replace'):
+    '''convert 'unicode' to an encoded utf-8 byte string '''
+    # stolen from yum.i18n
+    if isinstance(obj, unicode):
+        obj = obj.encode('utf-8', errors)
+    return obj
+
+########################################################################
+#                 END UTILITY FUNCTIONS
+########################################################################
 
 
 class URLGrabError(IOError):
@@ -680,6 +696,7 @@ class URLParser:
           opts.quote = 0     --> do not quote it
           opts.quote = None  --> guess
         """
+        url = _to_utf8(url)
         quote = opts.quote
         
         if opts.prefix:
@@ -1274,7 +1291,7 @@ class PyCurlFileObject(object):
         #posts - simple - expects the fields as they are
         if opts.data:
             self.curl_obj.setopt(pycurl.POST, True)
-            self.curl_obj.setopt(pycurl.POSTFIELDS, self._to_utf8(opts.data))
+            self.curl_obj.setopt(pycurl.POSTFIELDS, _to_utf8(opts.data))
             
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
@@ -1692,13 +1709,6 @@ class PyCurlFileObject(object):
             self._error = (pycurl.E_FILESIZE_EXCEEDED, msg)
             return True
         return False
-        
-    def _to_utf8(self, obj, errors='replace'):
-        '''convert 'unicode' to an encoded utf-8 byte string '''
-        # stolen from yum.i18n
-        if isinstance(obj, unicode):
-            obj = obj.encode('utf-8', errors)
-        return obj
         
     def read(self, amt=None):
         self._fill_buffer(amt)
