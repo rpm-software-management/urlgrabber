@@ -68,7 +68,7 @@ class HTTPRangeHandler(urllib2.BaseHandler):
     
     def http_error_416(self, req, fp, code, msg, hdrs):
         # HTTP's Range Not Satisfiable error
-        raise RangeError('Requested Range Not Satisfiable')
+        raise RangeError(9, 'Requested Range Not Satisfiable')
 
 class HTTPSRangeHandler(HTTPRangeHandler):
     """ Range Header support for HTTPS. """
@@ -208,7 +208,7 @@ class RangeableFileObject:
                 bufsize = offset - pos
             buf = self.fo.read(bufsize)
             if len(buf) != bufsize:
-                raise RangeError('Requested Range Not Satisfiable')
+                raise RangeError(9, 'Requested Range Not Satisfiable')
             pos+= bufsize
 
 class FileRangeHandler(urllib2.FileHandler):
@@ -238,7 +238,7 @@ class FileRangeHandler(urllib2.FileHandler):
             (fb,lb) = brange
             if lb == '': lb = size
             if fb < 0 or fb > size or lb > size:
-                raise RangeError('Requested Range Not Satisfiable')
+                raise RangeError(9, 'Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
         headers = mimetools.Message(StringIO(
@@ -318,12 +318,12 @@ class FTPRangeHandler(urllib2.FTPHandler):
                 (fb,lb) = range_tup
                 if lb == '': 
                     if retrlen is None or retrlen == 0:
-                        raise RangeError('Requested Range Not Satisfiable due to unobtainable file length.')
+                        raise RangeError(9, 'Requested Range Not Satisfiable due to unobtainable file length.')
                     lb = retrlen
                     retrlen = lb - fb
                     if retrlen < 0:
                         # beginning of range is larger than file
-                        raise RangeError('Requested Range Not Satisfiable')
+                        raise RangeError(9, 'Requested Range Not Satisfiable')
                 else:
                     retrlen = lb - fb
                     fp = RangeableFileObject(fp, (0,retrlen))
@@ -458,6 +458,6 @@ def range_tuple_normalize(range_tup):
     # check if range is over the entire file
     if (fb,lb) == (0,''): return None
     # check that the range is valid
-    if lb < fb: raise RangeError('Invalid byte range: %s-%s' % (fb,lb))
+    if lb < fb: raise RangeError(9, 'Invalid byte range: %s-%s' % (fb,lb))
     return (fb,lb)
 
