@@ -867,7 +867,7 @@ class URLGrabberOptions:
         s = s + indent + '}'
         return s
 
-class URLGrabber:
+class URLGrabber(object):
     """Provides easy opening of URLs with a variety of options.
     
     All options are specified as kwargs. Options may be specified when
@@ -1054,7 +1054,7 @@ class URLGrabber:
 default_grabber = URLGrabber()
 
 
-class PyCurlFileObject():
+class PyCurlFileObject(object):
     def __init__(self, url, filename, opts):
         self.fo = None
         self._hdr_dump = ''
@@ -1294,12 +1294,14 @@ class PyCurlFileObject():
             
             code = self.http_code
             errcode = e.args[0]
+            errurl = urllib.unquote(self.url)
+            
             if self._error[0]:
                 errcode = self._error[0]
                 
             if errcode == 23 and code >= 200 and code < 299:
-                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
-                err.url = self.url
+                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (errurl, e))
+                err.url = errurl
                 
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
@@ -1310,23 +1312,23 @@ class PyCurlFileObject():
                 raise KeyboardInterrupt
             
             elif errcode == 28:
-                err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
-                err.url = self.url
+                err = URLGrabError(12, _('Timeout on %s: %s') % (errurl, e))
+                err.url = errurl
                 raise err
             elif errcode == 35:
                 msg = _("problem making ssl connection")
                 err = URLGrabError(14, msg)
-                err.url = self.url
+                err.url = errurl
                 raise err
             elif errcode == 37:
-                msg = _("Could not open/read %s") % (self.url)
+                msg = _("Could not open/read %s") % (errurl)
                 err = URLGrabError(14, msg)
-                err.url = self.url
+                err.url = errurl
                 raise err
                 
             elif errcode == 42:
-                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (self.url, e))
-                err.url = self.url
+                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (errurl, e))
+                err.url = errurl
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
@@ -1338,35 +1340,35 @@ class PyCurlFileObject():
             elif errcode == 58:
                 msg = _("problem with the local client certificate")
                 err = URLGrabError(14, msg)
-                err.url = self.url
+                err.url = errurl
                 raise err
 
             elif errcode == 60:
                 msg = _("Peer cert cannot be verified or peer cert invalid")
                 err = URLGrabError(14, msg)
-                err.url = self.url
+                err.url = errurl
                 raise err
             
             elif errcode == 63:
                 if self._error[1]:
                     msg = self._error[1]
                 else:
-                    msg = _("Max download size exceeded on %s") % (self.url)
+                    msg = _("Max download size exceeded on %s") % ()
                 err = URLGrabError(14, msg)
-                err.url = self.url
+                err.url = errurl
                 raise err
                     
             elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
                 if self.scheme in ['http', 'https']:
                     if self.http_code in responses:
                         resp = responses[self.http_code]
-                        msg = 'HTTP Error %s - %s : %s' % (self.http_code, resp, urllib.unquote(self.url))
+                        msg = 'HTTP Error %s - %s : %s' % (self.http_code, resp, errurl)
                     else:
-                        msg = 'HTTP Error %s : %s ' % (self.http_code, urllib.unquote(self.url))
+                        msg = 'HTTP Error %s : %s ' % (self.http_code, errurl)
                 elif self.scheme in ['ftp']:
-                    msg = 'FTP Error %s : %s ' % (self.http_code, urllib.unquote(self.url))
+                    msg = 'FTP Error %s : %s ' % (self.http_code, errurl)
                 else:
-                    msg = "Unknown Error: URL=%s , scheme=%s" % (self.url, self.scheme)
+                    msg = "Unknown Error: URL=%s , scheme=%s" % (errurl, self.scheme)
             else:
                 pyerr2str = { 5 : _("Couldn't resolve proxy"),
                               6 : _("Couldn't resolve host"),
@@ -1423,7 +1425,7 @@ class PyCurlFileObject():
             if self._error[1]:
                 msg = self._error[1]
                 err = URLGRabError(14, msg)
-                err.url = self.url
+                err.url = urllib.unquote(self.url)
                 raise err
 
     def _do_open(self):
