@@ -1415,6 +1415,7 @@ class PyCurlFileObject(object):
                              42 : _("Aborted by callback"),
                              47 : _("Too many redirects"),
                              51 : _("Peer certificate failed verification"),
+                             52 : _("Got nothing: SSL certificate expired?"),
                              53 : _("SSL engine not found"),
                              54 : _("SSL engine set failed"),
                              55 : _("Network error send()"),
