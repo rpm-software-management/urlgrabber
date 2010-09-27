@@ -1098,11 +1098,6 @@ class PyCurlFileObject(object):
         self._do_open()
         
 
-    def geturl(self):
-        """ Provide the geturl() method, used to be got from
-            urllib.addinfourl, via. urllib.URLopener.* """
-        return self.url
-        
     def __getattr__(self, name):
         """This effectively allows us to wrap at the instance level.
         Any attribute not found in _this_ object will be searched for
