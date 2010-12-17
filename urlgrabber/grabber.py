@@ -443,6 +443,13 @@ from httplib import HTTPException
 import socket
 from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
+try:
+    import xattr
+    if not hasattr(xattr, 'set'):
+        xattr = None # This is a "newer" API.
+except ImportError:
+    xattr = None
+
 ########################################################################
 #                     MODULE INITIALIZATION
 ########################################################################
@@ -1410,6 +1417,7 @@ class PyCurlFileObject(object):
                              42 : _("Aborted by callback"),
                              47 : _("Too many redirects"),
                              51 : _("Peer certificate failed verification"),
+                             52 : _("Got nothing: SSL certificate expired?"),
                              53 : _("SSL engine not found"),
                              54 : _("SSL engine set failed"),
                              55 : _("Network error send()"),
@@ -1585,12 +1593,19 @@ class PyCurlFileObject(object):
             self.fo.close()
             raise e
     
-
-
         if _was_filename:
             # close it up
             self.fo.flush()
             self.fo.close()
+
+            # Set the URL where we got it from:
+            if xattr is not None:
+                # See: http://www.freedesktop.org/wiki/CommonExtendedAttributes
+                try:
+                    xattr.set(self.filename, 'user.xdg.origin.url', self.url)
+                except:
+                    pass # URL too long. = IOError ... ignore everything.
+
             # set the time
             mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
             if mod_time != -1:
