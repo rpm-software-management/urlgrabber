@@ -1449,7 +1449,7 @@ class PyCurlFileObject(object):
         else:
             if self._error[1]:
                 msg = self._error[1]
-                err = URLGRabError(14, msg)
+                err = URLGrabError(14, msg)
                 err.url = urllib.unquote(self.url)
                 raise err
 
