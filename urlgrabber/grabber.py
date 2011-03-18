@@ -1193,6 +1193,9 @@ class PyCurlFileObject(object):
         if not opts:
             opts = self.opts
 
+        # keepalives
+        if not opts.keepalive:
+            self.curl_obj.setopt(pycurl.FORBID_REUSE, 1)
 
         # defaults we're always going to set
         self.curl_obj.setopt(pycurl.NOPROGRESS, False)
@@ -1236,7 +1239,8 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
                 self.curl_obj.setopt(pycurl.CAINFO, opts.ssl_ca_cert)
             self.curl_obj.setopt(pycurl.SSL_VERIFYPEER, opts.ssl_verify_peer)
-            self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, opts.ssl_verify_host)
+            if opts.ssl_verify_host: # 1 is meaningless to curl
+                self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, 2)
             if opts.ssl_key:
                 self.curl_obj.setopt(pycurl.SSLKEY, opts.ssl_key)
             if opts.ssl_key_type:
