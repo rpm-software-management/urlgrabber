@@ -957,6 +957,7 @@ class URLGrabber(object):
         returned that supports them. The file object can be treated 
         like any other file object.
         """
+        url = _to_utf8(url)
         opts = self.opts.derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
@@ -970,6 +971,7 @@ class URLGrabber(object):
         urlgrab returns the filename of the local file, which may be 
         different from the passed-in filename if copy_local == 0.
         """
+        url = _to_utf8(url)
         opts = self.opts.derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
@@ -1030,6 +1032,7 @@ class URLGrabber(object):
         "I want the first N bytes" but rather 'read the whole file 
         into memory, but don't use too much'
         """
+        url = _to_utf8(url)
         opts = self.opts.derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
