@@ -1250,6 +1250,8 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.SSLKEYTYPE, opts.ssl_key_type)
             if opts.ssl_cert:
                 self.curl_obj.setopt(pycurl.SSLCERT, opts.ssl_cert)
+                # if we have a client side cert - turn off reuse b/c nss is odd
+                self.curl_obj.setopt(pycurl.FORBID_REUSE, 1)
             if opts.ssl_cert_type:                
                 self.curl_obj.setopt(pycurl.SSLCERTTYPE, opts.ssl_cert_type)
             if opts.ssl_key_pass:
