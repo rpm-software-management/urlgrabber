@@ -49,7 +49,7 @@ GENERAL ARGUMENTS (kwargs)
   progress_obj = None
 
     a class instance that supports the following methods:
-      po.start(filename, url, basename, length, text)
+      po.start(filename, url, basename, size, now, text)
       # length will be None if unknown
       po.update(read) # read == bytes read so far
       po.end()
