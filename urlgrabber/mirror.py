@@ -91,6 +91,7 @@ import random
 import thread  # needed for locking to make this threadsafe
 
 from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
+from grabber import _run_callback, _do_raise
 
 def _(st): 
     return st
@@ -254,7 +255,7 @@ class MirrorGroup:
     # if these values are found in **kwargs passed to one of the urlXXX
     # methods, they will be stripped before getting passed on to the
     # grabber
-    options = ['default_action', 'failure_callback']
+    options = ['default_action', 'failure_callback', 'failfunc']
     
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
@@ -406,7 +407,11 @@ class MirrorGroup:
         kw = dict(kwargs)
         kw['filename'] = filename
         func = 'urlgrab'
-        return self._mirror_try(func, url, kw)
+        try:
+            return self._mirror_try(func, url, kw)
+        except URLGrabError, e:
+            obj = CallbackObject(url=url, filename=filename, exception=e, **kwargs)
+            return _run_callback(kwargs.get('failfunc', _do_raise), obj)
     
     def urlopen(self, url, **kwargs):
         kw = dict(kwargs)

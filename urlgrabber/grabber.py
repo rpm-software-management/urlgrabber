@@ -343,6 +343,15 @@ RETRY RELATED ARGUMENTS
     but it cannot (without severe trickiness) prevent the exception
     from being raised.
 
+  failfunc = None
+
+    The callback that gets called when urlgrab request fails.
+    If defined, urlgrab() calls it instead of raising URLGrabError.
+    Callback syntax is identical to failure_callback.
+
+    Contrary to failure_callback, it's called only once.  It's primary
+    purpose is to use urlgrab() without a try/except block.
+
   interrupt_callback = None
 
     This callback is called if KeyboardInterrupt is received at any
@@ -878,6 +887,7 @@ class URLGrabberOptions:
         self.retry = None
         self.retrycodes = [-1,2,4,5,6,7]
         self.checkfunc = None
+        self.failfunc = _do_raise
         self.copy_local = 0
         self.close_connection = 0
         self.range = None
@@ -931,6 +941,15 @@ class URLGrabberOptions:
             s = s + indent + '%-15s: %s\n' % ("'delegate'", df)
         s = s + indent + '}'
         return s
+
+def _do_raise(obj):
+    raise obj.exception
+
+def _run_callback(cb, obj):
+    if callable(cb):
+        return cb(obj)
+    cb, arg, karg = cb
+    return cb(obj, *arg, **karg)
 
 class URLGrabber(object):
     """Provides easy opening of URLs with a variety of options.
@@ -1066,7 +1085,11 @@ class URLGrabber(object):
                 fo.close()
             return filename
         
-        return self._retry(opts, retryfunc, url, filename)
+        try:
+            return self._retry(opts, retryfunc, url, filename)
+        except URLGrabError, e:
+            opts.exception = e
+            return _run_callback(opts.failfunc, opts)
     
     def urlread(self, url, limit=None, **kwargs):
         """read the url into a string, up to 'limit' bytes
