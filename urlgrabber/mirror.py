@@ -76,6 +76,9 @@ CUSTOMIZATION
        'grabber' is omitted, the default grabber will be used.  If
        kwargs are omitted, then (duh) they will not be used.
 
+       kwarg 'max_connections' is used to store the max connection
+       limit of this mirror, and to update the value of 'async' option.
+
     3) Pass keyword arguments when instantiating the mirror group.
        See, for example, the failure_callback argument.
 
@@ -392,6 +395,14 @@ class MirrorGroup:
             grabber = mirrorchoice.get('grabber') or self.grabber
             func_ref = getattr(grabber, func)
             if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
+            if kw.get('async'):
+                # 'async' option to the 1st mirror
+                key = mirrorchoice['mirror']
+                limit = kwargs.get('max_connections') or 3
+                kwargs['async'] = key, limit
+                # async code iterates mirrors and calls failfunc
+                kwargs['mirror_group'] = self, gr, mirrorchoice
+                kwargs['failfunc'] = gr.kw.get('failfunc', _do_raise)
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
