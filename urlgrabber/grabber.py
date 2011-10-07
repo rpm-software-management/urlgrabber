@@ -996,10 +996,9 @@ class URLGrabber(object):
             if DEBUG: DEBUG.info('exception: %s', exception)
             if callback:
                 if DEBUG: DEBUG.info('calling callback: %s', callback)
-                cb_func, cb_args, cb_kwargs = self._make_callback(callback)
                 obj = CallbackObject(exception=exception, url=args[0],
                                      tries=tries, retry=opts.retry)
-                cb_func(obj, *cb_args, **cb_kwargs)
+                _run_callback(callback, obj)
 
             if (opts.retry is None) or (tries == opts.retry):
                 if DEBUG: DEBUG.info('retries exceeded, re-raising')
@@ -1062,12 +1061,8 @@ class URLGrabber(object):
 
             elif not opts.range:
                 if not opts.checkfunc is None:
-                    cb_func, cb_args, cb_kwargs = \
-                       self._make_callback(opts.checkfunc)
-                    obj = CallbackObject()
-                    obj.filename = path
-                    obj.url = url
-                    apply(cb_func, (obj, )+cb_args, cb_kwargs)        
+                    obj = CallbackObject(filename=path, url=url)
+                    _run_callback(opts.checkfunc, obj)
                 return path
         
         def retryfunc(opts, url, filename):
@@ -1075,12 +1070,8 @@ class URLGrabber(object):
             try:
                 fo._do_grab()
                 if not opts.checkfunc is None:
-                    cb_func, cb_args, cb_kwargs = \
-                             self._make_callback(opts.checkfunc)
-                    obj = CallbackObject()
-                    obj.filename = filename
-                    obj.url = url
-                    apply(cb_func, (obj, )+cb_args, cb_kwargs)
+                    obj = CallbackObject(filename=filename, url=url)
+                    _run_callback(opts.checkfunc, obj)
             finally:
                 fo.close()
             return filename
@@ -1118,12 +1109,8 @@ class URLGrabber(object):
                 else: s = fo.read(limit)
 
                 if not opts.checkfunc is None:
-                    cb_func, cb_args, cb_kwargs = \
-                             self._make_callback(opts.checkfunc)
-                    obj = CallbackObject()
-                    obj.data = s
-                    obj.url = url
-                    apply(cb_func, (obj, )+cb_args, cb_kwargs)
+                    obj = CallbackObject(data=s, url=url)
+                    _run_callback(opts.checkfunc, obj)
             finally:
                 fo.close()
             return s
@@ -1138,6 +1125,7 @@ class URLGrabber(object):
         return s
         
     def _make_callback(self, callback_obj):
+        # not used, left for compatibility
         if callable(callback_obj):
             return callback_obj, (), {}
         else:
