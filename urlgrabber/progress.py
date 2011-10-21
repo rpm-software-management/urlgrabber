@@ -503,7 +503,7 @@ class TextMultiFileMeter(MultiFileMeter):
         self._lock.acquire()
         try:
             format = "%-30.30s %6.6s    %8.8s    %9.9s"
-            fn = meter.basename
+            fn = meter.text or meter.basename
             size = meter.last_amount_read
             fsize = format_number(size) + 'B'
             et = meter.re.elapsed_time()
