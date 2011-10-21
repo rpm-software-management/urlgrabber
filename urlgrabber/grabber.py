@@ -1594,29 +1594,7 @@ class PyCurlFileObject(object):
             raise e
     
         if _was_filename:
-            # close it up
-            self.fo.flush()
-            self.fo.close()
-
-            # Set the URL where we got it from:
-            if xattr is not None:
-                # See: http://www.freedesktop.org/wiki/CommonExtendedAttributes
-                try:
-                    xattr.set(self.filename, 'user.xdg.origin.url', self.url)
-                except:
-                    pass # URL too long. = IOError ... ignore everything.
-
-            # set the time
-            mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
-            if mod_time != -1:
-                try:
-                    os.utime(self.filename, (mod_time, mod_time))
-                except OSError, e:
-                    err = URLGrabError(16, _(\
-                      'error setting timestamp on file %s from %s, OSError: %s') 
-                              % (self.filename, self.url, e))
-                    err.url = self.url
-                    raise err
+            self._do_close_fo()
             # re open it
             try:
                 self.fo = open(self.filename, 'r')
@@ -1647,6 +1625,31 @@ class PyCurlFileObject(object):
               'error opening local file from %s, IOError: %s') % (self.url, e))
             err.url = self.url
             raise err
+
+    def _do_close_fo(self):
+        # close it up
+        self.fo.flush()
+        self.fo.close()
+
+        # Set the URL where we got it from:
+        if xattr is not None:
+            # See: http://www.freedesktop.org/wiki/CommonExtendedAttributes
+            try:
+                xattr.set(self.filename, 'user.xdg.origin.url', self.url)
+            except:
+                pass # URL too long. = IOError ... ignore everything.
+
+        # set the time
+        mod_time = self.curl_obj.getinfo(pycurl.INFO_FILETIME)
+        if mod_time != -1:
+            try:
+                os.utime(self.filename, (mod_time, mod_time))
+            except OSError, e:
+                err = URLGrabError(16, _(\
+                  'error setting timestamp on file %s from %s, OSError: %s') 
+                          % (self.filename, self.url, e))
+                err.url = self.url
+                raise err
 
     def _fill_buffer(self, amt=None):
         """fill the buffer to contain at least 'amt' bytes by reading
