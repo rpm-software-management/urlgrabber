@@ -481,7 +481,7 @@ class TextMultiFileMeter(MultiFileMeter):
             tf = self.numfiles or 1
             pf = 100 * float(df)/tf + 0.49
             dd = self.re.last_amount_read
-            td = self.total_size
+            td = self.re.total
             pd = 100 * (self.re.fraction_read() or 0) + 0.49
             dt = self.re.elapsed_time()
             rt = self.re.remaining_time()
