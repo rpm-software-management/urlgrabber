@@ -331,12 +331,21 @@ class MultiFileHelper(BaseMeter):
     def message(self, message):
         self.master.message_meter(self, message)
 
+class _FakeLock:
+    def acquire(self):
+        pass
+    def release(self):
+        pass
+
 class MultiFileMeter:
     helperclass = MultiFileHelper
-    def __init__(self):
+    def __init__(self, threaded=True):
         self.meters = []
         self.in_progress_meters = []
-        self._lock = thread.allocate_lock()
+        if threaded:
+            self._lock = thread.allocate_lock()
+        else:
+            self._lock = _FakeLock()
         self.update_period = 0.3 # seconds
         
         self.numfiles         = None
@@ -467,11 +476,20 @@ class MultiFileMeter:
 
 
 class TextMultiFileMeter(MultiFileMeter):
-    def __init__(self, fo=sys.stderr):
+    def __init__(self, fo=sys.stderr, threaded=True):
         self.fo = fo
-        MultiFileMeter.__init__(self)
+        MultiFileMeter.__init__(self, threaded)
 
     # files: ###/### ###%  data: ######/###### ###%  time: ##:##:##/##:##:##
+# New output, like TextMeter output...
+#       update: Size, All files
+#       -----------------------
+# (<#file>/<#tot files>): <text> <pc> <bar> <rate> | <size> <eta time> ETA
+#                          8-22 1 3-4 1 6-12 1   8 3     6 1        9 1  3 1
+#       end
+#       ---
+# <text>                                 | <file size> <file elapsed time> 
+#  8-56                                  3          6 1                 9 5
     def _do_update_meter(self, meter, now):
         self._lock.acquire()
         try:
@@ -492,8 +510,38 @@ class TextMultiFileMeter(MultiFileMeter):
             ftd = format_number(td) + 'B'
             fdt = format_time(dt, 1)
             ftt = format_time(tt, 1)
-            
-            out = '%-79.79s' % (format % (df, tf, pf, fdd, ftd, pd, fdt, ftt))
+
+            if True:
+                frac = self.re.fraction_read() or 0
+                ave_dl = format_number(self.re.average_rate())
+                text = meter.text or meter.basename
+                if tf > 1:
+                    text = '(%u/%u): %s' % (df+1, tf, text)
+
+                # Include text + ui_rate in minimal
+                tl = TerminalLine(8, 8+1+8)
+
+                ui_size = tl.add(' | %5sB' % format_number(dd))
+
+                ui_time = tl.add(' %9s' % format_time(rt))
+                ui_end  = tl.add(' ETA ')
+
+                ui_sofar_pc = tl.add(' %i%%' % pf,
+                                     full_len=len(" (100%)"))
+                ui_rate = tl.add(' %5sB/s' % ave_dl)
+
+                # Make text grow a bit before we start growing the bar too
+                blen = 4 + tl.rest_split(8 + 8 + 4)
+                bar  = '='*int(blen * frac)
+                if (blen * frac) - int(blen * frac) >= 0.5:
+                    bar += '-'
+                ui_bar  = tl.add(' [%-*.*s]' % (blen, blen, bar))
+                out = '%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
+                                                ui_sofar_pc, ui_bar,
+                                                ui_rate, ui_size, ui_time,
+                                                ui_end)
+            else:
+                out = '%-79.79s' % (format % (df,tf,pf, fdd, ftd, pd, fdt, ftt))
             self.fo.write('\r' + out)
             self.fo.flush()
         finally:
@@ -509,8 +557,31 @@ class TextMultiFileMeter(MultiFileMeter):
             et = meter.re.elapsed_time()
             fet = format_time(et, 1)
             frate = format_number(et and size / et) + 'B/s'
-            
-            out = '%-79.79s' % (format % (fn, fsize, fet, frate))
+            df = self.finished_files
+            tf = self.numfiles or 1
+
+            if True:
+                total_time = format_time(et)
+                total_size = format_number(size)
+                text = meter.text or meter.basename
+                if tf > 1:
+                    text = '(%u/%u): %s' % (df, tf, text)
+
+                tl = TerminalLine(8)
+                ui_size = tl.add(' | %5sB' % total_size)
+                ui_time = tl.add(' %9s' % total_time)
+                if meter.size is not None:
+                    if size > meter.size:
+                        ui_end  = tl.add(' !!! ')
+                    elif size != meter.size:
+                        ui_end  = tl.add(' ... ')
+                    else:
+                        ui_end  = tl.add(' ' * 5)
+
+                out = '%-*.*s%s%s%s' % (tl.rest(), tl.rest(), text,
+                                        ui_size, ui_time, ui_end)
+            else:
+                out = '%-79.79s' % (format % (fn, fsize, fet, frate))
             self.fo.write('\r' + out + '\n')
         finally:
             self._lock.release()
