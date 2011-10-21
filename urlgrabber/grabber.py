@@ -2041,7 +2041,6 @@ def download_process():
         - use ProxyProgress to send _amount_read during dl.
         - abort on EOF.
     '''
-    sys.stderr.close()
     dl = _DirectDownloader()
     cnt = tout = 0
     while True:
@@ -2076,6 +2075,77 @@ def download_process():
     dl.abort()
     sys.exit(0)
 
+import subprocess
+
+class _ExternalDownloader:
+    def __init__(self):
+        self.popen = subprocess.Popen(
+            ['/usr/bin/python', __file__, 'DOWNLOADER'],
+            stdin = subprocess.PIPE,
+            stdout = subprocess.PIPE,
+        )
+        self.stdin  = self.popen.stdin.fileno()
+        self.stdout = self.popen.stdout.fileno()
+        self.running = {}
+        self.cnt = 0
+
+    # list of options we pass to downloader
+    _options = (
+        'url', 'filename',
+        'timeout', 'close_connection', 'keepalive',
+        'throttle', 'bandwidth', 'range', 'reget',
+        'user_agent', 'http_headers', 'ftp_headers',
+        'proxies', 'prefix', 'quote',
+        'username', 'password',
+        'ssl_ca_cert',
+        'ssl_cert', 'ssl_cert_type',
+        'ssl_key', 'ssl_key_type',
+        'ssl_key_pass',
+        'ssl_verify_peer', 'ssl_verify_host',
+        'size', 'max_header_size', 'ip_resolve',
+    )
+
+    def start(self, opts):
+        arg = []
+        for k in self._options:
+            v = getattr(opts, k)
+            if v is None: continue
+            arg.append('%s=%s' % (k, _dumps(v)))
+        arg = ' '.join(arg)
+        if DEBUG: DEBUG.info('external: %s', arg)
+
+        self.cnt += 1
+        self.running[self.cnt] = opts
+        os.write(self.stdin, arg +'\n')
+
+    def perform(self):
+        ret = []
+        lines = _readlines(self.stdout)
+        for line in lines:
+            # parse downloader output
+            line = line.split(' ', 3)
+            cnt, _amount_read = map(int, line[:2])
+            if len(line) == 2:
+                opts = self.running[cnt]
+                m = opts.progress_obj
+                if m:
+                    if not m.last_update_time:
+                        m.start(text = opts.text)
+                    m.update(_amount_read)
+                continue
+            # job done
+            opts = self.running.pop(cnt)
+            err = None
+            if line[2] != 'OK':
+                err = URLGrabError(int(line[2]), line[3])
+            ret.append((opts, err, _amount_read))
+        return ret
+
+    def abort(self):
+        self.popen.stdin.close()
+        self.popen.stdout.close()
+        self.popen.wait()
+
 
 #####################################################################
 #  High level async API
@@ -2083,7 +2153,7 @@ def download_process():
 
 _async = {}
 
-def parallel_wait(meter = 'text'):
+def parallel_wait(meter = 'text', external = True):
     '''Process queued requests in parallel.
     '''
 
@@ -2098,7 +2168,8 @@ def parallel_wait(meter = 'text'):
             meter = TextMultiFileMeter()
         meter.start(count, total)
 
-    dl = _DirectDownloader()
+    if external: dl = _ExternalDownloader()
+    else: dl = _DirectDownloader()
 
     def start(opts, tries):
         opts.tries = tries
