@@ -217,44 +217,44 @@ GENERAL ARGUMENTS (kwargs)
     No-op when using the curl backend (default)
    
 
-  self.ssl_verify_peer = True 
+  ssl_verify_peer = True
 
     Check the server's certificate to make sure it is valid with what our CA validates
   
-  self.ssl_verify_host = True
+  ssl_verify_host = True
 
     Check the server's hostname to make sure it matches the certificate DN
 
-  self.ssl_key = None
+  ssl_key = None
 
     Path to the key the client should use to connect/authenticate with
 
-  self.ssl_key_type = 'PEM' 
+  ssl_key_type = 'PEM'
 
     PEM or DER - format of key
      
-  self.ssl_cert = None
+  ssl_cert = None
 
     Path to the ssl certificate the client should use to to authenticate with
 
-  self.ssl_cert_type = 'PEM' 
+  ssl_cert_type = 'PEM'
 
     PEM or DER - format of certificate
     
-  self.ssl_key_pass = None 
+  ssl_key_pass = None
 
     password to access the ssl_key
     
-  self.size = None
+  size = None
 
     size (in bytes) or Maximum size of the thing being downloaded. 
     This is mostly to keep us from exploding with an endless datastream
   
-  self.max_header_size = 2097152 
+  max_header_size = 2097152
 
     Maximum size (in bytes) of the headers.
     
-  self.ip_resolve = 'whatever'
+  ip_resolve = 'whatever'
 
     What type of name to IP resolving to use, default is to do both IPV4 and
     IPV6.
