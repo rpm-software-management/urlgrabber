@@ -1574,22 +1574,7 @@ class PyCurlFileObject(object):
         _was_filename = False
         if type(self.filename) in types.StringTypes and self.filename:
             _was_filename = True
-            self._prog_reportname = str(self.filename)
-            self._prog_basename = os.path.basename(self.filename)
-            
-            if self.append: mode = 'ab'
-            else: mode = 'wb'
-
-            if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
-                                 (self.filename, mode))
-            try:
-                self.fo = open(self.filename, mode)
-            except IOError, e:
-                err = URLGrabError(16, _(\
-                  'error opening local file from %s, IOError: %s') % (self.url, e))
-                err.url = self.url
-                raise err
-
+            self._do_open_fo()
         else:
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
@@ -1647,6 +1632,22 @@ class PyCurlFileObject(object):
 
         self._complete = True
     
+    def _do_open_fo(self):
+        self._prog_reportname = str(self.filename)
+        self._prog_basename = os.path.basename(self.filename)
+        if self.append: mode = 'ab'
+        else: mode = 'wb'
+
+        if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
+                             (self.filename, mode))
+        try:
+            self.fo = open(self.filename, mode)
+        except IOError, e:
+            err = URLGrabError(16, _(\
+              'error opening local file from %s, IOError: %s') % (self.url, e))
+            err.url = self.url
+            raise err
+
     def _fill_buffer(self, amt=None):
         """fill the buffer to contain at least 'amt' bytes by reading
         from the underlying file object.  If amt is None, then it will
