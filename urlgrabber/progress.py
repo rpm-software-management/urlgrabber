@@ -508,7 +508,7 @@ class TextMultiFileMeter(MultiFileMeter):
             fsize = format_number(size) + 'B'
             et = meter.re.elapsed_time()
             fet = format_time(et, 1)
-            frate = format_number(size / et) + 'B/s'
+            frate = format_number(et and size / et) + 'B/s'
             
             out = '%-79.79s' % (format % (fn, fsize, fet, frate))
             self.fo.write('\r' + out + '\n')
