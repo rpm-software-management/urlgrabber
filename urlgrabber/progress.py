@@ -369,6 +369,7 @@ class MultiFileMeter:
 
     def end(self, now=None):
         if now is None: now = time.time()
+        self.re.update(self._amount_read(), now)
         self._do_end(now)
         
     def _do_end(self, now):
