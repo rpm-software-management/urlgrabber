@@ -518,35 +518,32 @@ class TextMultiFileMeter(MultiFileMeter):
             fdt = format_time(dt, 1)
             ftt = format_time(tt, 1)
 
-            if True:
-                frac = self.re.fraction_read() or 0
-                ave_dl = format_number(self.re.average_rate())
-                text = meter.text or meter.basename
-                if tf > 1:
-                    text = '(%u/%u): %s' % (df+1, tf, text)
+            frac = self.re.fraction_read() or 0
+            ave_dl = format_number(self.re.average_rate())
+            text = meter.text or meter.basename
+            if tf > 1:
+                text = '(%u/%u): %s' % (df+1, tf, text)
 
-                # Include text + ui_rate in minimal
-                tl = TerminalLine(8, 8+1+8)
+            # Include text + ui_rate in minimal
+            tl = TerminalLine(8, 8+1+8)
 
-                ui_size = tl.add(' | %5sB' % format_number(dd))
+            ui_size = tl.add(' | %5sB' % format_number(dd))
 
-                ui_time = tl.add(' %9s' % format_time(rt))
-                ui_end  = tl.add(' ETA ')
+            ui_time = tl.add(' %9s' % format_time(rt))
+            ui_end  = tl.add(' ETA ')
 
-                ui_sofar_pc = tl.add(' %i%%' % pf,
-                                     full_len=len(" (100%)"))
-                ui_rate = tl.add(' %5sB/s' % ave_dl)
+            ui_sofar_pc = tl.add(' %i%%' % pf,
+                                 full_len=len(" (100%)"))
+            ui_rate = tl.add(' %5sB/s' % ave_dl)
 
-                # Make text grow a bit before we start growing the bar too
-                blen = 4 + tl.rest_split(8 + 8 + 4)
-                ui_bar = _term_add_bar(tl, blen, frac)
-                out = '%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
-                                                ui_sofar_pc, ui_bar,
-                                                ui_rate, ui_size, ui_time,
-                                                ui_end)
-            else:
-                out = '%-79.79s' % (format % (df,tf,pf, fdd, ftd, pd, fdt, ftt))
-            self.fo.write('\r' + out)
+            # Make text grow a bit before we start growing the bar too
+            blen = 4 + tl.rest_split(8 + 8 + 4)
+            ui_bar = _term_add_bar(tl, blen, frac)
+            out = '\r%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
+                                              ui_sofar_pc, ui_bar,
+                                              ui_rate, ui_size, ui_time,
+                                              ui_end)
+            self.fo.write(out)
             self.fo.flush()
         finally:
             self._lock.release()
@@ -564,22 +561,19 @@ class TextMultiFileMeter(MultiFileMeter):
             df = self.finished_files
             tf = self.numfiles or 1
 
-            if True:
-                total_time = format_time(et)
-                total_size = format_number(size)
-                text = meter.text or meter.basename
-                if tf > 1:
-                    text = '(%u/%u): %s' % (df, tf, text)
+            total_time = format_time(et)
+            total_size = format_number(size)
+            text = meter.text or meter.basename
+            if tf > 1:
+                text = '(%u/%u): %s' % (df, tf, text)
 
-                tl = TerminalLine(8)
-                ui_size = tl.add(' | %5sB' % total_size)
-                ui_time = tl.add(' %9s' % total_time)
-                ui_end, not_done = _term_add_end(tl, meter.size, size)
-                out = '%-*.*s%s%s%s' % (tl.rest(), tl.rest(), text,
+            tl = TerminalLine(8)
+            ui_size = tl.add(' | %5sB' % total_size)
+            ui_time = tl.add(' %9s' % total_time)
+            ui_end, not_done = _term_add_end(tl, meter.size, size)
+            out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                         ui_size, ui_time, ui_end)
-            else:
-                out = '%-79.79s' % (format % (fn, fsize, fet, frate))
-            self.fo.write('\r' + out + '\n')
+            self.fo.write(out)
         finally:
             self._lock.release()
         self._do_update_meter(meter, now)
