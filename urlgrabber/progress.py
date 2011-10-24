@@ -211,6 +211,21 @@ def text_meter_total_size(size, downloaded=0):
 #        4. +                     ( 5, total: 32)
 #
 
+def _term_add_bar(tl, bar_max_length, pc):
+    blen = bar_max_length
+    bar  = '='*int(blen * pc)
+    if (blen * pc) - int(blen * pc) >= 0.5:
+        bar += '-'
+    return tl.add(' [%-*.*s]' % (blen, blen, bar))
+
+def _term_add_end(tl, osize, size):
+    if osize is not None:
+        if size > osize: # Is ??? better? Really need something to say < vs >.
+            return tl.add(' !!! '), True
+        elif size != osize:
+            return tl.add(' ... '), True
+    return tl.add(' ' * 5), False
+
 class TextMeter(BaseMeter):
     def __init__(self, fo=sys.stderr):
         BaseMeter.__init__(self)
@@ -259,13 +274,10 @@ class TextMeter(BaseMeter):
             ui_rate = tl.add(' %5sB/s' % ave_dl)
             # Make text grow a bit before we start growing the bar too
             blen = 4 + tl.rest_split(8 + 8 + 4)
-            bar  = '='*int(blen * frac)
-            if (blen * frac) - int(blen * frac) >= 0.5:
-                bar += '-'
-            ui_bar  = tl.add(' [%-*.*s]' % (blen, blen, bar))
-            out = '%-*.*s%s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
-                                              ui_sofar_pc, ui_pc, ui_bar,
-                                              ui_rate, ui_size, ui_time, ui_end)
+            ui_bar = _term_add_bar(tl, blen, frac)
+            out = '\r%-*.*s%s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
+                                                ui_sofar_pc, ui_pc, ui_bar,
+                                                ui_rate,ui_size,ui_time, ui_end)
 
         self.fo.write(out)
         self.fo.flush()
@@ -284,12 +296,7 @@ class TextMeter(BaseMeter):
         tl = TerminalLine(8)
         ui_size = tl.add(' | %5sB' % total_size)
         ui_time = tl.add(' %9s' % total_time)
-        not_done = self.size is not None and amount_read != self.size
-        if not_done:
-            ui_end  = tl.add(' ... ')
-        else:
-            ui_end  = tl.add(' ' * 5)
-
+        ui_end, not_done = _term_add_end(tl, self.size, amount_read)
         out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                     ui_size, ui_time, ui_end)
         self.fo.write(out)
@@ -532,10 +539,7 @@ class TextMultiFileMeter(MultiFileMeter):
 
                 # Make text grow a bit before we start growing the bar too
                 blen = 4 + tl.rest_split(8 + 8 + 4)
-                bar  = '='*int(blen * frac)
-                if (blen * frac) - int(blen * frac) >= 0.5:
-                    bar += '-'
-                ui_bar  = tl.add(' [%-*.*s]' % (blen, blen, bar))
+                ui_bar = _term_add_bar(tl, blen, frac)
                 out = '%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
                                                 ui_sofar_pc, ui_bar,
                                                 ui_rate, ui_size, ui_time,
@@ -570,14 +574,7 @@ class TextMultiFileMeter(MultiFileMeter):
                 tl = TerminalLine(8)
                 ui_size = tl.add(' | %5sB' % total_size)
                 ui_time = tl.add(' %9s' % total_time)
-                if meter.size is not None:
-                    if size > meter.size:
-                        ui_end  = tl.add(' !!! ')
-                    elif size != meter.size:
-                        ui_end  = tl.add(' ... ')
-                    else:
-                        ui_end  = tl.add(' ' * 5)
-
+                ui_end, not_done = _term_add_end(tl, meter.size, size)
                 out = '%-*.*s%s%s%s' % (tl.rest(), tl.rest(), text,
                                         ui_size, ui_time, ui_end)
             else:
