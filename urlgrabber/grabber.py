@@ -1889,10 +1889,20 @@ def retrygrab(url, filename=None, copy_local=0, close_connection=0,
 #####################################################################
 
 class _AsyncCurlFile(PyCurlFileObject):
+    curl_cache = {}
+    def _host(self):
+        return urlparse.urlsplit(self.opts.url).netloc
+
     def _do_open(self):
-        self.curl_obj = pycurl.Curl() # don't reuse _curl_cache
+        # try to reuse curl objects
+        curl = self.curl_cache.pop(self._host(), None)
+        self.curl_obj = curl or pycurl.Curl()
         self._set_opts()
         self._do_open_fo() # open the file but don't grab
+
+    def _do_close_fo(self):
+        self.curl_cache[self._host()] = self.curl_obj
+        PyCurlFileObject._do_close_fo(self)
 
 class _DirectDownloader:
     def __init__(self):
