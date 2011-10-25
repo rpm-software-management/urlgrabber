@@ -576,7 +576,6 @@ class TextMultiFileMeter(MultiFileMeter):
             self.fo.write(out)
         finally:
             self._lock.release()
-        self._do_update_meter(meter, now)
 
     def _do_failure_meter(self, meter, message, now):
         self._lock.acquire()
@@ -597,15 +596,6 @@ class TextMultiFileMeter(MultiFileMeter):
         self._lock.acquire()
         try:
             pass
-        finally:
-            self._lock.release()
-
-    def _do_end(self, now):
-        self._do_update_meter(None, now)
-        self._lock.acquire()
-        try:
-            self.fo.write('\n')
-            self.fo.flush()
         finally:
             self._lock.release()
         
