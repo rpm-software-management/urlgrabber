@@ -459,7 +459,7 @@ import pycurl
 from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
-import socket
+import socket, select
 from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -2019,6 +2019,65 @@ def _loads(s):
 
 
 #####################################################################
+#  External downloader process
+#####################################################################
+
+class _ProxyProgress:
+    def start(*d1, **d2): pass
+    def update(self, _amount_read):
+        os.write(1, '%d %d\n' % (self._id, _amount_read))
+
+def _readlines(fd):
+    buf = os.read(fd, 4096)
+    if not buf: return None
+    # whole lines only, no buffering
+    while buf[-1] != '\n':
+        buf += os.read(fd, 4096)
+    return buf[:-1].split('\n')
+
+def download_process():
+    ''' Download process
+        - watch stdin for new requests, parse & issue em.
+        - use ProxyProgress to send _amount_read during dl.
+        - abort on EOF.
+    '''
+    sys.stderr.close()
+    dl = _DirectDownloader()
+    cnt = tout = 0
+    while True:
+        fdset = dl.multi.fdset()
+        fdset[0].append(0) # stdin
+        fdset = select.select(*(fdset + (tout,)))
+        if 0 in fdset[0]:
+            lines = _readlines(0)
+            if not lines: break
+            for line in lines:
+                # start new download
+                cnt += 1
+                opts = URLGrabberOptions()
+                opts._id = cnt
+                opts.progress_obj = _ProxyProgress()
+                opts.progress_obj._id = cnt
+                for k in line.split(' '):
+                    k, v = k.split('=', 1)
+                    setattr(opts, k, _loads(v))
+                dl.start(opts)
+
+            # XXX: likely a CurlMulti() bug
+            # fdset() is empty shortly after starting new request.
+            # Do some polling to work this around.
+            tout = 10e-3
+
+        # perform requests
+        for opts, ug_err, _amount_read in dl.perform():
+            ug_err = ug_err and '%d %s' % ug_err.args or 'OK'
+            os.write(1, '%d %d %s\n' % (opts._id, _amount_read, ug_err))
+        tout = min(tout * 1.1, 5)
+    dl.abort()
+    sys.exit(0)
+
+
+#####################################################################
 #  High level async API
 #####################################################################
 
@@ -2239,6 +2298,9 @@ def _test_file_object_readlines(wrapper, fo_output):
     fo_output.write(string.join(li, ''))
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['DOWNLOADER']:
+        download_process()
+
     _main_test()
     _retry_test()
     _file_object_test('test')
