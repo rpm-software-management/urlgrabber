@@ -459,7 +459,7 @@ import pycurl
 from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
-import socket, select
+import socket, select, errno
 from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -2120,7 +2120,13 @@ class _ExternalDownloader:
 
     def perform(self):
         ret = []
-        lines = _readlines(self.stdout)
+        try: lines = _readlines(self.stdout)
+        except OSError, e:
+            if e.args[0] != errno.EINTR: raise
+            raise KeyboardInterrupt
+        if not lines:
+            if DEBUG: DEBUG.info('downloader died')
+            raise KeyboardInterrupt
         for line in lines:
             # parse downloader output
             line = line.split(' ', 3)
@@ -2370,7 +2376,9 @@ def _test_file_object_readlines(wrapper, fo_output):
 
 if __name__ == '__main__':
     if sys.argv[1:] == ['DOWNLOADER']:
-        download_process()
+        try: download_process()
+        except KeyboardInterrupt:
+            raise SystemExit # no traceback
 
     _main_test()
     _retry_test()
