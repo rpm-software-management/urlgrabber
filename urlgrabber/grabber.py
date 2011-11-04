@@ -1944,6 +1944,79 @@ class _DirectDownloader:
             self.multi.remove_handle(curl)
             fo._do_close_fo()
 
+#####################################################################
+#  Serializer + parser: A replacement of the rather bulky Json code.
+#
+# - handles basic python literals, lists and tuples.
+# - serialized strings never contain ' ' or '\n'
+#
+#####################################################################
+
+_quoter_map = {}
+for c in '%[(,)] \n':
+    _quoter_map[c] = '%%%02x' % ord(c)
+del c
+
+def _dumps(v):
+    if v is None: return 'None'
+    if v is True: return 'True'
+    if v is False: return 'False'
+    if type(v) in (int, long, float):
+        return str(v)
+    if type(v) == unicode:
+        v = v.encode('UTF8')
+    if type(v) == str:
+        def quoter(c): return _quoter_map.get(c, c)
+        return "'%s'" % ''.join(map(quoter, v))
+    if type(v) == tuple:
+        return "(%s)" % ','.join(map(_dumps, v))
+    if type(v) == list:
+        return "[%s]" % ','.join(map(_dumps, v))
+    raise TypeError, 'Can\'t serialize %s' % v
+
+def _loads(s):
+    def decode(v):
+        if v == 'None': return None
+        if v == 'True': return True
+        if v == 'False': return False
+        try: return int(v)
+        except ValueError: pass
+        try: return float(v)
+        except ValueError: pass
+        if len(v) >= 2 and v[0] == v[-1] == "'":
+            ret = []; i = 1
+            while True:
+                j = v.find('%', i)
+                ret.append(v[i:j]) # skips the final "'"
+                if j == -1: break
+                ret.append(chr(int(v[j + 1:j + 3], 16)))
+                i = j + 3
+            v = ''.join(ret)
+        return v
+    stk = None
+    l = []
+    i = j = 0
+    while True:
+        if j == len(s) or s[j] in ',)]':
+            if j > i:
+                l.append(decode(s[i:j]))
+            if j == len(s): break
+            if s[j] in ')]':
+                if s[j] == ')':
+                    l = tuple(l)
+                stk[0].append(l)
+                l, stk = stk
+            i = j = j + 1
+        elif s[j] in '[(':
+            stk = l, stk
+            l = []
+            i = j = j + 1
+        else:
+            j += 1 # safe because '[(,)]' are quoted
+    if stk: raise ValueError
+    if len(l) == 1: l = l[0]
+    return l
+
 
 #####################################################################
 #  High level async API
