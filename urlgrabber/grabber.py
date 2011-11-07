@@ -2023,8 +2023,12 @@ def _loads(s):
 #####################################################################
 
 class _ProxyProgress:
-    def start(*d1, **d2): pass
+    def start(self, *d1, **d2):
+        self.next_update = 0
     def update(self, _amount_read):
+        t = time.time()
+        if t < self.next_update: return
+        self.next_update = t + 0.31
         os.write(1, '%d %d\n' % (self._id, _amount_read))
 
 def _readlines(fd):
@@ -2055,11 +2059,12 @@ def download_process():
                 cnt += 1
                 opts = URLGrabberOptions()
                 opts._id = cnt
-                opts.progress_obj = _ProxyProgress()
-                opts.progress_obj._id = cnt
                 for k in line.split(' '):
                     k, v = k.split('=', 1)
                     setattr(opts, k, _loads(v))
+                if opts.progress_obj:
+                    opts.progress_obj = _ProxyProgress()
+                    opts.progress_obj._id = cnt
                 dl.start(opts)
 
             # XXX: likely a CurlMulti() bug
@@ -2111,6 +2116,8 @@ class _ExternalDownloader:
             v = getattr(opts, k)
             if v is None: continue
             arg.append('%s=%s' % (k, _dumps(v)))
+        if opts.progress_obj:
+            arg.append('progress_obj=True')
         arg = ' '.join(arg)
         if DEBUG: DEBUG.info('external: %s', arg)
 
