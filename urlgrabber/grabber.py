@@ -459,7 +459,7 @@ import pycurl
 from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
-import socket, select, errno
+import socket, select, errno, fcntl
 from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -2039,12 +2039,39 @@ def _readlines(fd):
         buf += os.read(fd, 4096)
     return buf[:-1].split('\n')
 
+# Set this flag to 'True' to avoid using pycurl.CurlMulti()
+AVOID_CURL_MULTI = True
+
 def download_process():
     ''' Download process
         - watch stdin for new requests, parse & issue em.
         - use ProxyProgress to send _amount_read during dl.
         - abort on EOF.
     '''
+    if AVOID_CURL_MULTI:
+        cnt = 0
+        while True:
+            lines = _readlines(0)
+            if not lines: break
+            for line in lines:
+                cnt += 1
+                opts = URLGrabberOptions()
+                for k in line.split(' '):
+                    k, v = k.split('=', 1)
+                    setattr(opts, k, _loads(v))
+                if opts.progress_obj:
+                    opts.progress_obj = _ProxyProgress()
+                    opts.progress_obj._id = cnt
+                try:
+                    fo = PyCurlFileObject(opts.url, opts.filename, opts)
+                    fo._do_grab(); _amount_read = fo._amount_read
+                    fo.fo.close(); ug_err = 'OK'
+                except URLGrabError, e:
+                    _amount_read = 0
+                    ug_err = '%d %s' % e.args
+                os.write(1, '%d %d %s\n' % (cnt, _amount_read, ug_err))
+        sys.exit(0)
+
     dl = _DirectDownloader()
     cnt = tout = 0
     while True:
@@ -2159,6 +2186,41 @@ class _ExternalDownloader:
         self.popen.stdout.close()
         self.popen.wait()
 
+class _ExternalDownloaderPool:
+    def __init__(self):
+        self.running = {}
+        self.cache = {}
+
+    def start(self, opts):
+        host = urlparse.urlsplit(opts.url).netloc
+        dl = self.cache.pop(host, None)
+        if not dl:
+            dl = _ExternalDownloader()
+            fl = fcntl.fcntl(dl.stdin, fcntl.F_GETFD)
+            fcntl.fcntl(dl.stdin, fcntl.F_SETFD, fl | fcntl.FD_CLOEXEC)
+        self.running[dl.stdout] = dl
+        dl.start(opts)
+
+    def perform(self):
+        ret = []
+        for fd in select.select(self.running, [], [])[0]:
+            done = self.running[fd].perform()
+            if not done: continue
+            assert len(done) == 1
+            ret.extend(done)
+
+            # dl finished, move it to the cache
+            host = urlparse.urlsplit(done[0][0].url).netloc
+            if host in self.cache: self.cache[host].abort()
+            self.cache[host] = self.running.pop(fd)
+        return ret
+
+    def abort(self):
+        for dl in self.running.values():
+            dl.abort()
+        for dl in self.cache.values():
+            dl.abort()
+
 
 #####################################################################
 #  High level async API
@@ -2181,7 +2243,11 @@ def parallel_wait(meter = 'text', external = True):
             meter = TextMultiFileMeter()
         meter.start(count, total)
 
-    if external: dl = _ExternalDownloader()
+    if external:
+        if AVOID_CURL_MULTI:
+            dl = _ExternalDownloaderPool()
+        else:
+            dl = _ExternalDownloader()
     else: dl = _DirectDownloader()
 
     def start(opts, tries):
