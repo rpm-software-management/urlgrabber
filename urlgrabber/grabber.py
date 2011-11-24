@@ -2188,6 +2188,7 @@ class _ExternalDownloader:
 
 class _ExternalDownloaderPool:
     def __init__(self):
+        self.epoll = select.epoll()
         self.running = {}
         self.cache = {}
 
@@ -2198,12 +2199,14 @@ class _ExternalDownloaderPool:
             dl = _ExternalDownloader()
             fl = fcntl.fcntl(dl.stdin, fcntl.F_GETFD)
             fcntl.fcntl(dl.stdin, fcntl.F_SETFD, fl | fcntl.FD_CLOEXEC)
+        self.epoll.register(dl.stdout, select.EPOLLIN)
         self.running[dl.stdout] = dl
         dl.start(opts)
 
     def perform(self):
         ret = []
-        for fd in select.select(self.running, [], [])[0]:
+        for fd, event in self.epoll.poll():
+            assert event & select.EPOLLIN
             done = self.running[fd].perform()
             if not done: continue
             assert len(done) == 1
@@ -2212,11 +2215,13 @@ class _ExternalDownloaderPool:
             # dl finished, move it to the cache
             host = urlparse.urlsplit(done[0][0].url).netloc
             if host in self.cache: self.cache[host].abort()
+            self.epoll.unregister(fd)
             self.cache[host] = self.running.pop(fd)
         return ret
 
     def abort(self):
         for dl in self.running.values():
+            self.epoll.unregister(dl.stdout)
             dl.abort()
         for dl in self.cache.values():
             dl.abort()
