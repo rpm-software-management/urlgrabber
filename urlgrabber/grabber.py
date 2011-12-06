@@ -568,6 +568,13 @@ _log_package_state()
 def _(st):
     return st
 
+# Downloader modes:
+# 'compat': no parallel downloads
+# 'direct': use CurlMulti directly
+# 'extern': fork+exec a process that uses CurlMulti
+# 'pooled': multiple fork+exec'd processes
+ug_mode = os.environ.get('URLGRABBER_MODE', 'pooled')
+
 ########################################################################
 #                 END MODULE INITIALIZATION
 ########################################################################
@@ -1072,7 +1079,7 @@ class URLGrabber(object):
                     _run_callback(opts.checkfunc, obj)
                 return path
         
-        if opts.async:
+        if opts.async and ug_mode != 'compat':
             opts.url = url
             opts.filename = filename
             opts.size = int(opts.size or 0)
@@ -2078,19 +2085,16 @@ def _readlines(fd):
         buf += os.read(fd, 4096)
     return buf[:-1].split('\n')
 
-# Set this flag to 'True' to avoid using pycurl.CurlMulti()
-AVOID_CURL_MULTI = True
-
 def download_process():
     ''' Download process
         - watch stdin for new requests, parse & issue em.
         - use ProxyProgress to send _amount_read during dl.
         - abort on EOF.
     '''
-    if AVOID_CURL_MULTI:
-        dl = _DirectDownloaderSingle()
-    else:
-        dl = _DirectDownloaderMulti()
+    if   ug_mode == 'extern': dl = _DirectDownloaderMulti()
+    elif ug_mode == 'pooled': dl = _DirectDownloaderSingle()
+    else: raise ValueError, 'Unknown ext mode %s' % ug_mode
+
     cnt = 0
     while True:
         if dl.select():
@@ -2242,10 +2246,12 @@ class _ExternalDownloaderPool:
 
 _async = {}
 
-def parallel_wait(meter = 'text', external = True):
+def parallel_wait(meter = 'text'):
     '''Process queued requests in parallel.
     '''
 
+    if ug_mode == 'compat':
+        return
     if meter:
         count = total = 0
         for limit, queue in _async.values():
@@ -2257,12 +2263,10 @@ def parallel_wait(meter = 'text', external = True):
             meter = TextMultiFileMeter()
         meter.start(count, total)
 
-    if external:
-        if AVOID_CURL_MULTI:
-            dl = _ExternalDownloaderPool()
-        else:
-            dl = _ExternalDownloader()
-    else: dl = _DirectDownloaderMulti()
+    if   ug_mode == 'direct': dl = _DirectDownloaderMulti()
+    elif ug_mode == 'extern': dl = _ExternalDownloader()
+    elif ug_mode == 'pooled': dl = _ExternalDownloaderPool()
+    else: raise ValueError, 'Unknown mode %s' % ug_mode
 
     def start(opts, tries):
         opts.tries = tries
