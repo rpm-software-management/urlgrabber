@@ -1904,12 +1904,23 @@ class _AsyncCurlFile(PyCurlFileObject):
         self.curl_cache[self._host()] = self.curl_obj
         PyCurlFileObject._do_close_fo(self)
 
-class _DirectDownloader:
+class _DirectDownloaderMulti:
     def __init__(self):
         ''' A downloader context.
         '''
         self.running = {}
         self.multi = pycurl.CurlMulti()
+        self.tout = 0
+
+    def select(self):
+        ''' Block for some time.  Return True if 'stdin' readable,
+            False when just internal processing needed.
+        '''
+        fdset = self.multi.fdset()
+        fdset[0].append(0) # stdin
+        fdset = select.select(*(fdset + (self.tout,)))
+        self.tout = min(self.tout * 1.1, 5)
+        return 0 in fdset[0]
 
     def start(self, opts):
         ''' Start download of job 'opts'
@@ -1917,6 +1928,11 @@ class _DirectDownloader:
         fo = _AsyncCurlFile(opts.url, opts.filename, opts)
         self.running[fo.curl_obj] = fo
         self.multi.add_handle(fo.curl_obj)
+
+        # XXX: likely a CurlMulti() bug
+        # fdset() is empty shortly after starting new request.
+        # Do some polling to work this around.
+        self.tout = 10e-3
 
     def perform(self):
         ''' Run downloads, return finished ones.
@@ -1939,10 +1955,33 @@ class _DirectDownloader:
         return ret
 
     def abort(self):
+        ''' Abort currently active downloads.
+        '''
         while self.running:
             curl, fo = self.running.popitem()
             self.multi.remove_handle(curl)
             fo._do_close_fo()
+
+class _DirectDownloaderSingle:
+    ''' _DirectDownloader downloading one file at a time.
+    '''
+    def select(self):
+        return True
+
+    def start(self, opts):
+        try:
+            fo = PyCurlFileObject(opts.url, opts.filename, opts)
+            fo._do_grab(); _amount_read = fo._amount_read
+            fo.fo.close(); ug_err = None
+        except URLGrabError, ug_err:
+            _amount_read = 0
+        self.result = opts, ug_err, _amount_read
+
+    def perform(self):
+        return [self.result]
+
+    def abort(self):
+        pass
 
 #####################################################################
 #  Serializer + parser: A replacement of the rather bulky Json code.
@@ -2049,36 +2088,12 @@ def download_process():
         - abort on EOF.
     '''
     if AVOID_CURL_MULTI:
-        cnt = 0
-        while True:
-            lines = _readlines(0)
-            if not lines: break
-            for line in lines:
-                cnt += 1
-                opts = URLGrabberOptions()
-                for k in line.split(' '):
-                    k, v = k.split('=', 1)
-                    setattr(opts, k, _loads(v))
-                if opts.progress_obj:
-                    opts.progress_obj = _ProxyProgress()
-                    opts.progress_obj._id = cnt
-                try:
-                    fo = PyCurlFileObject(opts.url, opts.filename, opts)
-                    fo._do_grab(); _amount_read = fo._amount_read
-                    fo.fo.close(); ug_err = 'OK'
-                except URLGrabError, e:
-                    _amount_read = 0
-                    ug_err = '%d %s' % e.args
-                os.write(1, '%d %d %s\n' % (cnt, _amount_read, ug_err))
-        sys.exit(0)
-
-    dl = _DirectDownloader()
-    cnt = tout = 0
+        dl = _DirectDownloaderSingle()
+    else:
+        dl = _DirectDownloaderMulti()
+    cnt = 0
     while True:
-        fdset = dl.multi.fdset()
-        fdset[0].append(0) # stdin
-        fdset = select.select(*(fdset + (tout,)))
-        if 0 in fdset[0]:
+        if dl.select():
             lines = _readlines(0)
             if not lines: break
             for line in lines:
@@ -2094,16 +2109,10 @@ def download_process():
                     opts.progress_obj._id = cnt
                 dl.start(opts)
 
-            # XXX: likely a CurlMulti() bug
-            # fdset() is empty shortly after starting new request.
-            # Do some polling to work this around.
-            tout = 10e-3
-
         # perform requests
         for opts, ug_err, _amount_read in dl.perform():
             ug_err = ug_err and '%d %s' % ug_err.args or 'OK'
             os.write(1, '%d %d %s\n' % (opts._id, _amount_read, ug_err))
-        tout = min(tout * 1.1, 5)
     dl.abort()
     sys.exit(0)
 
@@ -2253,7 +2262,7 @@ def parallel_wait(meter = 'text', external = True):
             dl = _ExternalDownloaderPool()
         else:
             dl = _ExternalDownloader()
-    else: dl = _DirectDownloader()
+    else: dl = _DirectDownloaderMulti()
 
     def start(opts, tries):
         opts.tries = tries
