@@ -1373,14 +1373,8 @@ class PyCurlFileObject(object):
             return
         
         try:
-            e = None
             self.curl_obj.perform()
-        except pycurl.error, e: pass
-        self._do_perform_exc(e)
-
-    def _do_perform_exc(self, e):
-        # handle pycurl exception 'e'
-        if e:
+        except pycurl.error, e:
             # XXX - break some of these out a bit more clearly
             # to other URLGrabErrors from 
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
