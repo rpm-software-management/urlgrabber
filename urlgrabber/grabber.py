@@ -2046,10 +2046,7 @@ class _ExternalDownloader:
 
     def perform(self):
         ret = []
-        try: lines = _readlines(self.stdout)
-        except OSError, e:
-            if e.args[0] != errno.EINTR: raise
-            raise KeyboardInterrupt
+        lines = _readlines(self.stdout)
         if not lines:
             if DEBUG: DEBUG.info('downloader died')
             raise KeyboardInterrupt
