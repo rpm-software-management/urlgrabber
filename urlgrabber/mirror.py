@@ -403,6 +403,8 @@ class MirrorGroup:
                 # async code iterates mirrors and calls failfunc
                 kwargs['mirror_group'] = self, gr, mirrorchoice
                 kwargs['failfunc'] = gr.kw.get('failfunc', _do_raise)
+                # increment master
+                self._next = (self._next + 1) % min(len(self.mirrors), 5)
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
