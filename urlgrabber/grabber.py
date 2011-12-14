@@ -2210,7 +2210,7 @@ def parallel_wait(meter = 'text'):
                     # use new mirrorchoice
                     key = mirrorchoice['mirror']
                     kwargs = mirrorchoice.get('kwargs', {})
-                    limit = kwargs.get('max_connections') or 3
+                    limit = kwargs.get('max_connections', 1)
                     opts.async = key, limit
                     opts.url = mg._join_url(mirrorchoice['mirror'], gr.url)
 

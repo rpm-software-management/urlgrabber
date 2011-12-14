@@ -175,6 +175,13 @@ class MirrorGroup:
                'fail': 0}              # set at instantiation, reset
                                        # from callback
 
+      max_connections
+
+        This option applies to parallel downloading only.  If specified,
+        downloads are evenly distributed to first N mirrors.  N is selected as
+        the smallest number of mirrors such that their total connection limit
+        is at least max_connections.  Retries are not such restricted.
+
       failure_callback
 
         this is a callback that will be called when a mirror "fails",
@@ -263,6 +270,14 @@ class MirrorGroup:
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
         self.default_action   = kwargs.get('default_action')
+        if 'max_connections' in kwargs:
+            total = count = 0
+            for mirror in self.mirrors:
+                count += 1
+                total += mirror.get('kwargs', {}).get('max_connections', 1)
+                if total >= kwargs['max_connections']:
+                    break
+            self._spread = count
        
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
@@ -398,13 +413,14 @@ class MirrorGroup:
             if kw.get('async'):
                 # 'async' option to the 1st mirror
                 key = mirrorchoice['mirror']
-                limit = kwargs.get('max_connections') or 3
+                limit = kwargs.get('max_connections', 1)
                 kwargs['async'] = key, limit
                 # async code iterates mirrors and calls failfunc
                 kwargs['mirror_group'] = self, gr, mirrorchoice
                 kwargs['failfunc'] = gr.kw.get('failfunc', _do_raise)
-                # increment master
-                self._next = (self._next + 1) % min(len(self.mirrors), 5)
+                if hasattr(self, '_spread'):
+                    # increment the master mirror index
+                    self._next = (self._next + 1) % self._spread
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
