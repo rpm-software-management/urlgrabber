@@ -1959,7 +1959,7 @@ class _ProxyProgress:
         t = time.time()
         if t < self.next_update: return
         self.next_update = t + 0.31
-        os.write(1, '%d %d\n' % (self._id, _amount_read))
+        _write('%d %d\n', self._id, _amount_read)
 
 def _readlines(fd):
     buf = os.read(fd, 4096)
@@ -1969,12 +1969,21 @@ def _readlines(fd):
         buf += os.read(fd, 4096)
     return buf[:-1].split('\n')
 
+def _write(fmt, *arg):
+    try: os.write(1, fmt % arg)
+    except OSError, e:
+        if e.arg[0] != errno.EPIPE: raise
+        sys.exit(1)
+
 def download_process():
     ''' Download process
         - watch stdin for new requests, parse & issue em.
         - use ProxyProgress to send _amount_read during dl.
         - abort on EOF.
     '''
+    import signal
+    signal.signal(signal.SIGINT, lambda n, f: sys.exit(1))
+
     cnt = 0
     while True:
         lines = _readlines(0)
@@ -1996,7 +2005,7 @@ def download_process():
             except URLGrabError, e:
                 _amount_read = 0
                 ug_err = '%d %s' % e.args
-            os.write(1, '%d %d %s\n' % (opts._id, _amount_read, ug_err))
+            _write('%d %d %s\n', opts._id, _amount_read, ug_err)
     sys.exit(0)
 
 import subprocess
@@ -2338,9 +2347,7 @@ def _test_file_object_readlines(wrapper, fo_output):
 
 if __name__ == '__main__':
     if sys.argv[1:] == ['DOWNLOADER']:
-        try: download_process()
-        except KeyboardInterrupt:
-            raise SystemExit # no traceback
+        download_process()
 
     _main_test()
     _retry_test()
