@@ -77,7 +77,7 @@ CUSTOMIZATION
        kwargs are omitted, then (duh) they will not be used.
 
        kwarg 'max_connections' is used to store the max connection
-       limit of this mirror, and to update the value of 'async' option.
+       limit of this mirror.
 
     3) Pass keyword arguments when instantiating the mirror group.
        See, for example, the failure_callback argument.
@@ -94,7 +94,7 @@ import random
 import thread  # needed for locking to make this threadsafe
 
 from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
-from grabber import _run_callback, _do_raise
+from grabber import _run_callback, _do_raise, _async_queue
 
 def _(st): 
     return st
@@ -174,13 +174,6 @@ class MirrorGroup:
                'remove_master': 0,     # class default
                'fail': 0}              # set at instantiation, reset
                                        # from callback
-
-      max_connections
-
-        This option applies to parallel downloading only.  If specified,
-        downloads are evenly distributed to first N mirrors.  N is selected as
-        the smallest number of mirrors such that their total connection limit
-        is at least max_connections.  Retries are not such restricted.
 
       failure_callback
 
@@ -270,14 +263,6 @@ class MirrorGroup:
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
         self.default_action   = kwargs.get('default_action')
-        if 'max_connections' in kwargs:
-            total = count = 0
-            for mirror in self.mirrors:
-                count += 1
-                total += mirror.get('kwargs', {}).get('max_connections', 1)
-                if total >= kwargs['max_connections']:
-                    break
-            self._spread = count
        
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
@@ -410,17 +395,6 @@ class MirrorGroup:
             grabber = mirrorchoice.get('grabber') or self.grabber
             func_ref = getattr(grabber, func)
             if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
-            if kw.get('async'):
-                # 'async' option to the 1st mirror
-                key = mirrorchoice['mirror']
-                limit = kwargs.get('max_connections', 1)
-                kwargs['async'] = key, limit
-                # async code iterates mirrors and calls failfunc
-                kwargs['mirror_group'] = self, gr, mirrorchoice
-                kwargs['failfunc'] = gr.kw.get('failfunc', _do_raise)
-                if hasattr(self, '_spread'):
-                    # increment the master mirror index
-                    self._next = (self._next + 1) % self._spread
             try:
                 return func_ref( *(fullurl,), **kwargs )
             except URLGrabError, e:
@@ -433,6 +407,17 @@ class MirrorGroup:
                 self._failure(gr, obj)
 
     def urlgrab(self, url, filename=None, **kwargs):
+        if kwargs.get('async'):
+            opts = self.grabber.opts.derive(**kwargs)
+            opts.mirror_group = self, set()
+            opts.relative_url = _to_utf8(url)
+
+            opts.url = 'http://tbd'
+            opts.filename = filename
+            opts.size = int(opts.size or 0)
+            _async_queue.append(opts)
+            return filename
+
         kw = dict(kwargs)
         kw['filename'] = filename
         func = 'urlgrab'

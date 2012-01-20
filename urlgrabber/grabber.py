@@ -269,6 +269,10 @@ GENERAL ARGUMENTS (kwargs)
     but queued.  parallel_wait() then processes grabs in parallel, limiting
     the numer of connections in each 'key' group to at most 'limit'.
 
+  max_connections
+
+    The global connection limit.
+
 
 RETRY RELATED ARGUMENTS
 
@@ -930,6 +934,8 @@ class URLGrabberOptions:
                          # to be. this is ultimately a MAXIMUM size for the file
         self.max_header_size = 2097152 #2mb seems reasonable for maximum header size
         self.async = None # blocking by default
+        self.mirror_group = None
+        self.max_connections = 5
         
     def __repr__(self):
         return self.format()
@@ -953,6 +959,8 @@ def _do_raise(obj):
     raise obj.exception
 
 def _run_callback(cb, obj):
+    if not cb:
+        return
     if callable(cb):
         return cb(obj)
     cb, arg, karg = cb
@@ -1076,9 +1084,7 @@ class URLGrabber(object):
             opts.url = url
             opts.filename = filename
             opts.size = int(opts.size or 0)
-            key, limit = opts.async
-            limit, queue = _async.setdefault(key, [limit, []])
-            queue.append(opts)
+            _async_queue.append(opts)
             return filename
 
         def retryfunc(opts, url, filename):
@@ -2134,7 +2140,7 @@ class _ExternalDownloaderPool:
 #  High level async API
 #####################################################################
 
-_async = {}
+_async_queue = []
 
 def parallel_wait(meter = 'text'):
     '''Process queued requests in parallel.
@@ -2142,31 +2148,29 @@ def parallel_wait(meter = 'text'):
 
     if meter:
         count = total = 0
-        for limit, queue in _async.values():
-            for opts in queue:
-                count += 1
-                total += opts.size
+        for opts in _async_queue:
+            count += 1
+            total += opts.size
         if meter == 'text':
             from progress import TextMultiFileMeter
             meter = TextMultiFileMeter()
         meter.start(count, total)
 
     dl = _ExternalDownloaderPool()
+    host_con = {} # current host connection counts
 
     def start(opts, tries):
+        key, limit = opts.async
+        host_con[key] = host_con.get(key, 0) + 1
         opts.tries = tries
         opts.progress_obj = meter and meter.newMeter()
         if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
         dl.start(opts)
 
-    def start_next(opts):
-        key, limit = opts.async
-        pos, queue = _async[key]; _async[key][0] += 1
-        if pos < len(queue):
-            start(queue[pos], 1)
-
     def perform():
         for opts, size, ug_err in dl.perform():
+            key, limit = opts.async
+            host_con[key] -= 1
             if meter:
                 m = opts.progress_obj
                 m.basename = os.path.basename(opts.filename)
@@ -2181,12 +2185,8 @@ def parallel_wait(meter = 'text'):
             if ug_err is None:
                 if opts.checkfunc:
                     try: _run_callback(opts.checkfunc, opts)
-                    except URLGrabError, ug_err:
-                        if meter:
-                            meter.numfiles += 1
-                            meter.re.total += opts.size
+                    except URLGrabError, ug_err: pass
                 if ug_err is None:
-                    start_next(opts)
                     continue
 
             retry = opts.retry or 0
@@ -2197,31 +2197,16 @@ def parallel_wait(meter = 'text'):
             if opts.tries < retry and ug_err.args[0] in opts.retrycodes:
                 start(opts, opts.tries + 1) # simple retry
                 continue
-            start_next(opts)
 
-            if hasattr(opts, 'mirror_group'):
-                mg, gr, mirrorchoice = opts.mirror_group
+            if opts.mirror_group:
+                mg, failed = opts.mirror_group
+                opts.mirror = key
                 opts.exception = ug_err
-                opts.mirror = mirrorchoice['mirror']
-                opts.relative_url = gr.url
-                try:
-                    mg._failure(gr, opts)
-                    mirrorchoice = mg._get_mirror(gr)
-                    opts.mirror_group = mg, gr, mirrorchoice
-                except URLGrabError, ug_err: pass
-                else:
-                    # use new mirrorchoice
-                    key = mirrorchoice['mirror']
-                    kwargs = mirrorchoice.get('kwargs', {})
-                    limit = kwargs.get('max_connections', 1)
-                    opts.async = key, limit
-                    opts.url = mg._join_url(mirrorchoice['mirror'], gr.url)
-
-                    # add request to the new queue
-                    pos, queue = _async.setdefault(key, [limit, []])
-                    queue[pos:pos] = [opts] # inserting at head
-                    if len(queue) <= pos:
-                        start(opts, 1)
+                action = _run_callback(mg.failure_callback, opts)
+                if not (action and action.get('fail')):
+                    # mask this mirror and retry
+                    failed.add(key)
+                    _async_queue.append(opts)
                     continue
 
             # urlgrab failed
@@ -2229,18 +2214,49 @@ def parallel_wait(meter = 'text'):
             _run_callback(opts.failfunc, opts)
 
     try:
-        for limit, queue in _async.values():
-            for opts in queue[:limit]:
-                start(opts, 1)
-        # now 'limit' is used as 'pos', index
-        # of the first request not started yet.
-        while dl.running:
-            perform()
+        idx = 0
+        while True:
+            if idx >= len(_async_queue):
+                if not dl.running: break
+                perform(); continue
+
+            # check global limit
+            opts = _async_queue[idx]; idx += 1
+            limit = opts.max_connections
+            while len(dl.running) >= limit: perform()
+
+            if opts.mirror_group:
+                first = None
+                mg, failed = opts.mirror_group
+                for mirror in mg.mirrors:
+                    key = mirror['mirror']
+                    if key in failed: continue
+                    if not first: first = mirror
+                    limit = mirror.get('kwargs', {}).get('max_connections', 3)
+                    if host_con.get(key, 0) < limit: break
+                else:
+                    # no mirror with free slots.
+                    if not first:
+                        opts.exception = URLGrabError(256, _('No more mirrors to try.'))
+                        _run_callback(opts.failfunc, opts)
+                        continue
+                    mirror = first # fallback
+                    key = mirror['mirror']
+                    limit = mirror.get('kwargs', {}).get('max_connections', 3)
+
+                # update the request
+                opts.async = key, limit
+                opts.url = mg._join_url(key, opts.relative_url)
+
+            # check host limit, then start
+            key, limit = opts.async
+            while host_con.get(key, 0) >= limit: perform()
+            start(opts, 1)
 
     finally:
         dl.abort()
         if meter: meter.end()
-        _async.clear()
+        del _async_queue[:]
 
 
 #####################################################################
