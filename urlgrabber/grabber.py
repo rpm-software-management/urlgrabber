@@ -2000,12 +2000,14 @@ def download_process():
                 opts.progress_obj._id = cnt
             try:
                 fo = PyCurlFileObject(opts.url, opts.filename, opts)
-                fo._do_grab(); _amount_read = fo._amount_read
-                fo.fo.close(); ug_err = 'OK'
+                fo._do_grab()
+                fo.fo.close()
+                size = fo._amount_read
+                ug_err = 'OK'
             except URLGrabError, e:
-                _amount_read = 0
+                size = 0
                 ug_err = '%d %s' % e.args
-            _write('%d %d %s\n', opts._id, _amount_read, ug_err)
+            _write('%d %d %s\n', opts._id, size, ug_err)
     sys.exit(0)
 
 import subprocess
@@ -2047,7 +2049,7 @@ class _ExternalDownloader:
         if opts.progress_obj:
             arg.append('progress_obj=True')
         arg = ' '.join(arg)
-        if DEBUG: DEBUG.info('external: %s', arg)
+        if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
 
         self.cnt += 1
         self.running[self.cnt] = opts
@@ -2062,21 +2064,24 @@ class _ExternalDownloader:
         for line in lines:
             # parse downloader output
             line = line.split(' ', 3)
-            cnt, _amount_read = map(int, line[:2])
+            _id, size = map(int, line[:2])
             if len(line) == 2:
-                opts = self.running[cnt]
+                opts = self.running[_id]
                 m = opts.progress_obj
                 if m:
                     if not m.last_update_time:
                         m.start(text = opts.text)
-                    m.update(_amount_read)
+                    m.update(size)
                 continue
             # job done
-            opts = self.running.pop(cnt)
-            err = None
-            if line[2] != 'OK':
-                err = URLGrabError(int(line[2]), line[3])
-            ret.append((opts, err, _amount_read))
+            opts = self.running.pop(_id)
+            if line[2] == 'OK':
+                ug_err = None
+                if DEBUG: DEBUG.info('success')
+            else:
+                ug_err = URLGrabError(int(line[2]), line[3])
+                if DEBUG: DEBUG.info('failure: %s', err)
+            ret.append((opts, size, ug_err))
         return ret
 
     def abort(self):
@@ -2161,7 +2166,7 @@ def parallel_wait(meter = 'text'):
             start(queue[pos], 1)
 
     def perform():
-        for opts, ug_err, _amount_read in dl.perform():
+        for opts, size, ug_err in dl.perform():
             if meter:
                 m = opts.progress_obj
                 m.basename = os.path.basename(opts.filename)
@@ -2169,12 +2174,11 @@ def parallel_wait(meter = 'text'):
                     m.failure(ug_err.args[1])
                 else:
                     # file size might have changed
-                    meter.re.total += _amount_read - opts.size
-                    m.end(_amount_read)
+                    meter.re.total += size - opts.size
+                    m.end(size)
                 meter.removeMeter(m)
 
             if ug_err is None:
-                if DEBUG: DEBUG.info('success')
                 if opts.checkfunc:
                     try: _run_callback(opts.checkfunc, opts)
                     except URLGrabError, ug_err:
@@ -2185,7 +2189,6 @@ def parallel_wait(meter = 'text'):
                     start_next(opts)
                     continue
 
-            if DEBUG: DEBUG.info('failure: %s', ug_err)
             retry = opts.retry or 0
             if opts.failure_callback:
                 opts.exception = ug_err
@@ -2236,9 +2239,8 @@ def parallel_wait(meter = 'text'):
 
     finally:
         dl.abort()
+        if meter: meter.end()
         _async.clear()
-        if meter:
-            meter.end()
 
 
 #####################################################################
