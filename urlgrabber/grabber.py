@@ -1088,9 +1088,11 @@ class URLGrabber(object):
             return filename
 
         def retryfunc(opts, url, filename):
+            tm = time.time()
             fo = PyCurlFileObject(url, filename, opts)
             try:
                 fo._do_grab()
+                timedhosts(url, fo._amount_read - fo._reget_length, time.time() - tm, None)
                 if not opts.checkfunc is None:
                     obj = CallbackObject(filename=filename, url=url)
                     _run_callback(opts.checkfunc, obj)
@@ -1101,6 +1103,7 @@ class URLGrabber(object):
         try:
             return self._retry(opts, retryfunc, url, filename)
         except URLGrabError, e:
+            timedhosts(url, 0, 0, e)
             opts.exception = e
             return _run_callback(opts.failfunc, opts)
     
@@ -2004,16 +2007,18 @@ def download_process():
             if opts.progress_obj:
                 opts.progress_obj = _ProxyProgress()
                 opts.progress_obj._id = cnt
+            tm = time.time()
             try:
                 fo = PyCurlFileObject(opts.url, opts.filename, opts)
                 fo._do_grab()
                 fo.fo.close()
                 size = fo._amount_read
+                dlsz = size - fo._reget_length
                 ug_err = 'OK'
             except URLGrabError, e:
-                size = 0
+                size = dlsz = 0
                 ug_err = '%d %s' % e.args
-            _write('%d %d %s\n', opts._id, size, ug_err)
+            _write('%d %d %d %.3f %s\n', opts._id, size, dlsz, time.time() - tm, ug_err)
     sys.exit(0)
 
 import subprocess
@@ -2069,7 +2074,7 @@ class _ExternalDownloader:
             raise KeyboardInterrupt
         for line in lines:
             # parse downloader output
-            line = line.split(' ', 3)
+            line = line.split(' ', 5)
             _id, size = map(int, line[:2])
             if len(line) == 2:
                 opts = self.running[_id]
@@ -2081,12 +2086,13 @@ class _ExternalDownloader:
                 continue
             # job done
             opts = self.running.pop(_id)
-            if line[2] == 'OK':
+            if line[4] == 'OK':
                 ug_err = None
                 if DEBUG: DEBUG.info('success')
             else:
-                ug_err = URLGrabError(int(line[2]), line[3])
+                ug_err = URLGrabError(int(line[4]), line[5])
                 if DEBUG: DEBUG.info('failure: %s', err)
+            timedhosts(opts.url, int(line[2]), float(line[3]), ug_err)
             ret.append((opts, size, ug_err))
         return ret
 
@@ -2258,6 +2264,13 @@ def parallel_wait(meter = 'text'):
         if meter: meter.end()
         del _async_queue[:]
 
+
+#####################################################################
+#  Host bandwidth estimation
+#####################################################################
+
+def timedhosts(url, dl_size, dl_time, eg_err):
+    ''' Called when download finishes '''
 
 #####################################################################
 #  TESTING
