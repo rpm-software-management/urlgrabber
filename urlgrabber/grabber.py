@@ -463,7 +463,7 @@ import pycurl
 from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
-import socket, select, errno, fcntl
+import socket, select, fcntl
 from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -1961,15 +1961,6 @@ def _loads(s):
 #  External downloader process
 #####################################################################
 
-class _ProxyProgress:
-    def start(self, *d1, **d2):
-        self.next_update = 0
-    def update(self, _amount_read):
-        t = time.time()
-        if t < self.next_update: return
-        self.next_update = t + 0.31
-        _write('%d %d\n', self._id, _amount_read)
-
 def _readlines(fd):
     buf = os.read(fd, 4096)
     if not buf: return None
@@ -1978,55 +1969,12 @@ def _readlines(fd):
         buf += os.read(fd, 4096)
     return buf[:-1].split('\n')
 
-def _write(fmt, *arg):
-    try: os.write(1, fmt % arg)
-    except OSError, e:
-        if e.arg[0] != errno.EPIPE: raise
-        sys.exit(1)
-
-def download_process():
-    ''' Download process
-        - watch stdin for new requests, parse & issue em.
-        - use ProxyProgress to send _amount_read during dl.
-        - abort on EOF.
-    '''
-    import signal
-    signal.signal(signal.SIGINT, lambda n, f: sys.exit(1))
-
-    cnt = 0
-    while True:
-        lines = _readlines(0)
-        if not lines: break
-        for line in lines:
-            cnt += 1
-            opts = URLGrabberOptions()
-            opts._id = cnt
-            for k in line.split(' '):
-                k, v = k.split('=', 1)
-                setattr(opts, k, _loads(v))
-            if opts.progress_obj:
-                opts.progress_obj = _ProxyProgress()
-                opts.progress_obj._id = cnt
-            tm = time.time()
-            try:
-                fo = PyCurlFileObject(opts.url, opts.filename, opts)
-                fo._do_grab()
-                fo.fo.close()
-                size = fo._amount_read
-                dlsz = size - fo._reget_length
-                ug_err = 'OK'
-            except URLGrabError, e:
-                size = dlsz = 0
-                ug_err = '%d %s' % e.args
-            _write('%d %d %d %.3f %s\n', opts._id, size, dlsz, time.time() - tm, ug_err)
-    sys.exit(0)
-
 import subprocess
 
 class _ExternalDownloader:
     def __init__(self):
         self.popen = subprocess.Popen(
-            ['/usr/bin/python', __file__, 'DOWNLOADER'],
+            '/usr/libexec/urlgrabber-ext-down',
             stdin = subprocess.PIPE,
             stdout = subprocess.PIPE,
         )
@@ -2377,9 +2325,6 @@ def _test_file_object_readlines(wrapper, fo_output):
     fo_output.write(string.join(li, ''))
 
 if __name__ == '__main__':
-    if sys.argv[1:] == ['DOWNLOADER']:
-        download_process()
-
     _main_test()
     _retry_test()
     _file_object_test('test')
