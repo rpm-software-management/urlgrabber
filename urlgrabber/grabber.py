@@ -273,6 +273,23 @@ GENERAL ARGUMENTS (kwargs)
 
     The global connection limit.
 
+  timedhosts
+
+    The filename of the host download statistics.  If defined, urlgrabber
+    will update the stats at the end of every download.  At the end of
+    parallel_wait(), the updated stats are saved.  If synchronous grabs
+    are used, you should call th_save().
+
+  default_speed, half_life
+
+    These options only affect the async mirror selection code.
+    The default_speed option sets the speed estimate for mirrors
+    we have never downloaded from, and defaults to 1 MBps.
+
+    The speed estimate also drifts exponentially from the speed
+    actually measured to the default speed, with default
+    period of 30 days.
+
 
 RETRY RELATED ARGUMENTS
 
@@ -936,6 +953,9 @@ class URLGrabberOptions:
         self.async = None # blocking by default
         self.mirror_group = None
         self.max_connections = 5
+        self.timedhosts = None
+        self.half_life = 30*24*60*60 # 30 days
+        self.default_speed = 1e6 # 1 MBit
         
     def __repr__(self):
         return self.format()
@@ -2169,6 +2189,7 @@ def parallel_wait(meter = 'text'):
 
     try:
         idx = 0
+        th_load()
         while True:
             if idx >= len(_async_queue):
                 if not dl.running: break
@@ -2180,25 +2201,33 @@ def parallel_wait(meter = 'text'):
             while len(dl.running) >= limit: perform()
 
             if opts.mirror_group:
-                first = None
+                best = None
                 mg, failed = opts.mirror_group
                 for mirror in mg.mirrors:
                     key = mirror['mirror']
                     if key in failed: continue
-                    if not first: first = mirror
-                    limit = mirror.get('kwargs', {}).get('max_connections', 3)
-                    if host_con.get(key, 0) < limit: break
-                else:
-                    # no mirror with free slots.
-                    if not first:
-                        opts.exception = URLGrabError(256, _('No more mirrors to try.'))
-                        _run_callback(opts.failfunc, opts)
-                        continue
-                    mirror = first # fallback
-                    key = mirror['mirror']
-                    limit = mirror.get('kwargs', {}).get('max_connections', 3)
+
+                    # estimate mirror speed
+                    host = urlparse.urlsplit(key).netloc
+                    if host in th_dict:
+                        speed, fail, ts = th_dict[host]
+                        speed *= 2**-fail
+                        k = 2**((ts - time.time()) / opts.half_life)
+                    else:
+                        speed = k = 0
+                    speed = k * speed + (1 - k) * opts.default_speed
+                    speed /= 1 + host_con.get(key, 0)
+                    if best is None or speed > best_speed:
+                        best, best_speed = mirror, speed
+
+                if best is None:
+                    opts.exception = URLGrabError(256, _('No more mirrors to try.'))
+                    _run_callback(opts.failfunc, opts)
+                    continue
 
                 # update the request
+                key = best['mirror']
+                limit = best.get('kwargs', {}).get('max_connections', 3)
                 opts.async = key, limit
                 opts.url = mg._join_url(key, opts.relative_url)
 
@@ -2211,14 +2240,58 @@ def parallel_wait(meter = 'text'):
         dl.abort()
         if meter: meter.end()
         del _async_queue[:]
+        th_save()
 
 
 #####################################################################
 #  Host bandwidth estimation
 #####################################################################
 
-def timedhosts(url, dl_size, dl_time, eg_err):
+th_dict = {}
+
+def th_load():
+    filename = default_grabber.opts.timedhosts
+    if filename and '_dirty' not in th_dict:
+        try:
+            for line in open(filename):
+                host, speed, fail, ts = line.split()
+                th_dict[host] = float(speed), int(fail), int(ts)
+        except IOError: pass
+        th_dict['_dirty'] = False
+
+def th_save():
+    filename = default_grabber.opts.timedhosts
+    if filename and th_dict['_dirty'] is True:
+        del th_dict['_dirty']
+        try:
+            write = open(default_grabber.opts.timedhosts, 'w').write
+            for host in th_dict:
+                write(host + ' %d %d %d\n' % th_dict[host])
+        except IOError: pass
+        th_dict['_dirty'] = False
+
+def timedhosts(url, dl_size, dl_time, ug_err):
     ''' Called when download finishes '''
+
+    th_load()
+    host = urlparse.urlsplit(url).netloc
+    speed, fail, ts = th_dict.get(host) or \
+        (default_grabber.opts.default_speed, 1, 0)
+    now = time.time()
+
+    if ug_err is None:
+        # k1: the older, the less useful
+        # k2: if it was <1MB, don't trust it much
+        # speeds vary a lot, use 10:1 smoothing
+        k1 = 2**((ts - now) / default_grabber.opts.half_life)
+        k2 = min(dl_size / 1e6, 1) / 10.0
+        speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
+        fail = 0
+    else:
+        fail += 1
+
+    th_dict[host] = speed, fail, int(now)
+    th_dict['_dirty'] = True
 
 #####################################################################
 #  TESTING
