@@ -2167,7 +2167,8 @@ def parallel_wait(meter = 'text'):
             if opts.failure_callback:
                 opts.exception = ug_err
                 try: _run_callback(opts.failure_callback, opts)
-                except URLGrabError, ug_err: retry = 0 # no retries
+                except URLGrabError, ug_err:
+                    retry = 0 # no retries
             if opts.tries < retry and ug_err.args[0] in opts.retrycodes:
                 start(opts, opts.tries + 1) # simple retry
                 continue
@@ -2191,17 +2192,25 @@ def parallel_wait(meter = 'text'):
         idx = 0
         while True:
             if idx >= len(_async_queue):
+                # the queue is empty
                 if not dl.running: break
-                perform(); continue
+                # pending dl may extend it
+                perform()
+                continue
+
+            # handle next request
+            opts = _async_queue[idx]
+            idx += 1
 
             # check global limit
-            opts = _async_queue[idx]; idx += 1
-            limit = opts.max_connections
-            while len(dl.running) >= limit: perform()
+            while len(dl.running) >= opts.max_connections:
+                perform()
 
             if opts.mirror_group:
-                best = None
                 mg, failed = opts.mirror_group
+
+                # find the best mirror
+                best = None
                 for mirror in mg.mirrors:
                     key = mirror['mirror']
                     if key in failed: continue
@@ -2210,7 +2219,8 @@ def parallel_wait(meter = 'text'):
                     speed = _TH.estimate(key)
                     speed /= 1 + host_con.get(key, 0)
                     if best is None or speed > best_speed:
-                        best, best_speed = mirror, speed
+                        best = mirror
+                        best_speed = speed
 
                 if best is None:
                     opts.exception = URLGrabError(256, _('No more mirrors to try.'))
@@ -2225,7 +2235,8 @@ def parallel_wait(meter = 'text'):
 
             # check host limit, then start
             key, limit = opts.async
-            while host_con.get(key, 0) >= limit: perform()
+            while host_con.get(key, 0) >= limit:
+                perform()
             start(opts, 1)
 
     finally:
