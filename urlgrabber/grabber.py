@@ -1112,7 +1112,7 @@ class URLGrabber(object):
             fo = PyCurlFileObject(url, filename, opts)
             try:
                 fo._do_grab()
-                timedhosts(url, fo._amount_read - fo._reget_length, time.time() - tm, None)
+                _TH.update(url, fo._amount_read - fo._reget_length, time.time() - tm, None)
                 if not opts.checkfunc is None:
                     obj = CallbackObject(filename=filename, url=url)
                     _run_callback(opts.checkfunc, obj)
@@ -1123,7 +1123,7 @@ class URLGrabber(object):
         try:
             return self._retry(opts, retryfunc, url, filename)
         except URLGrabError, e:
-            timedhosts(url, 0, 0, e)
+            _TH.update(url, 0, 0, e)
             opts.exception = e
             return _run_callback(opts.failfunc, opts)
     
@@ -2060,7 +2060,7 @@ class _ExternalDownloader:
             else:
                 ug_err = URLGrabError(int(line[4]), line[5])
                 if DEBUG: DEBUG.info('failure: %s', err)
-            timedhosts(opts.url, int(line[2]), float(line[3]), ug_err)
+            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err)
             ret.append((opts, size, ug_err))
         return ret
 
@@ -2189,7 +2189,6 @@ def parallel_wait(meter = 'text'):
 
     try:
         idx = 0
-        th_load()
         while True:
             if idx >= len(_async_queue):
                 if not dl.running: break
@@ -2208,14 +2207,7 @@ def parallel_wait(meter = 'text'):
                     if key in failed: continue
 
                     # estimate mirror speed
-                    host = urlparse.urlsplit(key).netloc
-                    if host in th_dict:
-                        speed, fail, ts = th_dict[host]
-                        speed *= 2**-fail
-                        k = 2**((ts - time.time()) / opts.half_life)
-                    else:
-                        speed = k = 0
-                    speed = k * speed + (1 - k) * opts.default_speed
+                    speed = _TH.estimate(key)
                     speed /= 1 + host_con.get(key, 0)
                     if best is None or speed > best_speed:
                         best, best_speed = mirror, speed
@@ -2240,58 +2232,74 @@ def parallel_wait(meter = 'text'):
         dl.abort()
         if meter: meter.end()
         del _async_queue[:]
-        th_save()
+        _TH.save()
 
 
 #####################################################################
 #  Host bandwidth estimation
 #####################################################################
 
-th_dict = {}
+class _TH:
+    hosts = {}
+    dirty = None
 
-def th_load():
-    filename = default_grabber.opts.timedhosts
-    if filename and '_dirty' not in th_dict:
-        try:
-            for line in open(filename):
-                host, speed, fail, ts = line.split()
-                th_dict[host] = float(speed), int(fail), int(ts)
-        except IOError: pass
-        th_dict['_dirty'] = False
+    @staticmethod
+    def load():
+        filename = default_grabber.opts.timedhosts
+        if filename and _TH.dirty is None:
+            try:
+                for line in open(filename):
+                    host, speed, fail, ts = line.split()
+                    _TH.hosts[host] = int(speed), int(fail), int(ts)
+            except IOError: pass
+            _TH.dirty = False
 
-def th_save():
-    filename = default_grabber.opts.timedhosts
-    if filename and th_dict['_dirty'] is True:
-        del th_dict['_dirty']
-        try:
-            write = open(default_grabber.opts.timedhosts, 'w').write
-            for host in th_dict:
-                write(host + ' %d %d %d\n' % th_dict[host])
-        except IOError: pass
-        th_dict['_dirty'] = False
+    @staticmethod
+    def save():
+        filename = default_grabber.opts.timedhosts
+        if filename and _TH.dirty is True:
+            try:
+                write = open(filename, 'w').write
+                for host in _TH.hosts:
+                    write(host + ' %d %d %d\n' % _TH.hosts[host])
+            except IOError: pass
+            _TH.dirty = False
 
-def timedhosts(url, dl_size, dl_time, ug_err):
-    ''' Called when download finishes '''
+    @staticmethod
+    def update(url, dl_size, dl_time, ug_err):
+        _TH.load()
+        host = urlparse.urlsplit(url).netloc
+        speed, fail, ts = _TH.hosts.get(host) or (0, 0, 0)
+        now = time.time()
 
-    th_load()
-    host = urlparse.urlsplit(url).netloc
-    speed, fail, ts = th_dict.get(host) or \
-        (default_grabber.opts.default_speed, 1, 0)
-    now = time.time()
+        if ug_err is None:
+            # k1: the older, the less useful
+            # k2: if it was <1MiB, don't trust it much
+            # speeds vary, use 10:1 smoothing
+            k1 = 2**((ts - now) / default_grabber.opts.half_life)
+            k2 = min(dl_size / 1e6, 1.0) / 10
+            speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
+            fail = 0
+        elif ug_err.code == 404:
+            fail = 0 # alive, at least
+        else:
+            fail += 1 # seems dead
 
-    if ug_err is None:
-        # k1: the older, the less useful
-        # k2: if it was <1MB, don't trust it much
-        # speeds vary a lot, use 10:1 smoothing
-        k1 = 2**((ts - now) / default_grabber.opts.half_life)
-        k2 = min(dl_size / 1e6, 1) / 10.0
-        speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
-        fail = 0
-    else:
-        fail += 1
+        _TH.hosts[host] = speed, fail, now
+        _TH.dirty = True
 
-    th_dict[host] = speed, fail, int(now)
-    th_dict['_dirty'] = True
+    @staticmethod
+    def estimate(url):
+        _TH.load()
+        host = urlparse.urlsplit(url).netloc
+        default_speed = default_grabber.opts.default_speed
+        try: speed, fail, ts = _TH.hosts[host]
+        except KeyError: return default_speed
+
+        speed *= 2**-fail
+        k = 2**((ts - time.time()) / default_grabber.opts.half_life)
+        speed = k * speed + (1 - k) * default_speed
+        return speed
 
 #####################################################################
 #  TESTING
