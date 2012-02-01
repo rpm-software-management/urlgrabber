@@ -2269,10 +2269,13 @@ class _TH:
     def save():
         filename = default_grabber.opts.timedhosts
         if filename and _TH.dirty is True:
+            tmp = '%s.%d' % (filename, os.getpid())
             try:
-                write = open(filename, 'w').write
+                f = open(tmp, 'w')
                 for host in _TH.hosts:
-                    write(host + ' %d %d %d\n' % _TH.hosts[host])
+                    f.write(host + ' %d %d %d\n' % _TH.hosts[host])
+                f.close()
+                os.rename(tmp, filename)
             except IOError: pass
             _TH.dirty = False
 
