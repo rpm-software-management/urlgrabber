@@ -2294,7 +2294,7 @@ class _TH:
             k2 = min(dl_size / 1e6, 1.0) / 10
             speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
             fail = 0
-        elif ug_err.code == 404:
+        elif getattr(ug_err, 'code', None) == 404:
             fail = 0 # alive, at least
         else:
             fail += 1 # seems dead
