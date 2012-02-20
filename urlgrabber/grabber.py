@@ -1275,20 +1275,16 @@ class PyCurlFileObject(object):
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
             
         # proxy settings
-        if opts.proxies:
-            for (scheme, proxy) in opts.proxies.items():
-                if self.scheme in ('ftp'): # only set the ftp proxy for ftp items
-                    if scheme not in ('ftp'):
-                        continue
-                    else:
-                        if proxy == '_none_': proxy = ""
-                        self.curl_obj.setopt(pycurl.PROXY, proxy)
-                elif self.scheme in ('http', 'https'):
-                    if scheme not in ('http', 'https'):
-                        continue
-                    else:
-                        if proxy == '_none_': proxy = ""
-                        self.curl_obj.setopt(pycurl.PROXY, proxy)
+        if opts.proxies and self.scheme in ('ftp', 'http', 'https'):
+            proxy = opts.proxies.get(self.scheme)
+            if proxy is None:
+                if self.scheme == 'http':
+                    proxy = opts.proxies.get('https')
+                elif self.scheme == 'https':
+                    proxy = opts.proxies.get('http')
+            if proxy and proxy != '_none_':
+                self.curl_obj.setopt(pycurl.PROXY, proxy)
+                self.curl_obj.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
             
         if opts.username and opts.password:
             if self.scheme in ('http', 'https'):
