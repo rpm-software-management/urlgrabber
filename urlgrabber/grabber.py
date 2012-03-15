@@ -144,7 +144,7 @@ GENERAL ARGUMENTS (kwargs)
     normal URL constructs:
       proxies={ 'http' : 'http://user:host@foo:3128' }
 
-  libproxy = True
+  libproxy = False
 
     Use the libproxy module (if installed) to find proxies.
     The libproxy code is only used if the proxies dictionary
@@ -454,11 +454,6 @@ try:
 except ImportError:
     xattr = None
 
-try:
-    import libproxy
-    _grabber_proxy_factory = libproxy.ProxyFactory()
-except ImportError:
-    _grabber_proxy_factory = None
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -855,7 +850,7 @@ class URLGrabberOptions:
         self.ip_resolve = None
         self.keepalive = 1
         self.proxies = None
-        self.libproxy = True
+        self.libproxy = False
         self.reget = None
         self.failure_callback = None
         self.interrupt_callback = None
@@ -1295,15 +1290,22 @@ class PyCurlFileObject(object):
                     proxy = opts.proxies.get('https')
                 elif self.scheme == 'https':
                     proxy = opts.proxies.get('http')
-        elif opts.libproxy and _grabber_proxy_factory:
-            # use libproxy
-            try: proxies = _grabber_proxy_factory.getProxies(self.url)
-            except: proxies = []
-            for a_proxy in proxies:
-                if a_proxy.startswith('http://'):
-                    proxy = a_proxy
-                    if DEBUG: DEBUG.info('using proxy "%s" for url %s' % (proxy, self.url))
-                    break
+        elif opts.libproxy:
+            # import libproxy
+            global _libproxy_cache
+            if _libproxy_cache is None:
+                try:
+                    import libproxy
+                    _libproxy_cache = libproxy.ProxyFactory()
+                except ImportError:
+                    _libproxy_cache = False
+            # use if available
+            if _libproxy_cache:
+                for a_proxy in _libproxy_cache.getProxies(self.url):
+                    if a_proxy.startswith('http://'):
+                        proxy = a_proxy
+                        if DEBUG: DEBUG.info('using proxy "%s" for url %s' % (proxy, self.url))
+                        break
         if proxy and proxy != '_none_':
             self.curl_obj.setopt(pycurl.PROXY, proxy)
             self.curl_obj.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
@@ -1805,7 +1807,7 @@ def reset_curl_obj():
     _curl_cache.close()
     _curl_cache = pycurl.Curl()
 
-
+_libproxy_cache = None
     
 
 #####################################################################
