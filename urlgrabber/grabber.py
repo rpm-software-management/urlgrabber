@@ -815,6 +815,40 @@ class URLGrabberOptions:
         else: # throttle is a float
             return self.bandwidth * self.throttle
         
+    def find_proxy(self, url, scheme):
+        """Find the proxy to use for this URL.
+        Use the proxies dictionary first, then libproxy.
+        """
+        self.proxy = None
+        if scheme not in ('ftp', 'http', 'https'):
+            return
+
+        if self.proxies:
+            proxy = self.proxies.get(scheme)
+            if proxy is None:
+                if scheme == 'http':
+                    proxy = self.proxies.get('https')
+                elif scheme == 'https':
+                    proxy = self.proxies.get('http')
+            if proxy != '_none_':
+                self.proxy = proxy
+            return
+
+        if self.libproxy:
+            global _libproxy_cache
+            if _libproxy_cache is None:
+                try:
+                    import libproxy
+                    _libproxy_cache = libproxy.ProxyFactory()
+                except:
+                    _libproxy_cache = False
+            if _libproxy_cache:
+                for proxy in _libproxy_cache.getProxies(url):
+                    if proxy.startswith('http://'):
+                        if DEBUG: DEBUG.info('using proxy "%s" for url %s' % (proxy, url))
+                        self.proxy = proxy
+                        break
+
     def derive(self, **kwargs):
         """Create a derived URLGrabberOptions instance.
         This method creates a new instance and overrides the
@@ -967,6 +1001,7 @@ class URLGrabber(object):
         opts = self.opts.derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
+        opts.find_proxy(url, parts[0])
         def retryfunc(opts, url):
             return PyCurlFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
@@ -982,6 +1017,7 @@ class URLGrabber(object):
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         (scheme, host, path, parm, query, frag) = parts
+        opts.find_proxy(url, scheme)
         if filename is None:
             filename = os.path.basename( urllib.unquote(path) )
             if not filename:
@@ -1042,6 +1078,7 @@ class URLGrabber(object):
         opts = self.opts.derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
+        opts.find_proxy(url, parts[0])
         if limit is not None:
             limit = limit + 1
             
@@ -1280,34 +1317,9 @@ class PyCurlFileObject(object):
         if hasattr(opts, 'raw_throttle') and opts.raw_throttle():
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
             
-        # proxy settings
-        proxy = None
-        if opts.proxies and self.scheme in ('ftp', 'http', 'https'):
-            # use proxies dict
-            proxy = opts.proxies.get(self.scheme)
-            if proxy is None:
-                if self.scheme == 'http':
-                    proxy = opts.proxies.get('https')
-                elif self.scheme == 'https':
-                    proxy = opts.proxies.get('http')
-        elif opts.libproxy:
-            # import libproxy
-            global _libproxy_cache
-            if _libproxy_cache is None:
-                try:
-                    import libproxy
-                    _libproxy_cache = libproxy.ProxyFactory()
-                except ImportError:
-                    _libproxy_cache = False
-            # use if available
-            if _libproxy_cache:
-                for a_proxy in _libproxy_cache.getProxies(self.url):
-                    if a_proxy.startswith('http://'):
-                        proxy = a_proxy
-                        if DEBUG: DEBUG.info('using proxy "%s" for url %s' % (proxy, self.url))
-                        break
-        if proxy and proxy != '_none_':
-            self.curl_obj.setopt(pycurl.PROXY, proxy)
+        # proxy
+        if opts.proxy:
+            self.curl_obj.setopt(pycurl.PROXY, opts.proxy)
             self.curl_obj.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
 
         if opts.username and opts.password:
