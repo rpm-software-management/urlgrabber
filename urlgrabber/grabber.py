@@ -1912,7 +1912,7 @@ def retrygrab(url, filename=None, copy_local=0, close_connection=0,
 #####################################################################
 
 _quoter_map = {}
-for c in '%{[(,:)]} \n':
+for c in '%[(,)] \n':
     _quoter_map[c] = '%%%02x' % ord(c)
 del c
 
@@ -1931,10 +1931,6 @@ def _dumps(v):
         return "(%s)" % ','.join(map(_dumps, v))
     if type(v) == list:
         return "[%s]" % ','.join(map(_dumps, v))
-    if type(v) == dict:
-        def keyval(k):
-            return '%s:%s' % (_dumps(k), _dumps(v[k]))
-        return "{%s}" % ','.join(map(keyval, sorted(v)))
     raise TypeError, 'Can\'t serialize %s' % v
 
 def _loads(s):
@@ -1960,19 +1956,17 @@ def _loads(s):
     l = []
     i = j = 0
     while True:
-        if j == len(s) or s[j] in ',:)]}':
+        if j == len(s) or s[j] in ',)]':
             if j > i:
                 l.append(decode(s[i:j]))
             if j == len(s): break
-            if s[j] in ')]}':
+            if s[j] in ')]':
                 if s[j] == ')':
                     l = tuple(l)
-                elif s[j] == '}':
-                    l = dict(zip(l[::2], l[1::2]))
                 stk[0].append(l)
                 l, stk = stk
             i = j = j + 1
-        elif s[j] in '{[(':
+        elif s[j] in '[(':
             stk = l, stk
             l = []
             i = j = j + 1
