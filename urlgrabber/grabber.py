@@ -923,6 +923,7 @@ class URLGrabberOptions:
         self.keepalive = 1
         self.proxies = None
         self.libproxy = False
+        self.proxy = None
         self.reget = None
         self.failure_callback = None
         self.interrupt_callback = None
@@ -2226,11 +2227,16 @@ def parallel_wait(meter = 'text'):
                     _run_callback(opts.failfunc, opts)
                     continue
 
-                # update the request
+                # update the current mirror and limit
                 key = best['mirror']
                 limit = best.get('kwargs', {}).get('max_connections', 3)
                 opts.async = key, limit
-                opts.url = mg._join_url(key, opts.relative_url)
+
+                # update URL and proxy
+                url = mg._join_url(key, opts.relative_url)
+                url, parts = opts.urlparser.parse(url, opts)
+                opts.find_proxy(url, parts[0])
+                opts.url = url
 
             # check host limit, then start
             key, limit = opts.async
