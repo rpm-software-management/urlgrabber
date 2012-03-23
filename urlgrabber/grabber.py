@@ -2243,6 +2243,9 @@ def parallel_wait(meter = 'text'):
             while host_con.get(key, 0) >= limit:
                 perform()
             start(opts, 1)
+    except IOError, e:
+        if e.errno != 4: raise
+        raise KeyboardInterrupt
 
     finally:
         dl.abort()
