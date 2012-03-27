@@ -1754,7 +1754,7 @@ class PyCurlFileObject(object):
             if self._prog_running:
                 downloaded += self._reget_length
                 self.opts.progress_obj.update(downloaded)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, IOError):
             return -1
     
     def _over_max_size(self, cur, max_size=None):
