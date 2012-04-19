@@ -830,7 +830,8 @@ class URLGrabberOptions:
                     proxy = self.proxies.get('https')
                 elif scheme == 'https':
                     proxy = self.proxies.get('http')
-            self.proxy = proxy
+            if proxy != '_none_':
+                self.proxy = proxy
             return
 
         if self.libproxy:
@@ -1317,9 +1318,7 @@ class PyCurlFileObject(object):
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
             
         # proxy
-        if opts.proxy == '_none_':
-            self.curl_obj.setopt(pycurl.PROXY, '')
-        elif opts.proxy:
+        if opts.proxy:
             self.curl_obj.setopt(pycurl.PROXY, opts.proxy)
             self.curl_obj.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
 
