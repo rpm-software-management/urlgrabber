@@ -2060,7 +2060,7 @@ class _ExternalDownloader:
             else:
                 ug_err = URLGrabError(int(line[4]), line[5])
                 if DEBUG: DEBUG.info('failure: %s', err)
-            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err)
+            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async[0])
             ret.append((opts, size, ug_err))
         return ret
 
@@ -2288,12 +2288,14 @@ class _TH:
             _TH.dirty = False
 
     @staticmethod
-    def update(url, dl_size, dl_time, ug_err):
+    def update(url, dl_size, dl_time, ug_err, baseurl=None):
         _TH.load()
-        host = urlparse.urlsplit(url).netloc
-        if not host or ' ' in host:
-            if DEBUG: DEBUG.warn('malformed url: %s', repr(url))
-            return
+
+        # Use hostname from URL.  If it's a file:// URL, use baseurl.
+        # If no baseurl, do not update timedhosts.
+        host = urlparse.urlsplit(url).netloc.split('@')[-1] or baseurl
+        if not host: return
+
         speed, fail, ts = _TH.hosts.get(host) or (0, 0, 0)
         now = time.time()
 
@@ -2314,9 +2316,12 @@ class _TH:
         _TH.dirty = True
 
     @staticmethod
-    def estimate(url):
+    def estimate(baseurl):
         _TH.load()
-        host = urlparse.urlsplit(url).netloc
+
+        # Use just the hostname, unless it's a file:// baseurl.
+        host = urlparse.urlsplit(baseurl).netloc.split('@')[-1] or baseurl
+
         default_speed = default_grabber.opts.default_speed
         try: speed, fail, ts = _TH.hosts[host]
         except KeyError: return default_speed
