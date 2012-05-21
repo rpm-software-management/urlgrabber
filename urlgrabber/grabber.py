@@ -2301,11 +2301,12 @@ class _TH:
 
         if ug_err is None:
             # k1: the older, the less useful
-            # k2: if it was <1MiB, don't trust it much
+            # k2: <500ms readings are less reliable
             # speeds vary, use 10:1 smoothing
             k1 = 2**((ts - now) / default_grabber.opts.half_life)
-            k2 = min(dl_size / 1e6, 1.0) / 10
-            speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
+            k2 = min(dl_time / .500, 1.0) / 10
+            if k2 > 0:
+                speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
             fail = 0
         elif getattr(ug_err, 'code', None) == 404:
             fail = 0 # alive, at least
