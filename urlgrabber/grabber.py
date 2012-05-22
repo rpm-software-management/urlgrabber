@@ -2229,7 +2229,7 @@ def parallel_wait(meter = 'text'):
 
                 # update the current mirror and limit
                 key = best['mirror']
-                limit = best.get('kwargs', {}).get('max_connections', 3)
+                limit = best.get('kwargs', {}).get('max_connections', 2)
                 opts.async = key, limit
 
                 # update URL and proxy
