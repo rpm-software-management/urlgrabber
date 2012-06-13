@@ -1028,6 +1028,8 @@ class URLGrabber(object):
             except KeyboardInterrupt, e:
                 exception = e
                 callback = opts.interrupt_callback
+                if not callback:
+                    raise
 
             if DEBUG: DEBUG.info('exception: %s', exception)
             if callback:
