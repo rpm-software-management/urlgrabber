@@ -9,7 +9,7 @@ from urlgrabber.grabber import \
 def write(fmt, *arg):
     try: os.write(1, fmt % arg)
     except OSError, e:
-        if e.arg[0] != errno.EPIPE: raise
+        if e.args[0] != errno.EPIPE: raise
         sys.exit(1)
 
 class ProxyProgress:
