@@ -2045,12 +2045,7 @@ class _ExternalDownloader:
             line = line.split(' ', 5)
             _id, size = map(int, line[:2])
             if len(line) == 2:
-                opts = self.running[_id]
-                m = opts.progress_obj
-                if m:
-                    if not m.last_update_time:
-                        m.start(text = opts.text)
-                    m.update(size)
+                self.running[_id].progress_obj.update(size)
                 continue
             # job done
             opts = self.running.pop(_id)
@@ -2123,8 +2118,9 @@ def parallel_wait(meter = 'text'):
     if meter:
         count = total = 0
         for opts in _async_queue:
-            count += 1
-            total += opts.size
+            if opts.progress_obj:
+                count += 1
+                total += opts.size
         if meter == 'text':
             from progress import TextMultiFileMeter
             meter = TextMultiFileMeter()
@@ -2137,7 +2133,11 @@ def parallel_wait(meter = 'text'):
         key, limit = opts.async
         host_con[key] = host_con.get(key, 0) + 1
         opts.tries = tries
-        opts.progress_obj = meter and meter.newMeter()
+        if meter and opts.progress_obj:
+            opts.progress_obj = meter.newMeter()
+            opts.progress_obj.start(text=opts.text, basename=os.path.basename(opts.filename))
+        else:
+            opts.progress_obj = None
         if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
         dl.start(opts)
 
@@ -2145,9 +2145,8 @@ def parallel_wait(meter = 'text'):
         for opts, size, ug_err in dl.perform():
             key, limit = opts.async
             host_con[key] -= 1
-            if meter:
-                m = opts.progress_obj
-                m.basename = os.path.basename(opts.filename)
+            m = opts.progress_obj
+            if m:
                 if ug_err:
                     m.failure(ug_err.args[1])
                 else:
