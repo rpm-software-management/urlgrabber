@@ -1013,7 +1013,6 @@ class URLGrabber(object):
             # beware of infinite loops :)
             tries = tries + 1
             exception = None
-            retrycode = None
             callback  = None
             if DEBUG: DEBUG.info('attempt %i/%s: %s',
                                  tries, opts.retry, args[0])
@@ -1024,7 +1023,6 @@ class URLGrabber(object):
             except URLGrabError, e:
                 exception = e
                 callback = opts.failure_callback
-                retrycode = e.errno
             except KeyboardInterrupt, e:
                 exception = e
                 callback = opts.interrupt_callback
@@ -1042,6 +1040,7 @@ class URLGrabber(object):
                 if DEBUG: DEBUG.info('retries exceeded, re-raising')
                 raise
 
+            retrycode = getattr(exception, 'errno', None)
             if (retrycode is not None) and (retrycode not in opts.retrycodes):
                 if DEBUG: DEBUG.info('retrycode (%i) not in list %s, re-raising',
                                      retrycode, opts.retrycodes)
@@ -2170,7 +2169,7 @@ def parallel_wait(meter = 'text'):
                 try: _run_callback(opts.failure_callback, opts)
                 except URLGrabError, ug_err:
                     retry = 0 # no retries
-            if opts.tries < retry and ug_err.args[0] in opts.retrycodes:
+            if opts.tries < retry and ug_err.errno in opts.retrycodes:
                 start(opts, opts.tries + 1) # simple retry
                 continue
 
