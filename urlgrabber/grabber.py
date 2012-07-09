@@ -1379,7 +1379,9 @@ class PyCurlFileObject(object):
         # proxy
         if opts.proxy is not None:
             self.curl_obj.setopt(pycurl.PROXY, opts.proxy)
-            self.curl_obj.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_ANY)
+            self.curl_obj.setopt(pycurl.PROXYAUTH,
+                # All but Kerberos.  BZ 769254
+                pycurl.HTTPAUTH_ANY - pycurl.HTTPAUTH_GSSNEGOTIATE)
 
         if opts.username and opts.password:
             if self.scheme in ('http', 'https'):
