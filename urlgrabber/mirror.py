@@ -94,7 +94,7 @@ import random
 import thread  # needed for locking to make this threadsafe
 
 from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
-from grabber import _run_callback, _do_raise, _async_queue
+from grabber import _run_callback, _do_raise
 
 def _(st): 
     return st
@@ -407,19 +407,12 @@ class MirrorGroup:
                 self._failure(gr, obj)
 
     def urlgrab(self, url, filename=None, **kwargs):
-        if kwargs.get('async'):
-            opts = self.grabber.opts.derive(**kwargs)
-            opts.mirror_group = self, set()
-            opts.relative_url = _to_utf8(url)
-
-            opts.url = 'http://tbd'
-            opts.filename = filename
-            opts.size = int(opts.size or 0)
-            _async_queue.append(opts)
-            return filename
-
         kw = dict(kwargs)
         kw['filename'] = filename
+        if kw.get('async'):
+            # enable mirror failovers in async path
+            kw['mirror_group'] = self, set()
+            kw['relative_url'] = url
         func = 'urlgrab'
         try:
             return self._mirror_try(func, url, kw)
