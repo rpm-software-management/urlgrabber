@@ -258,7 +258,7 @@ class MirrorGroup:
     # if these values are found in **kwargs passed to one of the urlXXX
     # methods, they will be stripped before getting passed on to the
     # grabber
-    options = ['default_action', 'failure_callback', 'failfunc']
+    options = ['default_action', 'failure_callback']
     
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
@@ -413,6 +413,8 @@ class MirrorGroup:
             # enable mirror failovers in async path
             kw['mirror_group'] = self, set()
             kw['relative_url'] = url
+        else:
+            kw.pop('failfunc', None)
         func = 'urlgrab'
         try:
             return self._mirror_try(func, url, kw)
