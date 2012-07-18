@@ -2176,13 +2176,18 @@ def parallel_wait(meter = 'text'):
                 continue
 
             if opts.mirror_group:
-                mg, failed = opts.mirror_group
+                mg, failed, removed = opts.mirror_group
+                failed[key] = failed.get(key, 0) + 1
                 opts.mirror = key
                 opts.exception = ug_err
-                action = _run_callback(mg.failure_callback, opts)
-                if not (action and action.get('fail')):
+                action = mg.default_action or {}
+                if mg.failure_callback:
+                    opts.tries = sum(failed.values())
+                    action.update(_run_callback(mg.failure_callback, opts))
+                if not action.get('fail', 0):
                     # mask this mirror and retry
-                    failed.add(key)
+                    if action.get('remove', 1):
+                        removed.add(key)
                     _async_queue.append(opts)
                     continue
 
@@ -2209,17 +2214,21 @@ def parallel_wait(meter = 'text'):
                 perform()
 
             if opts.mirror_group:
-                mg, failed = opts.mirror_group
+                mg, failed, removed = opts.mirror_group
 
                 # find the best mirror
                 best = None
+                best_speed = None
                 for mirror in mg.mirrors:
                     key = mirror['mirror']
-                    if key in failed: continue
+                    if key in removed: continue
 
                     # estimate mirror speed
                     speed = _TH.estimate(key)
                     speed /= 1 + host_con.get(key, 0)
+
+                    # 2-tuple to select mirror with least failures
+                    speed = -failed.get(key, 0), speed
                     if best is None or speed > best_speed:
                         best = mirror
                         best_speed = speed

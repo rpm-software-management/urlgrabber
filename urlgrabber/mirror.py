@@ -188,6 +188,7 @@ class MirrorGroup:
 
            obj.exception    = < exception that was raised >
            obj.mirror       = < the mirror that was tried >
+           obj.tries        = < the number of mirror tries so far >
            obj.relative_url = < url relative to the mirror >
            obj.url          = < full url that failed >
                               # .url is just the combination of .mirror
@@ -387,7 +388,9 @@ class MirrorGroup:
             try: del kw[k]
             except KeyError: pass
 
+        tries = 0
         while 1:
+            tries += 1
             mirrorchoice = self._get_mirror(gr)
             fullurl = self._join_url(mirrorchoice['mirror'], gr.url)
             kwargs = dict(mirrorchoice.get('kwargs', {}))
@@ -404,6 +407,7 @@ class MirrorGroup:
                 obj.mirror = mirrorchoice['mirror']
                 obj.relative_url = gr.url
                 obj.url = fullurl
+                obj.tries = tries
                 self._failure(gr, obj)
 
     def urlgrab(self, url, filename=None, **kwargs):
@@ -411,7 +415,7 @@ class MirrorGroup:
         kw['filename'] = filename
         if kw.get('async'):
             # enable mirror failovers in async path
-            kw['mirror_group'] = self, set()
+            kw['mirror_group'] = self, {}, set()
             kw['relative_url'] = url
         else:
             kw.pop('failfunc', None)
