@@ -139,6 +139,7 @@ import re
 
 import urlgrabber.grabber
 from urlgrabber.grabber import URLGrabber, URLGrabberOptions, URLGrabError
+from __future__ import print_function
 
 class client_options:
     def __init__(self):
@@ -161,7 +162,6 @@ class client_options:
         for k in ugo.__dict__.keys():
             if (k not in ug_options) and (k not in options_exclude):
                 ug_options.append(k)
-                #print k
         ug_defaults = {}
         for k in list(ug_options):
             try:
@@ -179,7 +179,7 @@ class client_options:
             optlist, args = getopt.getopt(sys.argv[1:], short_options,
                                           long_options + ug_long)
         except getopt.GetoptError as e:
-            print >>sys.stderr, "Error:", e
+            print("Error:", e, file=sys.stderr)
             self.help([], ret=1)
 
         self.verbose = 0
@@ -209,7 +209,7 @@ class client_options:
                     self.repeat = int(v)
                     if self.repeat < 1: raise ValueError()
                 except ValueError:
-                    print 'ERROR: repeat value must be an int >= 1'
+                    print('ERROR: repeat value must be an int >= 1')
                     sys.exit(1)
             if o == '-D':
                 self.verbose = 3
@@ -219,19 +219,19 @@ class client_options:
                 try:
                     val = eval(v)
                 except Exception as e:
-                    print "error processing option value: %s" % v
-                    print e
+                    print("error processing option value: %s" % v)
+                    print(e)
                     sys.exit(1)
                 else:
                     self.ugops[o[2:]] = val
 
         if len(self.args) > 1 and self.outputfile is not None:
-            print "ERROR: cannot use -o when grabbing multiple files"
+            print("ERROR: cannot use -o when grabbing multiple files")
             sys.exit(1)
 
     def help(self, args, ret=0):
         if not args:
-            print MAINHELP
+            print(MAINHELP)
         else:
             for a in args:
                 m = getattr(self, 'help_'+a, None)
@@ -240,20 +240,20 @@ class client_options:
                 elif a in self.ug_options:
                     self.help_ug_option(a)
                 else:
-                    print 'ERROR: no help on command "%s"' % a
+                    print('ERROR: no help on command "%s"' % a)
         sys.exit(ret)
 
     def help_doc(self):
-        print __doc__
+        print(__doc__)
 
     def help_options(self):
         width = max(map(len, self.ug_options))
         format  = '  %-' + str(width) + 's = %s'
         hformat = '  %-' + str(width) + 's   %s'
-        print hformat % ('OPTION', 'DEFAULT')
-        print '-'*(width + 20)
+        print(hformat % ('OPTION', 'DEFAULT'))
+        print('-'*(width + 20))
         for k in self.ug_options:
-            print format % (k, self.ug_defaults[k])
+            print(format % (k, self.ug_defaults[k]))
 
     def help_all(self):
         for k in self.ug_options:
@@ -264,21 +264,21 @@ class client_options:
         m = re.search(r'^(  '+option+'.*?)\s*^ {,2}\S',
                      urlgrabber.grabber.__doc__, re.M|re.S)
         if m:
-            print m.group(1)
+            print(m.group(1))
         else:
-            print '  %s:  no help found for this option' % option
-        print ''
+            print('  %s:  no help found for this option' % option)
+        print('')
             
 class ugclient:
     def __init__(self):
         op = client_options()
         self.op = op
         if op.verbose >= 2 and op.ugops:
-            print "Module Options:"
+            print("Module Options:")
             width = max(map(len, op.ugops.keys()))
             format = "  %-" + str(width) + "s = %s"
             for k, v in op.ugops.items():
-                print format % (k, repr(v))
+                print(format % (k, repr(v)))
 
         if op.debug:
             self.set_debug_logger(op.debug)
@@ -294,13 +294,13 @@ class ugclient:
 
     def run(self):
         for url in self.op.args:
-            if self.op.verbose: print 'grabbing: %s' % url
+            if self.op.verbose: print('grabbing: %s' % url)
             try:
                 for i in range(0, self.op.repeat):
                     f = self.g.urlgrab(url, self.op.outputfile)
-                if self.op.localfile: print f
+                if self.op.localfile: print(f)
             except URLGrabError as e:
-                print e
+                print(e)
         
     def set_debug_logger(self, dbspec):
         try:

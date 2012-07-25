@@ -463,6 +463,7 @@ BANDWIDTH THROTTLING
 """
 
 
+from __future__ import print_function
 
 import os
 import sys
@@ -2346,11 +2347,12 @@ class _TH:
 
 #####################################################################
 #  TESTING
+
 def _main_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print 'usage:', sys.argv[0], \
-              '<url> <filename> [copy_local=0|1] [close_connection=0|1]'
+        print('usage:', sys.argv[0], \
+              '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
         sys.exit()
 
     kwargs = {}
@@ -2360,23 +2362,23 @@ def _main_test():
 
     set_throttle(1.0)
     set_bandwidth(32 * 1024)
-    print "throttle: %s,  throttle bandwidth: %s B/s" % (default_grabber.throttle, 
-                                                        default_grabber.bandwidth)
+    print("throttle: %s,  throttle bandwidth: %s B/s" % (default_grabber.throttle,
+                                                        default_grabber.bandwidth))
 
     try: from progress import text_progress_meter
     except ImportError: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
     try: name = apply(urlgrab, (url, filename), kwargs)
-    except URLGrabError as e: print e
-    else: print 'LOCAL FILE:', name
+    except URLGrabError as e: print(e)
+    else: print('LOCAL FILE:', name)
 
 
 def _retry_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print 'usage:', sys.argv[0], \
-              '<url> <filename> [copy_local=0|1] [close_connection=0|1]'
+        print('usage:', sys.argv[0], \
+              '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
         sys.exit()
 
     kwargs = {}
@@ -2389,28 +2391,28 @@ def _retry_test():
     else: kwargs['progress_obj'] = text_progress_meter()
 
     def cfunc(filename, hello, there='foo'):
-        print hello, there
+        print(hello, there)
         import random
         rnum = random.random()
         if rnum < .5:
-            print 'forcing retry'
+            print('forcing retry')
             raise URLGrabError(-1, 'forcing retry')
         if rnum < .75:
-            print 'forcing failure'
+            print('forcing failure')
             raise URLGrabError(-2, 'forcing immediate failure')
-        print 'success'
+        print('success')
         return
         
     kwargs['checkfunc'] = (cfunc, ('hello',), {'there':'there'})
     try: name = apply(retrygrab, (url, filename), kwargs)
-    except URLGrabError as e: print e
-    else: print 'LOCAL FILE:', name
+    except URLGrabError as e: print(e)
+    else: print('LOCAL FILE:', name)
 
 def _file_object_test(filename=None):
     import cStringIO
     if filename is None:
         filename = __file__
-    print 'using file "%s" for comparisons' % filename
+    print('using file "%s" for comparisons' % filename)
     fo = open(filename)
     s_input = fo.read()
     fo.close()
@@ -2422,11 +2424,11 @@ def _file_object_test(filename=None):
         fo_input = cStringIO.StringIO(s_input)
         fo_output = cStringIO.StringIO()
         wrapper = PyCurlFileObject(fo_input, None, 0)
-        print 'testing %-30s ' % testfunc.__name__,
+        print('testing %-30s ' % testfunc.__name__, end='')
         testfunc(wrapper, fo_output)
         s_output = fo_output.getvalue()
-        if s_output == s_input: print 'passed'
-        else: print 'FAILED'
+        if s_output == s_input: print('passed')
+        else: print('FAILED')
             
 def _test_file_object_smallread(wrapper, fo_output):
     while 1:
