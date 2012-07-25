@@ -178,7 +178,7 @@ class client_options:
         try:
             optlist, args = getopt.getopt(sys.argv[1:], short_options,
                                           long_options + ug_long)
-        except getopt.GetoptError, e:
+        except getopt.GetoptError as e:
             print >>sys.stderr, "Error:", e
             self.help([], ret=1)
 
@@ -218,7 +218,7 @@ class client_options:
             if o in ug_dash:
                 try:
                     val = eval(v)
-                except Exception, e:
+                except Exception as e:
                     print "error processing option value: %s" % v
                     print e
                     sys.exit(1)
@@ -299,7 +299,7 @@ class ugclient:
                 for i in range(0, self.op.repeat):
                     f = self.g.urlgrab(url, self.op.outputfile)
                 if self.op.localfile: print f
-            except URLGrabError, e:
+            except URLGrabError as e:
                 print e
         
     def set_debug_logger(self, dbspec):

@@ -502,7 +502,7 @@ except:
 try:
     # this part isn't going to do much - need to talk to gettext
     from i18n import _
-except ImportError, msg:
+except ImportError:
     def _(st): return st
     
 ########################################################################
@@ -1020,10 +1020,10 @@ class URLGrabber(object):
                 r = apply(func, (opts,) + args, {})
                 if DEBUG: DEBUG.info('success')
                 return r
-            except URLGrabError, e:
+            except URLGrabError as e:
                 exception = e
                 callback = opts.failure_callback
-            except KeyboardInterrupt, e:
+            except KeyboardInterrupt as e:
                 exception = e
                 callback = opts.interrupt_callback
                 if not callback:
@@ -1124,7 +1124,7 @@ class URLGrabber(object):
         
         try:
             return self._retry(opts, retryfunc, url, filename)
-        except URLGrabError, e:
+        except URLGrabError as e:
             _TH.update(url, 0, 0, e)
             opts.exception = e
             return _run_callback(opts.failfunc, opts)
@@ -1407,7 +1407,7 @@ class PyCurlFileObject(object):
         
         try:
             self.curl_obj.perform()
-        except pycurl.error, e:
+        except pycurl.error as e:
             # XXX - break some of these out a bit more clearly
             # to other URLGrabErrors from 
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
@@ -1614,22 +1614,22 @@ class PyCurlFileObject(object):
             else:
                 fo = opener.open(req)
             hdr = fo.info()
-        except ValueError, e:
+        except ValueError as e:
             err = URLGrabError(1, _('Bad URL: %s : %s') % (self.url, e, ))
             err.url = self.url
             raise err
 
-        except RangeError, e:
+        except RangeError as e:
             err = URLGrabError(9, _('%s on %s') % (e, self.url))
             err.url = self.url
             raise err
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
             new_e.code = e.code
             new_e.exception = e
             new_e.url = self.url
             raise new_e
-        except IOError, e:
+        except IOError as e:
             if hasattr(e, 'reason') and isinstance(e.reason, socket.timeout):
                 err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
@@ -1639,12 +1639,12 @@ class PyCurlFileObject(object):
                 err.url = self.url
                 raise err
 
-        except OSError, e:
+        except OSError as e:
             err = URLGrabError(5, _('%s on %s') % (e, self.url))
             err.url = self.url
             raise err
 
-        except HTTPException, e:
+        except HTTPException as e:
             err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
                             (e.__class__.__name__, self.url, e))
             err.url = self.url
@@ -1671,7 +1671,7 @@ class PyCurlFileObject(object):
                                  (self.filename, mode))
             try:
                 self.fo = open(self.filename, mode)
-            except IOError, e:
+            except IOError as e:
                 err = URLGrabError(16, _(\
                   'error opening local file from %s, IOError: %s') % (self.url, e))
                 err.url = self.url
@@ -1690,7 +1690,7 @@ class PyCurlFileObject(object):
 
         try:            
             self._do_perform()
-        except URLGrabError, e:
+        except URLGrabError as e:
             self.fo.flush()
             self.fo.close()
             raise e
@@ -1713,7 +1713,7 @@ class PyCurlFileObject(object):
             if mod_time != -1:
                 try:
                     os.utime(self.filename, (mod_time, mod_time))
-                except OSError, e:
+                except OSError as e:
                     err = URLGrabError(16, _(\
                       'error setting timestamp on file %s from %s, OSError: %s') 
                               % (self.filename, self.url, e))
@@ -1722,7 +1722,7 @@ class PyCurlFileObject(object):
             # re open it
             try:
                 self.fo = open(self.filename, 'r')
-            except IOError, e:
+            except IOError as e:
                 err = URLGrabError(16, _(\
                   'error opening file from %s, IOError: %s') % (self.url, e))
                 err.url = self.url
@@ -1768,17 +1768,17 @@ class PyCurlFileObject(object):
             else:           readamount = min(amt, self._rbufsize)
             try:
                 new = self.fo.read(readamount)
-            except socket.error, e:
+            except socket.error as e:
                 err = URLGrabError(4, _('Socket Error on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
 
-            except socket.timeout, e:
+            except socket.timeout as e:
                 raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
 
-            except IOError, e:
+            except IOError as e:
                 raise URLGrabError(4, _('IOError on %s: %s') %(self.url, e))
                 err.url = self.url
                 raise err
@@ -2161,7 +2161,8 @@ def parallel_wait(meter = 'text'):
             if ug_err is None:
                 if opts.checkfunc:
                     try: _run_callback(opts.checkfunc, opts)
-                    except URLGrabError, ug_err: pass
+                    except URLGrabError as e:
+                        ug_err = e
                 if ug_err is None:
                     continue
 
@@ -2169,7 +2170,7 @@ def parallel_wait(meter = 'text'):
             if opts.failure_callback:
                 opts.exception = ug_err
                 try: _run_callback(opts.failure_callback, opts)
-                except URLGrabError, ug_err:
+                except URLGrabError:
                     retry = 0 # no retries
             if opts.tries < retry and ug_err.errno in opts.retrycodes:
                 start(opts, opts.tries + 1) # simple retry
@@ -2254,7 +2255,7 @@ def parallel_wait(meter = 'text'):
             while host_con.get(key, 0) >= limit:
                 perform()
             start(opts, 1)
-    except IOError, e:
+    except IOError as e:
         if e.errno != 4: raise
         raise KeyboardInterrupt
 
@@ -2363,11 +2364,11 @@ def _main_test():
                                                         default_grabber.bandwidth)
 
     try: from progress import text_progress_meter
-    except ImportError, e: pass
+    except ImportError: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
     try: name = apply(urlgrab, (url, filename), kwargs)
-    except URLGrabError, e: print e
+    except URLGrabError as e: print e
     else: print 'LOCAL FILE:', name
 
 
@@ -2384,7 +2385,7 @@ def _retry_test():
         kwargs[k] = int(v)
 
     try: from progress import text_progress_meter
-    except ImportError, e: pass
+    except ImportError: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
     def cfunc(filename, hello, there='foo'):
@@ -2402,7 +2403,7 @@ def _retry_test():
         
     kwargs['checkfunc'] = (cfunc, ('hello',), {'there':'there'})
     try: name = apply(retrygrab, (url, filename), kwargs)
-    except URLGrabError, e: print e
+    except URLGrabError as e: print e
     else: print 'LOCAL FILE:', name
 
 def _file_object_test(filename=None):

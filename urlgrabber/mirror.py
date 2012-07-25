@@ -400,7 +400,7 @@ class MirrorGroup:
             if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
             try:
                 return func_ref( *(fullurl,), **kwargs )
-            except URLGrabError, e:
+            except URLGrabError as e:
                 if DEBUG: DEBUG.info('MIRROR: failed')
                 obj = CallbackObject()
                 obj.exception = e
@@ -422,7 +422,7 @@ class MirrorGroup:
         func = 'urlgrab'
         try:
             return self._mirror_try(func, url, kw)
-        except URLGrabError, e:
+        except URLGrabError as e:
             obj = CallbackObject(url=url, filename=filename, exception=e, **kwargs)
             return _run_callback(kwargs.get('failfunc', _do_raise), obj)
     
