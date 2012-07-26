@@ -91,10 +91,16 @@ CUSTOMIZATION
 
 
 import random
-import thread  # needed for locking to make this threadsafe
+import sys
+if sys.version_info.major < 3:
+    import thread  # needed for locking to make this threadsafe
+    from types import StringTypes
+else:
+    import _thread as thread
+    StringTypes = bytes, str
 
-from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
-from grabber import _run_callback, _do_raise
+from urlgrabber.grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
+from urlgrabber.grabber import _run_callback, _do_raise
 
 def _(st): 
     return st
@@ -268,7 +274,7 @@ class MirrorGroup:
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
         for m in mirrors:
-            if isinstance(m, basestring):
+            if type(m) in StringTypes:
                 m = {'mirror': _to_utf8(m)}
             parsed_mirrors.append(m)
         return parsed_mirrors

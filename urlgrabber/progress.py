@@ -21,10 +21,17 @@
 import sys
 import time
 import math
-import thread
 import fcntl
 import struct
 import termios
+
+if sys.version_info.major < 3:
+    import thread
+    from types import StringTypes
+else:
+    import _thread as thread
+    StringTypes = bytes, str
+    long = int
 
 # Code from http://mail.python.org/pipermail/python-list/2000-May/033365.html
 def terminal_width(fd=1):
@@ -582,7 +589,7 @@ class TextMultiFileMeter(MultiFileMeter):
         try:
             format = "%-30.30s %6.6s %s"
             fn = meter.basename
-            if type(message) in (type(''), type(u'')):
+            if type(message) in StringTypes:
                 message = message.splitlines()
             if not message: message = ['']
             out = '%-79s' % (format % (fn, 'FAILED', message[0] or ''))
@@ -748,7 +755,7 @@ def format_number(number, SI=0, space=' '):
         depth  = depth + 1
         number = number / step
 
-    if type(number) == type(1) or type(number) == type(1L):
+    if type(number) in (int, long):
         # it's an int or a long, which means it didn't get divided,
         # which means it's already short enough
         format = '%i%s%s'

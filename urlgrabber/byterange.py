@@ -20,22 +20,36 @@
 
 import os
 import stat
-import urllib
-import urllib2
-import rfc822
+import sys
 
 DEBUG = None
 
-try:    
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+# python2+3 compatible imports
+if sys.version_info.major < 3:
+    import urllib2 as urllib_request
+    import urlparse as urllib_parse
+    import urllib2 as urllib_error
+    from urllib2 import unquote
+    from mimetools import Message
+    from rfc822 import formatdate
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
+else:
+    import urllib.request as urllib_request
+    import urllib.parse as urllib_parse
+    import urllib.error as urllib_error
+    from urllib.parse import unquote
+    from email.message import Message
+    from email.utils import formatdate
+    from io import StringIO
 
 class RangeError(IOError):
     """Error raised when an unsatisfiable range is requested."""
     pass
     
-class HTTPRangeHandler(urllib2.BaseHandler):
+class HTTPRangeHandler(urllib_request.BaseHandler):
     """Handler that enables HTTP Range headers.
     
     This was extremely simple. The Range header is a HTTP feature to
@@ -61,7 +75,7 @@ class HTTPRangeHandler(urllib2.BaseHandler):
     
     def http_error_206(self, req, fp, code, msg, hdrs):
         # 206 Partial Content Response
-        r = urllib.addinfourl(fp, hdrs, req.get_full_url())
+        r = urllib_request.addinfourl(fp, hdrs, req.get_full_url())
         r.code = code
         r.msg = msg
         return r
@@ -211,25 +225,23 @@ class RangeableFileObject:
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             pos+= bufsize
 
-class FileRangeHandler(urllib2.FileHandler):
+class FileRangeHandler(urllib_request.FileHandler):
     """FileHandler subclass that adds Range support.
     This class handles Range headers exactly like an HTTP
     server would.
     """
     def open_local_file(self, req):
-        import mimetypes
-        import mimetools
         host = req.get_host()
         file = req.get_selector()
-        localfile = urllib.url2pathname(file)
+        localfile = urllib_request.url2pathname(file)
         stats = os.stat(localfile)
         size = stats[stat.ST_SIZE]
-        modified = rfc822.formatdate(stats[stat.ST_MTIME])
+        modified = formatdate(stats[stat.ST_MTIME])
         mtype = mimetypes.guess_type(file)[0]
         if host:
-            host, port = urllib.splitport(host)
+            host, port = urllib_parse.splitport(host)
             if port or socket.gethostbyname(host) not in self.get_names():
-                raise urllib2.URLError('file not on local host')
+                raise urllib_error.URLError('file not on local host')
         fo = open(localfile,'rb')
         brange = req.headers.get('Range',None)
         brange = range_header_to_tuple(brange)
@@ -241,10 +253,10 @@ class FileRangeHandler(urllib2.FileHandler):
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
-        headers = mimetools.Message(StringIO(
+        headers = Message(StringIO(
             'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
             (mtype or 'text/plain', size, modified)))
-        return urllib.addinfourl(fo, headers, 'file:'+file)
+        return urllib_request.addinfourl(fo, headers, 'file:'+file)
 
 
 # FTP Range Support 
@@ -254,29 +266,25 @@ class FileRangeHandler(urllib2.FileHandler):
 # follows:
 # -- range support modifications start/end here
 
-from urllib import splitport, splituser, splitpasswd, splitattr, \
-                   unquote, addclosehook, addinfourl
 import ftplib
 import socket
-import sys
 import mimetypes
-import mimetools
 
-class FTPRangeHandler(urllib2.FTPHandler):
+class FTPRangeHandler(urllib_request.FTPHandler):
     def ftp_open(self, req):
         host = req.get_host()
         if not host:
             raise IOError('ftp error', 'no host given')
-        host, port = splitport(host)
+        host, port = urllib_parse.splitport(host)
         if port is None:
             port = ftplib.FTP_PORT
         else:
             port = int(port)
 
         # username/password handling
-        user, host = splituser(host)
+        user, host = urllib_parse.splituser(host)
         if user:
-            user, passwd = splitpasswd(user)
+            user, passwd = urllib_parse.splitpasswd(user)
         else:
             passwd = None
         host = unquote(host)
@@ -286,18 +294,17 @@ class FTPRangeHandler(urllib2.FTPHandler):
         try:
             host = socket.gethostbyname(host)
         except socket.error as msg:
-            raise urllib2.URLError(msg)
-        path, attrs = splitattr(req.get_selector())
-        dirs = path.split('/')
-        dirs = map(unquote, dirs)
-        dirs, file = dirs[:-1], dirs[-1]
+            raise urllib_error.URLError(msg)
+        path, attrs = urllib_parse.splitattr(req.get_selector())
+        dirs = [unquote(i) for i in path.split('/')]
+        file = dirs.pop()
         if dirs and not dirs[0]:
-            dirs = dirs[1:]
+            del dirs[0]
         try:
             fw = self.connect_ftp(user, passwd, host, port, dirs)
             type = file and 'I' or 'D'
             for attr in attrs:
-                attr, value = splitattr(attr)
+                attr, value = urllib_parse.splitattr(attr)
                 if attr.lower() == 'type' and \
                    value in ('a', 'A', 'i', 'I', 'd', 'D'):
                     type = value.upper()
@@ -336,8 +343,8 @@ class FTPRangeHandler(urllib2.FTPHandler):
             if retrlen is not None and retrlen >= 0:
                 headers += "Content-Length: %d\n" % retrlen
             sf = StringIO(headers)
-            headers = mimetools.Message(sf)
-            return addinfourl(fp, headers, req.get_full_url())
+            headers = Message(sf)
+            return urllib_request.addinfourl(fp, headers, req.get_full_url())
         except ftplib.all_errors as msg:
             raise IOError('ftp error', msg)
 
@@ -345,7 +352,7 @@ class FTPRangeHandler(urllib2.FTPHandler):
         fw = ftpwrapper(user, passwd, host, port, dirs)
         return fw
 
-class ftpwrapper(urllib.ftpwrapper):
+class ftpwrapper(urllib_request.ftpwrapper):
     # range support note:
     # this ftpwrapper code is copied directly from
     # urllib. The only enhancement is to add the rest
@@ -389,7 +396,7 @@ class ftpwrapper(urllib.ftpwrapper):
             conn = self.ftp.ntransfercmd(cmd)
         self.busy = 1
         # Pass back both a suitably decorated object and a retrieval length
-        return (addclosehook(conn[0].makefile('rb'),
+        return (urllib_request.addclosehook(conn[0].makefile('rb'),
                             self.endtransfer), conn[1])
 
 
