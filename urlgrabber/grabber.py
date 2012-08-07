@@ -2108,6 +2108,9 @@ class _ExternalDownloaderPool:
     def perform(self):
         ret = []
         for fd, event in self.epoll.poll():
+            if event & select.EPOLLHUP:
+                if DEBUG: DEBUG.info('downloader died')
+                raise KeyboardInterrupt
             assert event & select.EPOLLIN
             done = self.running[fd].perform()
             if not done: continue
