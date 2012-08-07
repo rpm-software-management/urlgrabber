@@ -493,6 +493,7 @@ class TextMultiFileMeter(MultiFileMeter):
     def __init__(self, fo=sys.stderr, threaded=True):
         self.fo = fo
         MultiFileMeter.__init__(self, threaded)
+        self.index = 0
 
     # files: ###/### ###%  data: ######/###### ###%  time: ##:##:##/##:##:##
 # New output, like TextMeter output...
@@ -527,9 +528,13 @@ class TextMultiFileMeter(MultiFileMeter):
 
             frac = self.re.fraction_read() or 0
             ave_dl = format_number(self.re.average_rate())
+
+            # cycle through active meters
+            self.index = (self.index + 1) % len(self.meters)
+            meter = self.meters[self.index]
             text = meter.text or meter.basename
             if tf > 1:
-                text = '(%u/%u): %s' % (df+1, tf, text)
+                text = '(%u/%u): %s' % (df+1+self.index, tf, text)
 
             # Include text + ui_rate in minimal
             tl = TerminalLine(8, 8+1+8)
