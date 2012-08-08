@@ -2304,7 +2304,7 @@ class _TH:
         if filename and _TH.dirty is None:
             try:
                 for line in open(filename):
-                    host, speed, fail, ts = line.split(' ', 3)
+                    host, speed, fail, ts = line.rsplit(' ', 3)
                     _TH.hosts[host] = int(speed), int(fail), int(ts)
             except IOError: pass
             _TH.dirty = False
