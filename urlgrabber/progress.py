@@ -525,7 +525,9 @@ class TextMultiFileMeter(MultiFileMeter):
             # cycle through active meters
             if now > self.index_time:
                 self.index_time = now + 1.0
-                self.index = (self.index + 1) % len(self.meters)
+                self.index += 1
+            if self.index >= len(self.meters):
+                self.index = 0
             meter = self.meters[self.index]
             text = meter.text or meter.basename
             if tf > 1:
