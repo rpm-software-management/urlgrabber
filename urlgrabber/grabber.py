@@ -54,6 +54,21 @@ GENERAL ARGUMENTS (kwargs)
       po.update(read) # read == bytes read so far
       po.end()
 
+  multi_progress_obj = None
+
+    a class instance that supports the following methods:
+      mo.start(total_files, total_size)
+      mo.newMeter() => meter
+      mo.removeMeter(meter)
+      mo.end()
+
+   The 'meter' object is similar to progress_obj, but multiple
+   instances may be created and updated at the same time.
+
+   When downloading multiple files in parallel and multi_progress_obj
+   is None progress_obj is used in compatibility mode: finished files
+   are shown but there's no in-progress display.
+
   text = None
   
     specifies alternative text to be passed to the progress meter
@@ -909,6 +924,7 @@ class URLGrabberOptions:
         provided here.
         """
         self.progress_obj = None
+        self.multi_progress_obj = None
         self.throttle = 1.0
         self.bandwidth = 0
         self.retry = None
@@ -2028,7 +2044,7 @@ class _ExternalDownloader:
             v = getattr(opts, k)
             if v is None: continue
             arg.append('%s=%s' % (k, _dumps(v)))
-        if opts.progress_obj:
+        if opts.progress_obj and opts.multi_progress_obj:
             arg.append('progress_obj=True')
         arg = ' '.join(arg)
         if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
@@ -2048,7 +2064,7 @@ class _ExternalDownloader:
             line = line.split(' ', 5)
             _id, size = map(int, line[:2])
             if len(line) == 2:
-                self.running[_id].progress_obj.update(size)
+                self.running[_id]._progress.update(size)
                 continue
             # job done
             opts = self.running.pop(_id)
@@ -2117,19 +2133,20 @@ class _ExternalDownloaderPool:
 
 _async_queue = []
 
-def parallel_wait(meter = 'text'):
+def parallel_wait(meter=None):
     '''Process queued requests in parallel.
     '''
 
-    if meter:
-        count = total = 0
-        for opts in _async_queue:
-            if opts.progress_obj:
-                count += 1
-                total += opts.size
-        if meter == 'text':
-            from progress import TextMultiFileMeter
-            meter = TextMultiFileMeter()
+    # calculate total sizes
+    meters = {}
+    for opts in _async_queue:
+        if opts.progress_obj and opts.multi_progress_obj:
+            count, total = meters.get(opts.multi_progress_obj) or (0, 0)
+            meters[opts.multi_progress_obj] = count + 1, total + opts.size
+
+    # start multi-file meters
+    for meter in meters:
+        count, total = meters[meter]
         meter.start(count, total)
 
     dl = _ExternalDownloaderPool()
@@ -2139,11 +2156,12 @@ def parallel_wait(meter = 'text'):
         key, limit = opts.async
         host_con[key] = host_con.get(key, 0) + 1
         opts.tries = tries
-        if meter and opts.progress_obj:
-            opts.progress_obj = meter.newMeter()
-            opts.progress_obj.start(text=opts.text, basename=os.path.basename(opts.filename))
-        else:
-            opts.progress_obj = None
+        if opts.progress_obj:
+            if opts.multi_progress_obj:
+                opts._progress = opts.multi_progress_obj.newMeter()
+                opts._progress.start(text=opts.text)
+            else:
+                opts._progress = time.time() # no updates
         if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
         dl.start(opts)
 
@@ -2151,15 +2169,16 @@ def parallel_wait(meter = 'text'):
         for opts, size, ug_err in dl.perform():
             key, limit = opts.async
             host_con[key] -= 1
-            m = opts.progress_obj
-            if m:
-                if ug_err:
-                    m.failure(ug_err.args[1])
+            if opts.progress_obj:
+                if opts.multi_progress_obj:
+                    opts.multi_progress_obj.re.total += size - opts.size # correct totals
+                    opts._progress.end(size)
+                    opts.multi_progress_obj.removeMeter(opts._progress)
                 else:
-                    # file size might have changed
-                    meter.re.total += size - opts.size
-                    m.end(size)
-                meter.removeMeter(m)
+                    opts.progress_obj.start(text=opts.text, now=opts._progress)
+                    opts.progress_obj.update(size)
+                    opts.progress_obj.end(size)
+                del opts._progress
 
             if ug_err is None:
                 if opts.checkfunc:
@@ -2267,7 +2286,8 @@ def parallel_wait(meter = 'text'):
 
     finally:
         dl.abort()
-        if meter: meter.end()
+        for meter in meters:
+            meter.end()
         del _async_queue[:]
         _TH.save()
 
