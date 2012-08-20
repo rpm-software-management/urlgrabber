@@ -393,13 +393,13 @@ class MirrorGroup:
             tries += 1
             mirrorchoice = self._get_mirror(gr)
             fullurl = self._join_url(mirrorchoice['mirror'], gr.url)
-            kwargs = dict(mirrorchoice.get('kwargs', {}))
-            kwargs.update(kw)
             grabber = mirrorchoice.get('grabber') or self.grabber
+            # apply mirrorchoice kwargs on top of grabber.opts
+            opts = grabber.opts.derive(**mirrorchoice.get('kwargs', {}))
             func_ref = getattr(grabber, func)
             if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
             try:
-                return func_ref( *(fullurl,), **kwargs )
+                return func_ref( *(fullurl,), opts=opts, **kw )
             except URLGrabError, e:
                 if DEBUG: DEBUG.info('MIRROR: failed')
                 obj = CallbackObject()

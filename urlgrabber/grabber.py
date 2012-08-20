@@ -1046,7 +1046,7 @@ class URLGrabber(object):
                                      retrycode, opts.retrycodes)
                 raise
     
-    def urlopen(self, url, **kwargs):
+    def urlopen(self, url, opts=None, **kwargs):
         """open the url and return a file object
         If a progress object or throttle value specified when this 
         object was created, then  a special file object will be 
@@ -1054,7 +1054,7 @@ class URLGrabber(object):
         like any other file object.
         """
         url = _to_utf8(url)
-        opts = self.opts.derive(**kwargs)
+        opts = (opts or self.opts).derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         opts.find_proxy(url, parts[0])
@@ -1062,14 +1062,14 @@ class URLGrabber(object):
             return PyCurlFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
     
-    def urlgrab(self, url, filename=None, **kwargs):
+    def urlgrab(self, url, filename=None, opts=None, **kwargs):
         """grab the file at <url> and make a local copy at <filename>
         If filename is none, the basename of the url is used.
         urlgrab returns the filename of the local file, which may be 
         different from the passed-in filename if copy_local == 0.
         """
         url = _to_utf8(url)
-        opts = self.opts.derive(**kwargs)
+        opts = (opts or self.opts).derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         (scheme, host, path, parm, query, frag) = parts
@@ -1129,7 +1129,7 @@ class URLGrabber(object):
             opts.exception = e
             return _run_callback(opts.failfunc, opts)
     
-    def urlread(self, url, limit=None, **kwargs):
+    def urlread(self, url, limit=None, opts=None, **kwargs):
         """read the url into a string, up to 'limit' bytes
         If the limit is exceeded, an exception will be thrown.  Note
         that urlread is NOT intended to be used as a way of saying 
@@ -1137,7 +1137,7 @@ class URLGrabber(object):
         into memory, but don't use too much'
         """
         url = _to_utf8(url)
-        opts = self.opts.derive(**kwargs)
+        opts = (opts or self.opts).derive(**kwargs)
         if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
         (url,parts) = opts.urlparser.parse(url, opts) 
         opts.find_proxy(url, parts[0])
@@ -2213,7 +2213,7 @@ def parallel_wait(meter = 'text'):
             idx += 1
 
             # check global limit
-            while len(dl.running) >= opts.max_connections:
+            while len(dl.running) >= default_grabber.opts.max_connections:
                 perform()
 
             if opts.mirror_group:
@@ -2240,6 +2240,10 @@ def parallel_wait(meter = 'text'):
                     opts.exception = URLGrabError(256, _('No more mirrors to try.'))
                     _run_callback(opts.failfunc, opts)
                     continue
+
+                # update the grabber object, apply mirror kwargs
+                grabber = best.get('grabber') or mg.grabber
+                opts.delegate = grabber.opts.derive(**best.get('kwargs', {}))
 
                 # update the current mirror and limit
                 key = best['mirror']
