@@ -76,8 +76,8 @@ CUSTOMIZATION
        'grabber' is omitted, the default grabber will be used.  If
        kwargs are omitted, then (duh) they will not be used.
 
-       kwarg 'max_connections' is used to store the max connection
-       limit of this mirror.
+       kwarg 'max_connections' limits the number of concurrent
+       connections to this mirror.
 
     3) Pass keyword arguments when instantiating the mirror group.
        See, for example, the failure_callback argument.
@@ -90,6 +90,7 @@ CUSTOMIZATION
 """
 
 
+import sys
 import random
 import thread  # needed for locking to make this threadsafe
 
@@ -130,7 +131,9 @@ class MirrorGroup:
         files)
 
       * if the local list is ever exhausted, a URLGrabError will be
-        raised (errno=256, no more mirrors)
+        raised (errno=256, No more mirrors).  The 'errors' attribute
+        holds a list of (full_url, errmsg) tuples.  This contains
+        all URLs tried and the corresponding error messages.
 
     OPTIONS
 
@@ -157,7 +160,8 @@ class MirrorGroup:
 
         The 'fail' option will cause immediate failure by re-raising
         the exception and no further attempts to get the current
-        download.
+        download.  As in the "No more mirrors" case, the 'errors'
+        attribute is set in the exception object.
 
         This dict can be set at instantiation time,
           mg = MirrorGroup(grabber, mirrors, default_action={'fail':1})
@@ -286,7 +290,9 @@ class MirrorGroup:
         #   return a random mirror so that multiple mirrors get used
         #   even without failures.
         if not gr.mirrors:
-            raise URLGrabError(256, _('No more mirrors to try.'))
+            e = URLGrabError(256, _('No more mirrors to try.'))
+            e.errors = gr.errors
+            raise e
         return gr.mirrors[gr._next]
 
     def _failure(self, gr, cb_obj):
@@ -313,7 +319,9 @@ class MirrorGroup:
         a.update(action)
         action = a
         self.increment_mirror(gr, action)
-        if action and action.get('fail', 0): raise
+        if action and action.get('fail', 0):
+            sys.exc_info()[1].errors = gr.errors
+            raise
 
     def increment_mirror(self, gr, action={}):
         """Tell the mirror object increment the mirror index
@@ -383,6 +391,7 @@ class MirrorGroup:
         gr.url  = url
         gr.kw   = dict(kw)
         self._load_gr(gr)
+        gr.errors = []
 
         for k in self.options:
             try: del kw[k]
@@ -402,6 +411,7 @@ class MirrorGroup:
                 return func_ref( *(fullurl,), opts=opts, **kw )
             except URLGrabError, e:
                 if DEBUG: DEBUG.info('MIRROR: failed')
+                gr.errors.append((fullurl, str(e)))
                 obj = CallbackObject()
                 obj.exception = e
                 obj.mirror = mirrorchoice['mirror']
@@ -415,7 +425,7 @@ class MirrorGroup:
         kw['filename'] = filename
         if kw.get('async'):
             # enable mirror failovers in async path
-            kw['mirror_group'] = self, {}, set()
+            kw['mirror_group'] = self, [], {}, set()
             kw['relative_url'] = url
         else:
             kw.pop('failfunc', None)

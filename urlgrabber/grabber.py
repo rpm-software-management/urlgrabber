@@ -2198,13 +2198,14 @@ def parallel_wait(meter=None):
                 continue
 
             if opts.mirror_group:
-                mg, failed, removed = opts.mirror_group
+                mg, errors, failed, removed = opts.mirror_group
+                errors.append((opts.url, str(ug_err)))
                 failed[key] = failed.get(key, 0) + 1
                 opts.mirror = key
                 opts.exception = ug_err
                 action = mg.default_action or {}
                 if mg.failure_callback:
-                    opts.tries = sum(failed.values())
+                    opts.tries = len(errors)
                     action = dict(action) # update only the copy
                     action.update(_run_callback(mg.failure_callback, opts))
                 if not action.get('fail', 0):
@@ -2213,6 +2214,8 @@ def parallel_wait(meter=None):
                         removed.add(key)
                     _async_queue.append(opts)
                     continue
+                # fail=1 from callback
+                ug_err.errors = errors
 
             # urlgrab failed
             opts.exception = ug_err
@@ -2237,7 +2240,7 @@ def parallel_wait(meter=None):
                 perform()
 
             if opts.mirror_group:
-                mg, failed, removed = opts.mirror_group
+                mg, errors, failed, removed = opts.mirror_group
 
                 # find the best mirror
                 best = None
@@ -2258,6 +2261,7 @@ def parallel_wait(meter=None):
 
                 if best is None:
                     opts.exception = URLGrabError(256, _('No more mirrors to try.'))
+                    opts.exception.errors = errors
                     _run_callback(opts.failfunc, opts)
                     continue
 
