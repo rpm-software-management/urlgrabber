@@ -2205,6 +2205,7 @@ def parallel_wait(meter=None):
                 action = mg.default_action or {}
                 if mg.failure_callback:
                     opts.tries = sum(failed.values())
+                    action = dict(action) # update only the copy
                     action.update(_run_callback(mg.failure_callback, opts))
                 if not action.get('fail', 0):
                     # mask this mirror and retry
