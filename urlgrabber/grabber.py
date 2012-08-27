@@ -2073,7 +2073,7 @@ class _ExternalDownloader:
                 if DEBUG: DEBUG.info('success')
             else:
                 ug_err = URLGrabError(int(line[4]), line[5])
-                if DEBUG: DEBUG.info('failure: %s', err)
+                if DEBUG: DEBUG.info('failure: %s', ug_err)
             _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async[0])
             ret.append((opts, size, ug_err))
         return ret
