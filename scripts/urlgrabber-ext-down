@@ -55,18 +55,21 @@ def main():
             if opts.progress_obj:
                 opts.progress_obj = ProxyProgress()
                 opts.progress_obj._id = cnt
-            tm = time.time()
+
+            dlsz = dltm = 0
             try:
                 fo = PyCurlFileObject(opts.url, opts.filename, opts)
                 fo._do_grab()
                 fo.fo.close()
                 size = fo._amount_read
-                dlsz = size - fo._reget_length
+                if fo._tm_last:
+                    dlsz = fo._tm_last[0] - fo._tm_first[0]
+                    dltm = fo._tm_last[1] - fo._tm_first[1]
                 ug_err = 'OK'
             except URLGrabError, e:
-                size = dlsz = 0
+                size = 0
                 ug_err = '%d %s' % e.args
-            write('%d %d %d %.3f %s\n', opts._id, size, dlsz, time.time() - tm, ug_err)
+            write('%d %d %d %.3f %s\n', opts._id, size, dlsz, dltm, ug_err)
 
 if __name__ == '__main__':
     main()

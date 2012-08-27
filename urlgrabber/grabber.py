@@ -1126,11 +1126,13 @@ class URLGrabber(object):
             return filename
 
         def retryfunc(opts, url, filename):
-            tm = time.time()
             fo = PyCurlFileObject(url, filename, opts)
             try:
                 fo._do_grab()
-                _TH.update(url, fo._amount_read - fo._reget_length, time.time() - tm, None)
+                if fo._tm_last:
+                    dlsz = fo._tm_last[0] - fo._tm_first[0]
+                    dltm = fo._tm_last[1] - fo._tm_first[1]
+                    _TH.update(url, dlsz, dltm, None)
                 if not opts.checkfunc is None:
                     obj = CallbackObject(filename=filename, url=url)
                     _run_callback(opts.checkfunc, obj)
@@ -1223,6 +1225,8 @@ class PyCurlFileObject(object):
         self._error = (None, None)
         self.size = 0
         self._hdr_ended = False
+        self._tm_first = None
+        self._tm_last = None
         self._do_open()
         
 
@@ -1237,6 +1241,12 @@ class PyCurlFileObject(object):
 
     def _retrieve(self, buf):
         try:
+            tm = self._amount_read + len(buf), time.time()
+            if self._tm_first is None:
+                self._tm_first = tm
+            else:
+                self._tm_last = tm
+
             if not self._prog_running:
                 if self.opts.progress_obj:
                     size  = self.size + self._reget_length
