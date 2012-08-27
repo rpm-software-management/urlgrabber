@@ -2332,17 +2332,19 @@ class _TH:
 
     @staticmethod
     def update(url, dl_size, dl_time, ug_err, baseurl=None):
-        _TH.load()
-
         # Use hostname from URL.  If it's a file:// URL, use baseurl.
         # If no baseurl, do not update timedhosts.
         host = urlparse.urlsplit(url).netloc.split('@')[-1] or baseurl
         if not host: return
 
+        _TH.load()
         speed, fail, ts = _TH.hosts.get(host) or (0, 0, 0)
         now = time.time()
 
         if ug_err is None:
+            # defer first update if the file was small.  BZ 851178.
+            if not ts and dl_size < 1e6: return
+
             # k1: the older, the less useful
             # k2: <500ms readings are less reliable
             # speeds vary, use 10:1 smoothing
