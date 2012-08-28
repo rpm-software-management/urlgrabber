@@ -133,8 +133,8 @@ class BaseMeter:
         # for a real gui, you probably want to override and put a call
         # to your mainloop iteration function here
         if now is None: now = time.time()
-        if (now >= self.last_update_time + self.update_period) or \
-               not self.last_update_time:
+        if (not self.last_update_time or
+            (now >= self.last_update_time + self.update_period)):
             self.re.update(amount_read, now)
             self.last_amount_read = amount_read
             self.last_update_time = now
@@ -233,7 +233,6 @@ class TextMeter(BaseMeter):
 
     def _do_update(self, amount_read, now=None):
         etime = self.re.elapsed_time()
-        fetime = format_time(etime)
         fread = format_number(amount_read)
         #self.size = None
         if self.text is not None:
@@ -249,16 +248,20 @@ class TextMeter(BaseMeter):
 
         # Include text + ui_rate in minimal
         tl = TerminalLine(8, 8+1+8)
+        if tl._llen > 80:
+            use_hours = True # For big screens, make it more readable.
+        else:
+            use_hours = False
         ui_size = tl.add(' | %5sB' % fread)
         if self.size is None:
-            ui_time = tl.add(' %9s' % fetime)
+            ui_time = tl.add(' %9s' % format_time(etime, use_hours))
             ui_end  = tl.add(' ' * 5)
             ui_rate = tl.add(' %5sB/s' % ave_dl)
             out = '%-*.*s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
                                         ui_rate, ui_size, ui_time, ui_end)
         else:
             rtime = self.re.remaining_time()
-            frtime = format_time(rtime)
+            frtime = format_time(rtime, use_hours)
             frac = self.re.fraction_read()
 
             ui_time = tl.add(' %9s' % frtime)
@@ -286,7 +289,6 @@ class TextMeter(BaseMeter):
         global _text_meter_total_size
         global _text_meter_sofar_size
 
-        total_time = format_time(self.re.elapsed_time())
         total_size = format_number(amount_read)
         if self.text is not None:
             text = self.text
@@ -294,8 +296,12 @@ class TextMeter(BaseMeter):
             text = self.basename
 
         tl = TerminalLine(8)
+        if tl._llen > 80:
+            use_hours = True # For big screens, make it more readable.
+        else:
+            use_hours = False
         ui_size = tl.add(' | %5sB' % total_size)
-        ui_time = tl.add(' %9s' % total_time)
+        ui_time = tl.add(' %9s' % format_time(self.re.elapsed_time(),use_hours))
         ui_end, not_done = _term_add_end(tl, self.size, amount_read)
         out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                     ui_size, ui_time, ui_end)
@@ -424,8 +430,8 @@ class MultiFileMeter:
     def update_meter(self, meter, now):
         if not meter in self.meters:
             raise ValueError('attempt to use orphaned meter')
-        if (now >= self.last_update_time + self.update_period) or \
-               not self.last_update_time:
+        if (not self.last_update_time or
+            (now >= self.last_update_time + self.update_period)):
             self.re.update(self._amount_read(), now)
             self.last_update_time = now
             self._do_update_meter(meter, now)
@@ -490,10 +496,15 @@ class TextMultiFileMeter(MultiFileMeter):
 
     # files: ###/### ###%  data: ######/###### ###%  time: ##:##:##/##:##:##
 # New output, like TextMeter output...
+#       update: No size (minimal: 17 chars)
+#       -----------------------------------
+# (<#file>/<#tot files>): <text>            <rate> | <current size> <elapsed>
+#                          8-48            1    8  3             6 1      7-9 5
+#
 #       update: Size, All files
 #       -----------------------
 # (<#file>/<#tot files>): <text> <pc> <bar> <rate> | <size> <eta time> ETA
-#                          8-22 1 3-4 1 6-12 1   8 3     6 1        9 1  3 1
+#                          8-22 1 3-4 1 6-12 1   8 3     6 1       7-9 1  3 1
 #       end
 #       ---
 # <text>                                 | <file size> <file elapsed time> 
@@ -501,25 +512,18 @@ class TextMultiFileMeter(MultiFileMeter):
     def _do_update_meter(self, meter, now):
         self._lock.acquire()
         try:
-            format = "files: %3i/%-3i %3i%%   data: %6.6s/%-6.6s %3i%%   " \
-                     "time: %8.8s/%8.8s"
             df = self.finished_files
             tf = self.numfiles or 1
-            pf = 100 * float(df)/tf + 0.49
+            # Don't use "percent of files complete" ...
+            # pf = 100 * float(df)/tf + 0.49
             dd = self.re.last_amount_read
             td = self.re.total
             pd = 100 * (self.re.fraction_read() or 0) + 0.49
             dt = self.re.elapsed_time()
             rt = self.re.remaining_time()
-            if rt is None: tt = None
-            else: tt = dt + rt
-
-            fdd = format_number(dd) + 'B'
-            ftd = format_number(td) + 'B'
-            fdt = format_time(dt, 1)
-            ftt = format_time(tt, 1)
 
             frac = self.re.fraction_read() or 0
+            pf   = 100 * frac
             ave_dl = format_number(self.re.average_rate())
 
             # cycle through active meters
@@ -535,23 +539,36 @@ class TextMultiFileMeter(MultiFileMeter):
 
             # Include text + ui_rate in minimal
             tl = TerminalLine(8, 8+1+8)
+            if tl._llen > 80:
+                use_hours = True # For big screens, make it more readable.
+                time_len  = 9
+            else:
+                use_hours = False
+                time_len  = 7
 
             ui_size = tl.add(' | %5sB' % format_number(dd))
 
-            ui_time = tl.add(' %9s' % format_time(rt))
-            ui_end  = tl.add(' ETA ')
+            if not self.re.total:
+                ui_time = tl.add(' %*s' % (time_len,format_time(dt, use_hours)))
+                ui_end  = tl.add(' ' * 5)
+                ui_rate = tl.add(' %5sB/s' % ave_dl)
+                out = '\r%-*.*s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
+                                              ui_rate, ui_size, ui_time, ui_end)
+            else:
+                ui_time = tl.add(' %*s' % (time_len,format_time(rt, use_hours)))
+                ui_end  = tl.add(' ETA ')
 
-            ui_sofar_pc = tl.add(' %i%%' % pf,
-                                 full_len=len(" (100%)"))
-            ui_rate = tl.add(' %5sB/s' % ave_dl)
+                ui_sofar_pc = tl.add(' %i%%' % pf,
+                                     full_len=len(" (100%)"))
+                ui_rate = tl.add(' %5sB/s' % ave_dl)
 
-            # Make text grow a bit before we start growing the bar too
-            blen = 4 + tl.rest_split(8 + 8 + 4)
-            ui_bar = _term_add_bar(tl, blen, frac)
-            out = '\r%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
-                                              ui_sofar_pc, ui_bar,
-                                              ui_rate, ui_size, ui_time,
-                                              ui_end)
+                # Make text grow a bit before we start growing the bar too
+                blen = 4 + tl.rest_split(8 + 8 + 4)
+                ui_bar = _term_add_bar(tl, blen, frac)
+                out = '\r%-*.*s%s%s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
+                                                  ui_sofar_pc, ui_bar,
+                                                  ui_rate, ui_size, ui_time,
+                                                  ui_end)
             self.fo.write(out)
             self.fo.flush()
         finally:
@@ -565,20 +582,24 @@ class TextMultiFileMeter(MultiFileMeter):
             size = meter.last_amount_read
             fsize = format_number(size) + 'B'
             et = meter.re.elapsed_time()
-            fet = format_time(et, 1)
             frate = format_number(et and size / et) + 'B/s'
             df = self.finished_files
             tf = self.numfiles or 1
 
-            total_time = format_time(et)
             total_size = format_number(size)
             text = meter.text or meter.basename
             if tf > 1:
                 text = '(%u/%u): %s' % (df, tf, text)
 
             tl = TerminalLine(8)
+            if tl._llen > 80:
+                use_hours = True # For big screens, make it more readable.
+                time_len  = 9
+            else:
+                use_hours = False
+                time_len  = 7
             ui_size = tl.add(' | %5sB' % total_size)
-            ui_time = tl.add(' %9s' % total_time)
+            ui_time = tl.add(' %*s' % (time_len, format_time(et, use_hours)))
             ui_end, not_done = _term_add_end(tl, meter.size, size)
             out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                         ui_size, ui_time, ui_end)
@@ -786,9 +807,77 @@ def _tst(fn, cur, tot, beg, size, *args):
             time.sleep(delay)
     tm.end(size)
 
+def _mtst(datas, *args):
+    print '-' * 79
+    tm = TextMultiFileMeter(threaded=False)
+
+    dl_sizes = {}
+
+    num = 0
+    total_size = 0
+    dl_total_size = 0
+    for data in datas:
+        dl_size = None
+        if len(data) == 2:
+            fn, size = data
+            dl_size = size
+        if len(data) == 3:
+            fn, size, dl_size = data
+        nm = tm.newMeter()
+        nm.start(fn, "http://www.example.com/path/to/fn/" + fn, fn, size,
+                 text=fn)
+        num += 1
+        assert dl_size is not None
+        dl_total_size += dl_size
+        dl_sizes[nm] = dl_size
+        if size is None or total_size is None:
+            total_size = None
+        else:
+            total_size += size
+    tm.start(num, total_size)
+
+    num = 0
+    off = 0
+    for (inc, delay) in args:
+        off += 1
+        while num < ((dl_total_size * off) / len(args)):
+            num += inc
+            for nm in tm.meters[:]:
+                if dl_sizes[nm] <= num:
+                    nm.end(dl_sizes[nm])
+                    tm.removeMeter(nm)
+                else:
+                    nm.update(num)
+            time.sleep(delay)
+    assert not tm.meters
+
 if __name__ == "__main__":
     # (1/2): subversion-1.4.4-7.x86_64.rpm               2.4 MB /  85 kB/s    00:28     
     # (2/2): mercurial-0.9.5-6.fc8.x86_64.rpm            924 kB / 106 kB/s    00:08     
+    if len(sys.argv) >= 2 and sys.argv[1] == 'multi':
+        _mtst((("sm-1.0.0-1.fc8.i386.rpm", 1000),
+               ("s-1.0.1-1.fc8.i386.rpm",  5000),
+               ("m-1.0.1-2.fc8.i386.rpm", 10000)),
+              (100, 0.33), (500, 0.25), (1000, 0.1))
+
+        _mtst((("sm-1.0.0-1.fc8.i386.rpm", 1000),
+               ("s-1.0.1-1.fc8.i386.rpm",  5000),
+               ("m-1.0.1-2.fc8.i386.rpm",  None,  10000)),
+              (100, 0.33), (500, 0.25), (1000, 0.1))
+
+        _mtst((("sm-1.0.0-1.fc8.i386.rpm", 1000),
+               ("s-1.0.1-1.fc8.i386.rpm", 2500000),
+               ("m-1.0.1-2.fc8.i386.rpm", 10000)),
+              (10, 0.2), (50, 0.1), (1000, 0.1))
+
+        _mtst((("sm-1.0.0-1.fc8.i386.rpm", 1000),
+               ("s-1.0.1-1.fc8.i386.rpm",  None, 2500000),
+               ("m-1.0.1-2.fc8.i386.rpm",  None, 10000)),
+              (10, 0.2), (50, 0.1), (1000, 0.1))
+        # (10, 0.2), (100, 0.1), (100, 0.1), (100, 0.25))
+        # (10, 0.2), (100, 0.1), (100, 0.1), (100, 0.25))
+        sys.exit(0)
+
     if len(sys.argv) >= 2 and sys.argv[1] == 'total':
         text_meter_total_size(1000 + 10000 + 10000 + 1000000 + 1000000 +
                               1000000 + 10000 + 10000 + 10000 + 1000000)
