@@ -2263,8 +2263,9 @@ def parallel_wait(meter=None):
                     speed = _TH.estimate(key)
                     speed /= 1 + host_con.get(key, 0)
 
-                    # 2-tuple to select mirror with least failures
-                    speed = -failed.get(key, 0), speed
+                    # order by: least failures, private flag, best speed
+                    private = mirror.get('kwargs', {}).get('private', False)
+                    speed = -failed.get(key, 0), private, speed
                     if best is None or speed > best_speed:
                         best = mirror
                         best_speed = speed
