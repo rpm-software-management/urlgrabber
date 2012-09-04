@@ -2179,10 +2179,19 @@ def parallel_wait(meter=None):
         for opts, size, ug_err in dl.perform():
             key, limit = opts.async
             host_con[key] -= 1
+
+            if ug_err is None:
+                if opts.checkfunc:
+                    try: _run_callback(opts.checkfunc, opts)
+                    except URLGrabError, ug_err: pass
+
             if opts.progress_obj:
                 if opts.multi_progress_obj:
-                    opts.multi_progress_obj.re.total += size - opts.size # correct totals
-                    opts._progress.end(size)
+                    if ug_err:
+                        opts._progress.failure(None)
+                    else:
+                        opts.multi_progress_obj.re.total += size - opts.size # correct totals
+                        opts._progress.end(size)
                     opts.multi_progress_obj.removeMeter(opts._progress)
                 else:
                     opts.progress_obj.start(text=opts.text, now=opts._progress)
@@ -2191,11 +2200,7 @@ def parallel_wait(meter=None):
                 del opts._progress
 
             if ug_err is None:
-                if opts.checkfunc:
-                    try: _run_callback(opts.checkfunc, opts)
-                    except URLGrabError, ug_err: pass
-                if ug_err is None:
-                    continue
+                continue
 
             retry = opts.retry or 0
             if opts.failure_callback:

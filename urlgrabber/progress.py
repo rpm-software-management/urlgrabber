@@ -611,7 +611,7 @@ class TextMultiFileMeter(MultiFileMeter):
         self._lock.acquire()
         try:
             format = "%-30.30s %6.6s %s"
-            fn = meter.basename
+            fn = meter.text or meter.basename
             if type(message) in (type(''), type(u'')):
                 message = message.splitlines()
             if not message: message = ['']
