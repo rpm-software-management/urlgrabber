@@ -96,6 +96,7 @@ import thread  # needed for locking to make this threadsafe
 
 from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
 from grabber import _run_callback, _do_raise
+from grabber import exception2msg
 
 def _(st): 
     return st
@@ -411,7 +412,7 @@ class MirrorGroup:
                 return func_ref( *(fullurl,), opts=opts, **kw )
             except URLGrabError, e:
                 if DEBUG: DEBUG.info('MIRROR: failed')
-                gr.errors.append((fullurl, str(e)))
+                gr.errors.append((fullurl, exception2msg(e)))
                 obj = CallbackObject()
                 obj.exception = e
                 obj.mirror = mirrorchoice['mirror']

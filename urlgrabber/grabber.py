@@ -621,6 +621,12 @@ def _to_utf8(obj, errors='replace'):
         obj = obj.encode('utf-8', errors)
     return obj
 
+def exception2msg(e):
+    try:
+        return str(e)
+    except UnicodeEncodeError:
+        return unicode(e)
+
 ########################################################################
 #                 END UTILITY FUNCTIONS
 ########################################################################
