@@ -1265,7 +1265,11 @@ class PyCurlFileObject(object):
                     self.opts.progress_obj.update(self._amount_read)
 
             self._amount_read += len(buf)
-            self.fo.write(buf)
+            try:
+                self.fo.write(buf)
+            except IOError, e:
+                self._cb_error = URLGrabError(16, exception2msg(e))
+                return -1
             return len(buf)
         except KeyboardInterrupt:
             return -1
@@ -1453,16 +1457,13 @@ class PyCurlFileObject(object):
                 errcode = self._error[0]
                 
             if errcode == 23 and code >= 200 and code < 299:
-                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (errurl, e))
-                err.url = errurl
-                
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
                 # since we cannot know what it is -I'm banking on it being
                 # a ctrl-c. XXXX - if there's a way of going back two raises to 
                 # figure out what aborted the pycurl process FIXME
-                raise KeyboardInterrupt
+                raise getattr(self, '_cb_error', KeyboardInterrupt)
             
             elif errcode == 28:
                 err = URLGrabError(12, _('Timeout on %s: %s') % (errurl, e))
@@ -1480,8 +1481,6 @@ class PyCurlFileObject(object):
                 raise err
                 
             elif errcode == 42:
-                err = URLGrabError(15, _('User (or something) called abort %s: %s') % (errurl, e))
-                err.url = errurl
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
