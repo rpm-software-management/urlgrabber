@@ -2270,11 +2270,12 @@ def parallel_wait(meter=None):
                     if key in removed: continue
 
                     # estimate mirror speed
-                    speed = _TH.estimate(key)
+                    speed, fail = _TH.estimate(key)
                     speed /= 1 + host_con.get(key, 0)
 
                     # order by: least failures, private flag, best speed
-                    private = mirror.get('kwargs', {}).get('private', False)
+                    # ignore 'private' flag if there were failures
+                    private = not fail and mirror.get('kwargs', {}).get('private', False)
                     speed = -failed.get(key, 0), private, speed
                     if best is None or speed > best_speed:
                         best = mirror
@@ -2391,12 +2392,12 @@ class _TH:
 
         default_speed = default_grabber.opts.default_speed
         try: speed, fail, ts = _TH.hosts[host]
-        except KeyError: return default_speed
+        except KeyError: return default_speed, 0
 
         speed *= 2**-fail
         k = 2**((ts - time.time()) / default_grabber.opts.half_life)
         speed = k * speed + (1 - k) * default_speed
-        return speed
+        return speed, fail
 
 #####################################################################
 #  TESTING
