@@ -1372,7 +1372,7 @@ class PyCurlFileObject(object):
         if hasattr(opts, 'timeout'):
             timeout = int(opts.timeout or 0)
         self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
-        self.curl_obj.setopt(pycurl.LOW_SPEED_LIMIT, 1)
+        self.curl_obj.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
         self.curl_obj.setopt(pycurl.LOW_SPEED_TIME, timeout)
 
         # ssl options
