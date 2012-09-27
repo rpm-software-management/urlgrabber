@@ -625,7 +625,8 @@ def exception2msg(e):
     try:
         return str(e)
     except UnicodeEncodeError:
-        return unicode(e)
+        # always use byte strings
+        return unicode(e).encode('utf8')
 
 ########################################################################
 #                 END UTILITY FUNCTIONS
