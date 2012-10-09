@@ -97,6 +97,7 @@ import thread  # needed for locking to make this threadsafe
 from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
 from grabber import _run_callback, _do_raise
 from grabber import exception2msg
+from grabber import _TH
 
 def _(st): 
     return st
@@ -260,6 +261,17 @@ class MirrorGroup:
         self._lock = thread.allocate_lock()
         self.default_action = None
         self._process_kwargs(kwargs)
+
+        # use the same algorithm as parallel downloader to initially sort
+        # the mirror list (sort by speed, but prefer live private mirrors)
+        def estimate(m):
+            speed, fail = _TH.estimate(m['mirror'])
+            private = not fail and m.get('kwargs', {}).get('private', False)
+            return private, speed
+
+        # update the initial order.  since sorting is stable, the relative
+        # order of unknown (not used yet) hosts is retained.
+        self.mirrors.sort(key=estimate, reverse=True)
 
     # if these values are found in **kwargs passed to one of the urlXXX
     # methods, they will be stripped before getting passed on to the
