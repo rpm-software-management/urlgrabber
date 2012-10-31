@@ -1457,7 +1457,7 @@ class PyCurlFileObject(object):
             if self._error[0]:
                 errcode = self._error[0]
                 
-            if errcode == 23 and code >= 200 and code < 299:
+            if errcode == 23 and 200 <= code <= 299:
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
@@ -1511,7 +1511,7 @@ class PyCurlFileObject(object):
                 err.url = errurl
                 raise err
                     
-            elif str(e.args[1]) == '' and self.http_code != 0: # fake it until you make it
+            elif str(e.args[1]) == '' and code and not 200 <= code <= 299:
                 if self.scheme in ['http', 'https']:
                     if self.http_code in responses:
                         resp = responses[self.http_code]
