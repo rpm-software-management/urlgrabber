@@ -2109,7 +2109,13 @@ class _ExternalDownloaderPool:
         host = urlparse.urlsplit(opts.url).netloc
         dl = self.cache.pop(host, None)
         if not dl:
-            dl = _ExternalDownloader()
+            try:
+                dl = _ExternalDownloader()
+            except OSError, e:
+                # can't spawn downloader, give up now
+                opts.exception = URLGrabError(5, exception2msg(e))
+                _run_callback(opts.failfunc, opts)
+                return
             fl = fcntl.fcntl(dl.stdin, fcntl.F_GETFD)
             fcntl.fcntl(dl.stdin, fcntl.F_SETFD, fl | fcntl.FD_CLOEXEC)
         self.epoll.register(dl.stdout, select.EPOLLIN)
