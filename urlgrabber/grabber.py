@@ -2109,13 +2109,7 @@ class _ExternalDownloaderPool:
         host = urlparse.urlsplit(opts.url).netloc
         dl = self.cache.pop(host, None)
         if not dl:
-            try:
-                dl = _ExternalDownloader()
-            except OSError, e:
-                # can't spawn downloader, give up now
-                opts.exception = URLGrabError(5, exception2msg(e))
-                _run_callback(opts.failfunc, opts)
-                return
+            dl = _ExternalDownloader()
             fl = fcntl.fcntl(dl.stdin, fcntl.F_GETFD)
             fcntl.fcntl(dl.stdin, fcntl.F_SETFD, fl | fcntl.FD_CLOEXEC)
         self.epoll.register(dl.stdout, select.EPOLLIN)
@@ -2175,17 +2169,24 @@ def parallel_wait(meter=None):
     host_con = {} # current host connection counts
 
     def start(opts, tries):
+        opts.tries = tries
+        if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
+        try:
+            dl.start(opts)
+        except OSError, e:
+            # can't spawn downloader, give up immediately
+            opts.exception = URLGrabError(5, exception2msg(e))
+            _run_callback(opts.failfunc, opts)
+            return
+
         key, limit = opts.async
         host_con[key] = host_con.get(key, 0) + 1
-        opts.tries = tries
         if opts.progress_obj:
             if opts.multi_progress_obj:
                 opts._progress = opts.multi_progress_obj.newMeter()
                 opts._progress.start(text=opts.text)
             else:
                 opts._progress = time.time() # no updates
-        if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
-        dl.start(opts)
 
     def perform():
         for opts, size, ug_err in dl.perform():
