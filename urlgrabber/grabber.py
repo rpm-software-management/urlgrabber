@@ -585,6 +585,7 @@ def _init_default_logger(logspec=None):
         else:  handler = logging.FileHandler(filename)
         handler.setFormatter(formatter)
         DBOBJ = logging.getLogger('urlgrabber')
+        DBOBJ.propagate = False
         DBOBJ.addHandler(handler)
         DBOBJ.setLevel(level)
     except (KeyError, ImportError, ValueError):
@@ -593,8 +594,8 @@ def _init_default_logger(logspec=None):
 
 def _log_package_state():
     if not DEBUG: return
-    DEBUG.info('urlgrabber version  = %s' % __version__)
-    DEBUG.info('trans function "_"  = %s' % _)
+    DEBUG.debug('urlgrabber version  = %s' % __version__)
+    DEBUG.debug('trans function "_"  = %s' % _)
         
 _init_default_logger()
 _log_package_state()
@@ -1309,7 +1310,7 @@ class PyCurlFileObject(object):
                 
             if len(self._hdr_dump) != 0 and buf == '\r\n':
                 self._hdr_ended = True
-                if DEBUG: DEBUG.info('header ended:')
+                if DEBUG: DEBUG.debug('header ended:')
                 
             return len(buf)
         except KeyboardInterrupt:
@@ -1349,7 +1350,7 @@ class PyCurlFileObject(object):
         self.curl_obj.setopt(pycurl.OPT_FILETIME, True)
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
         
-        if DEBUG:
+        if DEBUG and DEBUG.level <= 10:
             self.curl_obj.setopt(pycurl.VERBOSE, True)
         if opts.user_agent:
             self.curl_obj.setopt(pycurl.USERAGENT, opts.user_agent)
@@ -2170,7 +2171,6 @@ def parallel_wait(meter=None):
 
     def start(opts, tries):
         opts.tries = tries
-        if DEBUG: DEBUG.info('attempt %i/%s: %s', opts.tries, opts.retry, opts.url)
         try:
             dl.start(opts)
         except OSError, e:
@@ -2266,6 +2266,8 @@ def parallel_wait(meter=None):
             # check global limit
             while len(dl.running) >= default_grabber.opts.max_connections:
                 perform()
+            if DEBUG:
+                DEBUG.info('max_connections: %d/%d', len(dl.running), default_grabber.opts.max_connections)
 
             if opts.mirror_group:
                 mg, errors, failed, removed = opts.mirror_group
@@ -2314,6 +2316,9 @@ def parallel_wait(meter=None):
             key, limit = opts.async
             while host_con.get(key, 0) >= limit:
                 perform()
+            if DEBUG:
+                DEBUG.info('max_connections(%s): %d/%d', key, host_con.get(key, 0), limit)
+
             start(opts, 1)
     except IOError, e:
         if e.errno != 4: raise
