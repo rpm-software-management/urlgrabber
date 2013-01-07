@@ -2227,7 +2227,7 @@ def parallel_wait(meter=None):
 
             if opts.mirror_group:
                 mg, errors, failed, removed = opts.mirror_group
-                errors.append((opts.url, str(ug_err)))
+                errors.append((opts.url, exception2msg(ug_err)))
                 failed[key] = failed.get(key, 0) + 1
                 opts.mirror = key
                 opts.exception = ug_err
