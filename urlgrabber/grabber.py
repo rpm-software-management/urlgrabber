@@ -2381,6 +2381,8 @@ class _TH:
         if ug_err is None:
             # defer first update if the file was small.  BZ 851178.
             if not ts and dl_size < 1e6: return
+            # clamp timestamps from the future.  BZ 894630.
+            if ts > now: ts = now
 
             # k1: the older, the less useful
             # k2: <500ms readings are less reliable
