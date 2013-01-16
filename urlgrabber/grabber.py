@@ -1514,17 +1514,6 @@ class PyCurlFileObject(object):
                 err.url = errurl
                 raise err
                     
-            elif str(e.args[1]) == '' and code and not 200 <= code <= 299:
-                if self.scheme in ['http', 'https']:
-                    if self.http_code in responses:
-                        resp = responses[self.http_code]
-                        msg = 'HTTP Error %s - %s : %s' % (self.http_code, resp, errurl)
-                    else:
-                        msg = 'HTTP Error %s : %s ' % (self.http_code, errurl)
-                elif self.scheme in ['ftp']:
-                    msg = 'FTP Error %s : %s ' % (self.http_code, errurl)
-                else:
-                    msg = "Unknown Error: URL=%s , scheme=%s" % (errurl, self.scheme)
             else:
                 pyerr2str = { 5 : _("Couldn't resolve proxy"),
                               6 : _("Couldn't resolve host"),
@@ -1569,15 +1558,20 @@ class PyCurlFileObject(object):
                              70 : _("Out of disk space on server"),
                              73 : _("Remove file exists"),
                               }
-                errstr = str(e.args[1])
-                if not errstr:
-                    errstr = pyerr2str.get(errcode, '<Unknown>')
-                msg = 'curl#%s - "%s"' % (errcode, errstr)
-                code = errcode
-            err = URLGrabError(14, msg)
-            err.code = code
-            err.exception = e
-            raise err
+                errstr = str(e.args[1]) or pyerr2str.get(errcode, '<Unknown>')
+                if code and not 200 <= code <= 299:
+                    msg = '%s Error %d - %s' % (self.scheme.upper(), code,
+                                                self.scheme in ('http', 'https')
+                                                and responses.get(code) or errstr)
+                else:
+                    msg = 'curl#%s - "%s"' % (errcode, errstr)
+                    code = errcode
+
+                err = URLGrabError(14, msg)
+                err.url = errurl
+                err.code = code
+                raise err
+
         else:
             if self._error[1]:
                 msg = self._error[1]
