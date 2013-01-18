@@ -1473,16 +1473,6 @@ class PyCurlFileObject(object):
                 err = URLGrabError(12, _('Timeout on %s: %s') % (errurl, e))
                 err.url = errurl
                 raise err
-            elif errcode == 35:
-                msg = _("problem making ssl connection")
-                err = URLGrabError(14, msg)
-                err.url = errurl
-                raise err
-            elif errcode == 37:
-                msg = _("Could not open/read %s") % (errurl)
-                err = URLGrabError(14, msg)
-                err.url = errurl
-                raise err
                 
             elif errcode == 42:
                 # this is probably wrong but ultimately this is what happens
@@ -1493,27 +1483,6 @@ class PyCurlFileObject(object):
                 # figure out what aborted the pycurl process FIXME
                 raise KeyboardInterrupt
                 
-            elif errcode == 58:
-                msg = _("problem with the local client certificate")
-                err = URLGrabError(14, msg)
-                err.url = errurl
-                raise err
-
-            elif errcode == 60:
-                msg = _("Peer cert cannot be verified or peer cert invalid")
-                err = URLGrabError(14, msg)
-                err.url = errurl
-                raise err
-            
-            elif errcode == 63:
-                if self._error[1]:
-                    msg = self._error[1]
-                else:
-                    msg = _("Max download size exceeded on %s") % ()
-                err = URLGrabError(14, msg)
-                err.url = errurl
-                raise err
-                    
             else:
                 pyerr2str = { 5 : _("Couldn't resolve proxy"),
                               6 : _("Couldn't resolve host"),
@@ -1581,7 +1550,9 @@ class PyCurlFileObject(object):
 
     def _do_open(self):
         self.curl_obj = _curl_cache
-        self.curl_obj.reset() # reset all old settings away, just in case
+        # reset() clears PYCURL_ERRORBUFFER, and there's no way
+        # to reinitialize it, so better don't do that.  BZ 896025
+        #self.curl_obj.reset() # reset all old settings away, just in case
         # setup any ranges
         self._set_opts()
         self._do_grab()
