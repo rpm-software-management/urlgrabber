@@ -301,6 +301,7 @@ class ugclient:
                 if self.op.localfile: print f
             except URLGrabError, e:
                 print e
+                sys.exit(1)
         
     def set_debug_logger(self, dbspec):
         try:
