@@ -1286,13 +1286,21 @@ class PyCurlFileObject(object):
                                max_size=self.opts.max_header_size):
             return -1
         try:
-            self._hdr_dump += buf
             # we have to get the size before we do the progress obj start
             # but we can't do that w/o making it do 2 connects, which sucks
             # so we cheat and stuff it in here in the hdr_retrieve
-            if self.scheme in ['http','https'] and buf.lower().find('content-length') != -1:
-                length = buf.split(':')[1]
-                self.size = int(length)
+            if self.scheme in ['http','https']:
+                if buf.lower().find('content-length') != -1:
+                    length = buf.split(':')[1]
+                    self.size = int(length)
+                elif self.append and self._hdr_dump == '' and ' 200 ' in buf:
+                    # reget was attempted but server sends it all
+                    # undo what we did in _build_range()
+                    self.append = False
+                    self.reget_time = None
+                    self._amount_read = 0
+                    self._reget_length = 0
+                    self.fo.truncate(0)
             elif self.scheme in ['ftp']:
                 s = None
                 if buf.startswith('213 '):
@@ -1308,6 +1316,7 @@ class PyCurlFileObject(object):
                 self.scheme = urlparse.urlsplit(location)[0]
                 self.url = location
                 
+            self._hdr_dump += buf
             if len(self._hdr_dump) != 0 and buf == '\r\n':
                 self._hdr_ended = True
                 if DEBUG: DEBUG.debug('header ended:')
