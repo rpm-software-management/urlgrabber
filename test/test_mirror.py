@@ -28,7 +28,7 @@ import os
 import string, tempfile, random, cStringIO, os
 
 import urlgrabber.grabber
-from urlgrabber.grabber import URLGrabber, URLGrabError
+from urlgrabber.grabber import URLGrabber, URLGrabError, URLGrabberOptions
 import urlgrabber.mirror
 from urlgrabber.mirror import MirrorGroup, MGRandomStart, MGRandomOrder
 
@@ -106,6 +106,9 @@ class CallbackTests(TestCase):
         self.g  = URLGrabber()
         fullmirrors = [base_mirror_url + m + '/' for m in \
                        (bad_mirrors + good_mirrors)]
+        if hasattr(urlgrabber.grabber, '_TH'):
+            # test assumes mirrors are not re-ordered
+            urlgrabber.grabber._TH.hosts.clear()
         self.mg = MirrorGroup(self.g, fullmirrors)
     
     def test_failure_callback(self):
@@ -168,6 +171,7 @@ class FakeGrabber:
         self.resultlist = resultlist or []
         self.index = 0
         self.calls = []
+        self.opts = URLGrabberOptions()
         
     def urlgrab(self, url, filename=None, **kwargs):
         self.calls.append( (url, filename) )
