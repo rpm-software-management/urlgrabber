@@ -1559,9 +1559,7 @@ class PyCurlFileObject(object):
 
     def _do_open(self):
         self.curl_obj = _curl_cache
-        # reset() clears PYCURL_ERRORBUFFER, and there's no way
-        # to reinitialize it, so better don't do that.  BZ 896025
-        #self.curl_obj.reset() # reset all old settings away, just in case
+        self.curl_obj.reset() # reset all old settings away, just in case
         # setup any ranges
         self._set_opts()
         self._do_grab()
