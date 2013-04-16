@@ -269,6 +269,38 @@ class ActionTests(TestCase):
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
 
+class HttpReplyCode(TestCase):
+    def setUp(self):
+        def server():
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('localhost', 2000)); s.listen(1)
+            while 1:
+                c, a = s.accept()
+                while not c.recv(4096).endswith('\r\n\r\n'): pass
+                c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                c.close()
+        import thread
+        self.reply = 503, "Busy"
+        thread.start_new_thread(server, ())
+
+        def failure(obj):
+            self.code = getattr(obj.exception, 'code', None)
+            return {}
+        self.g  = URLGrabber()
+        self.mg = MirrorGroup(self.g, ['http://localhost:2000/'], failure_callback = failure)
+
+    def test_grab(self):
+        self.assertRaises(URLGrabError, self.mg.urlgrab, 'foo')
+        self.assertEquals(self.code, 503); del self.code
+
+        err = []
+        self.mg.urlgrab('foo', async = True, failfunc = err.append)
+        urlgrabber.grabber.parallel_wait()
+        self.assertEquals([e.exception.errno for e in err], [256])
+        self.assertEquals(self.code, 503); del self.code
+
 def suite():
     tl = TestLoader()
     return tl.loadTestsFromModule(sys.modules[__name__])
