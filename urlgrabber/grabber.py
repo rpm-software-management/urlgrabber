@@ -2052,7 +2052,7 @@ class _ExternalDownloader:
             raise KeyboardInterrupt
         for line in lines:
             # parse downloader output
-            line = line.split(' ', 5)
+            line = line.split(' ', 6)
             _id, size = map(int, line[:2])
             if len(line) == 2:
                 self.running[_id]._progress.update(size)
@@ -2063,7 +2063,9 @@ class _ExternalDownloader:
                 ug_err = None
                 if DEBUG: DEBUG.info('success')
             else:
-                ug_err = URLGrabError(int(line[4]), line[5])
+                ug_err = URLGrabError(int(line[4]), line[6])
+                if line[5] != '0':
+                    ug_err.code = int(line[5])
                 if DEBUG: DEBUG.info('failure: %s', ug_err)
             _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async[0])
             ret.append((opts, size, ug_err))

@@ -68,7 +68,7 @@ def main():
                 ug_err = 'OK'
             except URLGrabError, e:
                 size = 0
-                ug_err = '%d %s' % e.args
+                ug_err = '%d %d %s' % (e.errno, getattr(e, 'code', 0), e.strerror)
             write('%d %d %d %.3f %s\n', opts._id, size, dlsz, dltm, ug_err)
 
 if __name__ == '__main__':
