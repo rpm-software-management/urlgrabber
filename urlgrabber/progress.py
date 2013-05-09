@@ -219,7 +219,7 @@ def _term_add_bar(tl, bar_max_length, pc):
     return tl.add(' [%-*.*s]' % (blen, blen, bar))
 
 def _term_add_end(tl, osize, size):
-    if osize is not None:
+    if osize: # osize should be None or >0, but that's been broken.
         if size > osize: # Is ??? better? Really need something to say < vs >.
             return tl.add(' !!! '), True
         elif size != osize:
