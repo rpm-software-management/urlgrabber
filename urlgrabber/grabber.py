@@ -92,6 +92,12 @@ GENERAL ARGUMENTS (kwargs)
     the curl documentation on CURLOPT_CONNECTTIMEOUT for more information.
     http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTCONNECTTIMEOUT
 
+  minrate = 1000
+
+    This sets the low speed threshold in bytes per second. If the server
+    is sending data slower than this for at least `timeout' seconds, the
+    library aborts the connection.
+
   bandwidth = 0
 
     the nominal max bandwidth in bytes/second.  If throttle is a float
@@ -955,6 +961,7 @@ class URLGrabberOptions:
         self.opener = None
         self.cache_openers = True
         self.timeout = 300
+        self.minrate = None
         self.text = None
         self.http_headers = None
         self.ftp_headers = None
@@ -1382,7 +1389,7 @@ class PyCurlFileObject(object):
         if hasattr(opts, 'timeout'):
             timeout = int(opts.timeout or 0)
         self.curl_obj.setopt(pycurl.CONNECTTIMEOUT, timeout)
-        self.curl_obj.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
+        self.curl_obj.setopt(pycurl.LOW_SPEED_LIMIT, opts.minrate or 1000)
         self.curl_obj.setopt(pycurl.LOW_SPEED_TIME, timeout)
 
         # ssl options
@@ -2015,7 +2022,7 @@ class _ExternalDownloader:
     # list of options we pass to downloader
     _options = (
         'url', 'filename',
-        'timeout', 'close_connection', 'keepalive',
+        'timeout', 'minrate', 'close_connection', 'keepalive',
         'throttle', 'bandwidth', 'range', 'reget',
         'user_agent', 'http_headers', 'ftp_headers',
         'proxy', 'prefix', 'username', 'password',
