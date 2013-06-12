@@ -1312,6 +1312,8 @@ class PyCurlFileObject(object):
                 s = None
                 if buf.startswith('213 '):
                     s = buf[3:].strip()
+                    if len(s) >= 14:
+                        s = None # ignore MDTM responses
                 elif buf.startswith('150 '):
                     s = parse150(buf)
                 if s:
