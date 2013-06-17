@@ -77,7 +77,8 @@ CUSTOMIZATION
        kwargs are omitted, then (duh) they will not be used.
 
        kwarg 'max_connections' limits the number of concurrent
-       connections to this mirror.
+       connections to this mirror.  When omitted or set to zero,
+       the default limit (2) will be used.
 
     3) Pass keyword arguments when instantiating the mirror group.
        See, for example, the failure_callback argument.
