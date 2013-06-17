@@ -2151,6 +2151,7 @@ def parallel_wait(meter=None):
 
     dl = _ExternalDownloaderPool()
     host_con = {} # current host connection counts
+    single = set() # hosts in single connection mode
 
     def start(opts, tries):
         opts.tries = tries
@@ -2197,6 +2198,10 @@ def parallel_wait(meter=None):
 
             if ug_err is None:
                 continue
+            if ug_err.errno == pycurl.E_OPERATION_TIMEOUTED:
+                # One possible cause is connection-limited server.
+                # Turn on the max_connections=1 override. BZ 853432
+                single.add(key)
 
             retry = opts.retry or 0
             if opts.failure_callback:
@@ -2297,6 +2302,8 @@ def parallel_wait(meter=None):
 
             # check host limit, then start
             key, limit = opts.async
+            if key in single:
+                limit = 1
             while host_con.get(key, 0) >= limit:
                 perform()
             if DEBUG:
