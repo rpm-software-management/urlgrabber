@@ -311,6 +311,13 @@ GENERAL ARGUMENTS (kwargs)
     actually measured to the default speed, with default
     period of 30 days.
 
+  ftp_disable_epsv = False
+
+    False, True
+
+    This options disables Extended Passive Mode (the EPSV command)
+    which does not work correctly on some buggy ftp servers.
+
 
 RETRY RELATED ARGUMENTS
 
@@ -988,6 +995,7 @@ class URLGrabberOptions:
         self.timedhosts = None
         self.half_life = 30*24*60*60 # 30 days
         self.default_speed = 1e6 # 1 MBit
+        self.ftp_disable_epsv = False
         
     def __repr__(self):
         return self.format()
@@ -1452,7 +1460,11 @@ class PyCurlFileObject(object):
         if opts.data:
             self.curl_obj.setopt(pycurl.POST, True)
             self.curl_obj.setopt(pycurl.POSTFIELDS, _to_utf8(opts.data))
-            
+
+        # ftp
+        if opts.ftp_disable_epsv:
+            self.curl_obj.setopt(pycurl.FTP_USE_EPSV, False)
+
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
         
@@ -2034,6 +2046,7 @@ class _ExternalDownloader:
         'ssl_key_pass',
         'ssl_verify_peer', 'ssl_verify_host',
         'size', 'max_header_size', 'ip_resolve',
+        'ftp_disable_epsv'
     )
 
     def start(self, opts):
