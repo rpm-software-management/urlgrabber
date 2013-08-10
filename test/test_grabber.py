@@ -86,7 +86,7 @@ class FileObjectTests(TestCase):
     
 class HTTPTests(TestCase):
     def test_reference_file(self):
-        "download refernce file via HTTP"
+        "download reference file via HTTP"
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 

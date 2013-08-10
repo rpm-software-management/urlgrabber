@@ -191,7 +191,7 @@ class MirrorGroup:
         etc).  Otherwise, it is assumed to be the callable object
         itself.  The callback will be passed a grabber.CallbackObject
         instance along with args and kwargs (if present).  The following
-        attributes are defined withing the instance:
+        attributes are defined within the instance:
 
            obj.exception    = < exception that was raised >
            obj.mirror       = < the mirror that was tried >

@@ -35,7 +35,7 @@ GENERAL ARGUMENTS (kwargs)
   close_connection = 0   [0|1]
 
     tells URLGrabber to close the connection after a file has been
-    transfered. This is ignored unless the download happens with the
+    transferred. This is ignored unless the download happens with the
     http keepalive handler (keepalive=1).  Otherwise, the connection
     is left open for further use. The module level default for this
     option is 0 (keepalive connections will not be closed).
@@ -112,7 +112,7 @@ GENERAL ARGUMENTS (kwargs)
     range to retrieve. Either or both of the values may set to
     None. If first_byte is None, byte offset 0 is assumed. If
     last_byte is None, the last byte available is assumed. Note that
-    the range specification is python-like in that (0,10) will yeild
+    the range specification is python-like in that (0,10) will yield
     the first 10 bytes of the file.
 
     If set to None, no range will be used.
@@ -576,7 +576,7 @@ def _init_default_logger(logspec=None):
       URLGRABBER_DEBUG=WARNING,-     # log warning and higher to stdout
       URLGRABBER_DEBUG=INFO          # log info and higher to stderr
       
-    This funtion is called during module initialization.  It is not
+    This function is called during module initialization.  It is not
     intended to be called from outside.  The only reason it is a
     function at all is to keep the module-level namespace tidy and to
     collect the code into a nice block.'''

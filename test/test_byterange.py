@@ -56,7 +56,7 @@ class RangeableFileObjectTestCase(TestCase):
         """RangeableFileObject.seek() poor mans version..
         
         We just delete the seek method from StringIO so we can
-        excercise RangeableFileObject when the file object supplied
+        exercise RangeableFileObject when the file object supplied
         doesn't support seek.
         """
         seek = StringIO.seek
