@@ -447,6 +447,11 @@ BANDWIDTH THROTTLING
   is a float and bandwidth == 0, throttling is disabled.  If None, the
   module-level default (which can be set with set_bandwidth) is used.
 
+  Note that when multiple downloads run simultaneously (multiprocessing
+  or the parallel urlgrab() feature is used) the total bandwidth might
+  exceed the throttle limit. You may want to also set max_connections=1
+  or scale your throttle option down accordingly.
+
   THROTTLING EXAMPLES:
 
   Lets say you have a 100 Mbps connection.  This is (about) 10^8 bits
