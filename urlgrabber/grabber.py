@@ -1310,7 +1310,7 @@ class PyCurlFileObject(object):
             # but we can't do that w/o making it do 2 connects, which sucks
             # so we cheat and stuff it in here in the hdr_retrieve
             if self.scheme in ['http','https']:
-                if buf.lower().find('content-length') != -1:
+                if buf.lower().find('content-length:') != -1:
                     length = buf.split(':')[1]
                     self.size = int(length)
                 elif self.append and self._hdr_dump == '' and ' 200 ' in buf:
