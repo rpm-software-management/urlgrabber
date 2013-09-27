@@ -646,10 +646,14 @@ class RateEstimator:
         
     def update(self, amount_read, now=None):
         if now is None: now = time.time()
-        if amount_read == 0:
+        # libcurl calls the progress callback when fetching headers
+        # too, thus amount_read = 0 .. hdr_size .. 0 .. content_size.
+        # Ocassionally we miss the 2nd zero and report avg speed < 0.
+        # Handle read_diff < 0 here. BZ 1001767.
+        if amount_read == 0 or amount_read < self.last_amount_read:
             # if we just started this file, all bets are off
             self.last_update_time = now
-            self.last_amount_read = 0
+            self.last_amount_read = amount_read
             self.ave_rate = None
             return
 
