@@ -2355,9 +2355,10 @@ class _TH:
         filename = default_grabber.opts.timedhosts
         if filename and _TH.dirty is None:
             try:
+                now = int(time.time())
                 for line in open(filename):
                     host, speed, fail, ts = line.rsplit(' ', 3)
-                    _TH.hosts[host] = int(speed), int(fail), int(ts)
+                    _TH.hosts[host] = int(speed), int(fail), min(int(ts), now)
             except IOError: pass
             _TH.dirty = False
 
@@ -2389,9 +2390,6 @@ class _TH:
         if ug_err is None:
             # defer first update if the file was small.  BZ 851178.
             if not ts and dl_size < 1e6: return
-            # clamp timestamps from the future.  BZ 894630.
-            if ts > now: ts = now
-
             # k1: the older, the less useful
             # k2: <500ms readings are less reliable
             # speeds vary, use 10:1 smoothing
