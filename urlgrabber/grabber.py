@@ -2216,8 +2216,7 @@ def parallel_wait(meter=None):
 
             if ug_err is None:
                 continue
-            if key not in single and ug_err.errno in (pycurl.E_OPERATION_TIMEOUTED,
-                                                      pycurl.E_COULDNT_CONNECT):
+            if limit != 1 and key not in single and ug_err.errno in (12, 14):
                 # One possible cause is connection-limited server.
                 # Turn on the max_connections=1 override. BZ 853432
                 if DEBUG: DEBUG.info('max_connections(%s) %s => 1', key, limit)
