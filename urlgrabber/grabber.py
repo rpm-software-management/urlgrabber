@@ -2220,7 +2220,7 @@ def parallel_wait(meter=None):
                                               pycurl.E_COULDNT_CONNECT):
                 # One possible cause is connection-limited server.
                 # Turn on the max_connections=1 override. BZ 853432
-                DEBUG.info('max_connections(%s) %d => 1', key, limit)
+                if DEBUG: DEBUG.info('max_connections(%s) %d => 1', key, limit)
                 single.add(key)
 
             retry = opts.retry or 0
