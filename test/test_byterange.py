@@ -25,7 +25,7 @@
 
 import sys
 
-from StringIO import StringIO
+from cStringIO import StringIO
 from urlgrabber.byterange import RangeableFileObject
 
 from base_test_code import *
@@ -51,18 +51,6 @@ class RangeableFileObjectTestCase(TestCase):
         self.assertEquals('volumes', self.rfo.read(7))
         self.rfo.seek(1,1)
         self.assertEquals('of', self.rfo.read(2))
-    
-    def test_poor_mans_seek(self):
-        """RangeableFileObject.seek() poor mans version..
-        
-        We just delete the seek method from StringIO so we can
-        exercise RangeableFileObject when the file object supplied
-        doesn't support seek.
-        """
-        seek = StringIO.seek
-        del(StringIO.seek)
-        self.test_seek()
-        StringIO.seek = seek
     
     def test_read(self):
         """RangeableFileObject.read()"""

@@ -98,6 +98,7 @@ class HTTPTests(TestCase):
 
     def test_post(self):
         "do an HTTP post"
+        self.skip() # disabled on server
         headers = (('Content-type', 'text/plain'),)
         ret = grabber.urlread(base_http + 'test_post.php',
                               data=short_reference_data,
