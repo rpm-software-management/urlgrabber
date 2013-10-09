@@ -1,3 +1,11 @@
+2013-10-09  Zdenek Pavlas <zpavlas@redhat.com>
+
+	* lots of enahncements and bugfixes
+	  (parallel downloading, mirror profiling, new options)
+	* updated authors, url
+	* updated unit tests
+	* bump version to 3.10
+
 2009-09-25  Seth Vidal <skvidal@fedoraproject.org>
 
 	* urlgrabber/__init__.py: bump version to 3.9.1

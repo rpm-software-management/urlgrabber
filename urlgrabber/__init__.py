@@ -44,11 +44,12 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '3.9.1'
-__date__    = '2009/09/25'
+__version__ = '3.10'
+__date__    = '2013/10/09'
 __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Ryan Tomayko <rtomayko@naeblis.cx>' \
-              'Seth Vidal <skvidal@fedoraproject.org>' 
-__url__     = 'http://linux.duke.edu/projects/urlgrabber/'
+              'Seth Vidal <skvidal@fedoraproject.org>' \
+              'Zdenek Pavlas <zpavlas@redhat.com>'
+__url__     = 'http://urlgrabber.baseurl.org/'
 
 from grabber import urlgrab, urlopen, urlread
