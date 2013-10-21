@@ -2221,6 +2221,9 @@ def parallel_wait(meter=None):
                 # Turn on the max_connections=1 override. BZ 853432
                 if DEBUG: DEBUG.info('max_connections(%s) %s => 1', key, limit)
                 single.add(key)
+                # When using multi-downloader the parent's _curl_cache
+                # object is idle. Kill it, as it might use keepalive=1.
+                reset_curl_obj()
 
             retry = opts.retry or 0
             if opts.failure_callback:
