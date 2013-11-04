@@ -1903,6 +1903,8 @@ class PyCurlFileObject(object):
             urllib.addinfourl, via. urllib.URLopener.* """
         return self.url
         
+# tell curl to return immediately on ctrl-c
+pycurl.global_init(pycurl.GLOBAL_DEFAULT | pycurl.GLOBAL_ACK_EINTR)
 _curl_cache = pycurl.Curl() # make one and reuse it over and over and over
 
 def reset_curl_obj():
