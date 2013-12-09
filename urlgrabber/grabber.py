@@ -2170,6 +2170,7 @@ def parallel_wait(meter=None):
     dl = _ExternalDownloaderPool()
     host_con = {} # current host connection counts
     single = set() # hosts in single connection mode
+    retry_queue = []
 
     def start(opts, tries):
         opts.tries = tries
@@ -2250,7 +2251,7 @@ def parallel_wait(meter=None):
                     # mask this mirror and retry
                     if action.get('remove', 1):
                         removed.add(key)
-                    _async_queue.append(opts)
+                    retry_queue.append(opts)
                     continue
                 # fail=1 from callback
                 ug_err.errors = errors
@@ -2260,18 +2261,21 @@ def parallel_wait(meter=None):
             _run_callback(opts.failfunc, opts)
 
     try:
-        idx = 0
+        retry_idx = idx = 0
         while True:
-            if idx >= len(_async_queue):
-                # the queue is empty
+            if retry_idx < len(retry_queue):
+                # retries first
+                opts = retry_queue[retry_idx]
+                retry_idx += 1
+            elif idx < len(_async_queue):
+                # handle next request
+                opts = _async_queue[idx]
+                idx += 1
+            else:
+                # both queues are empty
                 if not dl.running: break
-                # pending dl may extend it
                 perform()
                 continue
-
-            # handle next request
-            opts = _async_queue[idx]
-            idx += 1
 
             # check global limit
             while len(dl.running) >= default_grabber.opts.max_connections:
