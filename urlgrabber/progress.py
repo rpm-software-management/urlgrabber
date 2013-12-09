@@ -254,7 +254,7 @@ class TextMeter(BaseMeter):
             use_hours = False
         ui_size = tl.add(' | %5sB' % fread)
         if self.size is None:
-            ui_time = tl.add(' %9s' % format_time(etime, use_hours))
+            ui_time = tl.add('  %s' % format_time(etime, use_hours))
             ui_end  = tl.add(' ' * 5)
             ui_rate = tl.add(' %5sB/s' % ave_dl)
             out = '%-*.*s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
@@ -264,7 +264,7 @@ class TextMeter(BaseMeter):
             frtime = format_time(rtime, use_hours)
             frac = self.re.fraction_read()
 
-            ui_time = tl.add(' %9s' % frtime)
+            ui_time = tl.add('  %s' % frtime)
             ui_end  = tl.add(' ETA ')
 
             if sofar_size is None:
@@ -301,7 +301,7 @@ class TextMeter(BaseMeter):
         else:
             use_hours = False
         ui_size = tl.add(' | %5sB' % total_size)
-        ui_time = tl.add(' %9s' % format_time(self.re.elapsed_time(),use_hours))
+        ui_time = tl.add('  %s' % format_time(self.re.elapsed_time(), use_hours))
         ui_end, not_done = _term_add_end(tl, self.size, amount_read)
         out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                     ui_size, ui_time, ui_end)
@@ -541,21 +541,17 @@ class TextMultiFileMeter(MultiFileMeter):
             tl = TerminalLine(8, 8+1+8)
             if tl._llen > 80:
                 use_hours = True # For big screens, make it more readable.
-                time_len  = 9
             else:
                 use_hours = False
-                time_len  = 7
-
             ui_size = tl.add(' | %5sB' % format_number(dd))
-
             if not self.re.total:
-                ui_time = tl.add(' %*s' % (time_len,format_time(dt, use_hours)))
+                ui_time = tl.add('  %s' % format_time(dt, use_hours))
                 ui_end  = tl.add(' ' * 5)
                 ui_rate = tl.add(' %5sB/s' % ave_dl)
                 out = '\r%-*.*s%s%s%s%s\r' % (tl.rest(), tl.rest(), text,
                                               ui_rate, ui_size, ui_time, ui_end)
             else:
-                ui_time = tl.add(' %*s' % (time_len,format_time(rt, use_hours)))
+                ui_time = tl.add('  %s' % format_time(rt, use_hours))
                 ui_end  = tl.add(' ETA ')
 
                 ui_sofar_pc = tl.add(' %i%%' % pf,
@@ -594,12 +590,10 @@ class TextMultiFileMeter(MultiFileMeter):
             tl = TerminalLine(8)
             if tl._llen > 80:
                 use_hours = True # For big screens, make it more readable.
-                time_len  = 9
             else:
                 use_hours = False
-                time_len  = 7
             ui_size = tl.add(' | %5sB' % total_size)
-            ui_time = tl.add(' %*s' % (time_len, format_time(et, use_hours)))
+            ui_time = tl.add('  %s' % format_time(et, use_hours))
             ui_end, not_done = _term_add_end(tl, meter.size, size)
             out = '\r%-*.*s%s%s%s\n' % (tl.rest(), tl.rest(), text,
                                         ui_size, ui_time, ui_end)
