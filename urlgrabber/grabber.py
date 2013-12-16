@@ -999,7 +999,7 @@ class URLGrabberOptions:
         self.max_connections = 5
         self.timedhosts = None
         self.half_life = 30*24*60*60 # 30 days
-        self.default_speed = 1e6 # 1 MBit
+        self.default_speed = 500e3 # 500 kBps
         self.ftp_disable_epsv = False
         
     def __repr__(self):
