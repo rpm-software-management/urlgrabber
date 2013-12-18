@@ -1249,6 +1249,7 @@ class PyCurlFileObject(object):
         self._tsize = 0
         self._amount_read = 0
         self._reget_length = 0
+        self._range = None
         self._prog_running = False
         self._error = (None, None)
         self.size = 0
@@ -1288,7 +1289,15 @@ class PyCurlFileObject(object):
 
             self._amount_read += len(buf)
             try:
-                self.fo.write(buf)
+                if self._range:
+                    # client-side ranges
+                    pos = self._amount_read - len(buf)
+                    start = self._range[0] - pos
+                    stop = self._range[1] - pos
+                    if start < len(buf) and stop > 0:
+                        self.fo.write(buf[max(start, 0):stop])
+                else:
+                    self.fo.write(buf)
             except IOError, e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
@@ -1313,13 +1322,14 @@ class PyCurlFileObject(object):
                 if buf.lower().find('content-length:') != -1:
                     length = buf.split(':')[1]
                     self.size = int(length)
-                elif self.append and self._hdr_dump == '' and ' 200 ' in buf:
+                elif (self.append or self.opts.range) and self._hdr_dump == '' and ' 200 ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
                     self.reget_time = None
                     self._amount_read = 0
                     self._reget_length = 0
+                    self._range = self.opts.range
                     self.fo.truncate(0)
             elif self.scheme in ['ftp']:
                 s = None

@@ -323,6 +323,19 @@ class HttpReplyCode(TestCase):
         self.assertEquals([e.exception.errno for e in err], [256])
         self.assertEquals(self.code, 503); del self.code
 
+    def test_range(self):
+        'test client-side processing of HTTP ranges'
+        # server does not process ranges
+        self.reply = 200, "OK"
+        self.content = 'ABCDEF'
+
+        # no range specified
+        data = self.mg.urlread('foo')
+        self.assertEquals(data, 'ABCDEF')
+
+        data = self.mg.urlread('foo', range = (3, 5))
+        self.assertEquals(data, 'DE')
+
 def suite():
     tl = TestLoader()
     return tl.loadTestsFromModule(sys.modules[__name__])
