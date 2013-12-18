@@ -268,33 +268,55 @@ class ActionTests(TestCase):
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
+import thread, socket
+LOCALPORT = 'localhost', 2000
 
 class HttpReplyCode(TestCase):
     def setUp(self):
+        # start the server
+        self.exit = False
         def server():
-            import socket
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(('localhost', 2000)); s.listen(1)
+            s.bind(LOCALPORT); s.listen(1)
             while 1:
                 c, a = s.accept()
+                if self.exit: c.close(); break
                 while not c.recv(4096).endswith('\r\n\r\n'): pass
                 c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                if self.content is not None:
+                    c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
+                    c.sendall(self.content)
                 c.close()
-        import thread
-        self.reply = 503, "Busy"
+            s.close()
+            self.exit = False
         thread.start_new_thread(server, ())
 
+        # create grabber and mirror group objects
         def failure(obj):
             self.code = getattr(obj.exception, 'code', None)
             return {}
         self.g  = URLGrabber()
-        self.mg = MirrorGroup(self.g, ['http://localhost:2000/'], failure_callback = failure)
+        self.mg = MirrorGroup(self.g, ['http://%s:%d' % LOCALPORT],
+                              failure_callback = failure)
+
+    def tearDown(self):
+        # shut down the server
+        self.exit = True
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(LOCALPORT); s.close() # wake it up
+        while self.exit: pass # poor man's join
 
     def test_grab(self):
+        'tests the propagation of HTTP reply code'
+        self.reply = 503, "Busy"
+        self.content = None
+
+        # single
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'foo')
         self.assertEquals(self.code, 503); del self.code
 
+        # multi
         err = []
         self.mg.urlgrab('foo', async = True, failfunc = err.append)
         urlgrabber.grabber.parallel_wait()
