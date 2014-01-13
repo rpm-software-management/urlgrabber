@@ -2418,6 +2418,7 @@ class _TH:
                 speed = (k1 * speed + k2 * dl_size / dl_time) / (k1 + k2)
             fail = 0
         elif getattr(ug_err, 'code', None) == 404:
+            if not ts: return # 1st update, avoid speed=0
             fail = 0 # alive, at least
         else:
             fail += 1 # seems dead
