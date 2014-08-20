@@ -19,9 +19,10 @@
 
 
 import sys
+import six
 import time
 import math
-import thread
+from six.moves import _thread as thread
 import fcntl
 import struct
 import termios
@@ -606,7 +607,7 @@ class TextMultiFileMeter(MultiFileMeter):
         try:
             format = "%-30.30s %6.6s %s"
             fn = meter.text or meter.basename
-            if type(message) in (type(''), type(u'')):
+            if type(message) in (type(''), type('')):
                 message = message.splitlines()
             if not message: message = ['']
             out = '%-79s' % (format % (fn, 'FAILED', message[0] or ''))
@@ -778,7 +779,7 @@ def format_number(number, SI=0, space=' '):
         depth  = depth + 1
         number = number / step
 
-    if type(number) == type(1) or type(number) == type(1L):
+    if type(number) in six.integer_types:
         # it's an int or a long, which means it didn't get divided,
         # which means it's already short enough
         format = '%i%s%s'
@@ -806,7 +807,7 @@ def _tst(fn, cur, tot, beg, size, *args):
     tm.end(size)
 
 def _mtst(datas, *args):
-    print '-' * 79
+    print('-' * 79)
     tm = TextMultiFileMeter(threaded=False)
 
     dl_sizes = {}

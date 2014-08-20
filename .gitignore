@@ -5,3 +5,4 @@ build
 *.kdev*
 *.kateproject
 ipython.log*
+*.swp

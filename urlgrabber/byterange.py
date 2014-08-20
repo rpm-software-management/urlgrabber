@@ -18,24 +18,22 @@
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
 
+import email
+import mimetypes
 import os
+import six
 import stat
-import urllib
-import urllib2
-import rfc822
+from six.moves import urllib
 
 DEBUG = None
 
-try:    
-    from cStringIO import StringIO
-except ImportError, msg: 
-    from StringIO import StringIO
+from io import StringIO
 
 class RangeError(IOError):
     """Error raised when an unsatisfiable range is requested."""
     pass
     
-class HTTPRangeHandler(urllib2.BaseHandler):
+class HTTPRangeHandler(urllib.request.BaseHandler):
     """Handler that enables HTTP Range headers.
     
     This was extremely simple. The Range header is a HTTP feature to
@@ -120,7 +118,7 @@ class RangeableFileObject:
         in self.fo.  This includes methods."""
         if hasattr(self.fo, name):
             return getattr(self.fo, name)
-        raise AttributeError, name
+        raise AttributeError(name)
     
     def tell(self):
         """Return the position within the range.
@@ -211,37 +209,36 @@ class RangeableFileObject:
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             pos+= bufsize
 
-class FileRangeHandler(urllib2.FileHandler):
+class FileRangeHandler(urllib.request.FileHandler):
     """FileHandler subclass that adds Range support.
     This class handles Range headers exactly like an HTTP
     server would.
     """
     def open_local_file(self, req):
-        import mimetypes
-        import mimetools
         host = req.get_host()
         file = req.get_selector()
-        localfile = urllib.url2pathname(file)
+        localfile = urllib.request.url2pathname(file)
         stats = os.stat(localfile)
         size = stats[stat.ST_SIZE]
-        modified = rfc822.formatdate(stats[stat.ST_MTIME])
+        modified = email.utils.formatdate(stats[stat.ST_MTIME])
         mtype = mimetypes.guess_type(file)[0]
         if host:
-            host, port = urllib.splitport(host)
+            host, port = urllib.parse.splitport(host)
             if port or socket.gethostbyname(host) not in self.get_names():
-                raise urllib2.URLError('file not on local host')
+                raise urllib.error.URLError('file not on local host')
         fo = open(localfile,'rb')
         brange = req.headers.get('Range',None)
         brange = range_header_to_tuple(brange)
         assert brange != ()
         if brange:
             (fb,lb) = brange
-            if lb == '': lb = size
+            if lb == '':
+                lb = size
             if fb < 0 or fb > size or lb > size:
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
-        headers = mimetools.Message(StringIO(
+        headers = email.message.Message(StringIO(
             'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
             (mtype or 'text/plain', size, modified)))
         return urllib.addinfourl(fo, headers, 'file:'+file)
@@ -254,42 +251,39 @@ class FileRangeHandler(urllib2.FileHandler):
 # follows:
 # -- range support modifications start/end here
 
-from urllib import splitport, splituser, splitpasswd, splitattr, \
-                   unquote, addclosehook, addinfourl
 import ftplib
 import socket
 import sys
-import mimetypes
-import mimetools
+from six.moves.urllib.parse import urlparse, unquote
 
-class FTPRangeHandler(urllib2.FTPHandler):
+# Very old functions and classes, undocumented in current Python releases
+if six.PY3:
+    from urllib.request import splitattr
+    from urllib.response import addinfourl
+else:
+    from urllib import splitattr
+    from urllib import addinfourl
+
+
+class FTPRangeHandler(urllib.request.FTPHandler):
     def ftp_open(self, req):
         host = req.get_host()
         if not host:
-            raise IOError, ('ftp error', 'no host given')
-        host, port = splitport(host)
-        if port is None:
-            port = ftplib.FTP_PORT
-        else:
-            port = int(port)
+            raise IOError('ftp error', 'no host given')
 
-        # username/password handling
-        user, host = splituser(host)
-        if user:
-            user, passwd = splitpasswd(user)
-        else:
-            passwd = None
+        parsed = urlparse(host)
+        port = parsed.port or ftplib.FTP_PORT
+        user = unquote(parsed.username or '')
+        passwd = unquote(parsed.passwd or '')
         host = unquote(host)
-        user = unquote(user or '')
-        passwd = unquote(passwd or '')
         
         try:
             host = socket.gethostbyname(host)
-        except socket.error, msg:
-            raise urllib2.URLError(msg)
+        except socket.error as msg:
+            raise urllib.error.URLError(msg)
         path, attrs = splitattr(req.get_selector())
         dirs = path.split('/')
-        dirs = map(unquote, dirs)
+        dirs = list(map(unquote, dirs))
         dirs, file = dirs[:-1], dirs[-1]
         if dirs and not dirs[0]:
             dirs = dirs[1:]
@@ -336,24 +330,36 @@ class FTPRangeHandler(urllib2.FTPHandler):
             if retrlen is not None and retrlen >= 0:
                 headers += "Content-Length: %d\n" % retrlen
             sf = StringIO(headers)
-            headers = mimetools.Message(sf)
+            headers = email.message.Message(sf)
             return addinfourl(fp, headers, req.get_full_url())
-        except ftplib.all_errors, msg:
-            raise IOError, ('ftp error', msg), sys.exc_info()[2]
+        except ftplib.all_errors as msg:
+            error = IOError('ftp error', msg)
+            six.reraise(error.__class__, error, sys.exc_info()[2])
 
     def connect_ftp(self, user, passwd, host, port, dirs):
         fw = ftpwrapper(user, passwd, host, port, dirs)
         return fw
 
-class ftpwrapper(urllib.ftpwrapper):
+# Very old functions and classes, undocumented in current Python releases
+if six.PY3:
+    from urllib.request import ftpwrapper, addclosehook
+else:
+    from urllib import ftpwrapper, addclosehook
+
+
+class ftpwrapper(ftpwrapper):
     # range support note:
     # this ftpwrapper code is copied directly from
     # urllib. The only enhancement is to add the rest
     # argument and pass it on to ftp.ntransfercmd
     def retrfile(self, file, type, rest=None):
         self.endtransfer()
-        if type in ('d', 'D'): cmd = 'TYPE A'; isdir = 1
-        else: cmd = 'TYPE ' + type; isdir = 0
+        if type in ('d', 'D'):
+            cmd = 'TYPE A'
+            isdir = 1
+        else:
+            cmd = 'TYPE ' + type
+            isdir = 0
         try:
             self.ftp.voidcmd(cmd)
         except ftplib.all_errors:
@@ -364,22 +370,23 @@ class ftpwrapper(urllib.ftpwrapper):
             # Use nlst to see if the file exists at all
             try:
                 self.ftp.nlst(file)
-            except ftplib.error_perm, reason:
-                raise IOError, ('ftp error', reason), sys.exc_info()[2]
+            except ftplib.error_perm as reason:
+                error = IOError('ftp error', reason)
+                six.reraise(error.__class__, error, sys.exc_info()[2])
             # Restore the transfer mode!
             self.ftp.voidcmd(cmd)
             # Try to retrieve as a file
             try:
                 cmd = 'RETR ' + file
                 conn = self.ftp.ntransfercmd(cmd, rest)
-            except ftplib.error_perm, reason:
+            except ftplib.error_perm as reason:
                 if str(reason)[:3] == '501':
                     # workaround for REST not supported error
                     fp, retrlen = self.retrfile(file, type)
                     fp = RangeableFileObject(fp, (rest,''))
                     return (fp, retrlen)
                 elif str(reason)[:3] != '550':
-                    raise IOError, ('ftp error', reason), sys.exc_info()[2]
+                    six.reraise(IOError, ('ftp error', reason), sys.exc_info()[2])
         if not conn:
             # Set transfer mode to ASCII!
             self.ftp.voidcmd('TYPE A')
@@ -458,6 +465,7 @@ def range_tuple_normalize(range_tup):
     # check if range is over the entire file
     if (fb,lb) == (0,''): return None
     # check that the range is valid
-    if lb < fb: raise RangeError(9, 'Invalid byte range: %s-%s' % (fb,lb))
+    if lb != '' and lb < fb:
+        raise RangeError(9, 'Invalid byte range: %s-%s' % (fb, lb))
     return (fb,lb)
 
