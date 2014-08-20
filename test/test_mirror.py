@@ -24,8 +24,9 @@
 # $Id: test_mirror.py,v 1.12 2005/10/22 21:57:27 mstenner Exp $
 
 import sys
+import six
 import os
-import string, tempfile, random, cStringIO, os
+import string, tempfile, random, os
 
 import urlgrabber.grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError, URLGrabberOptions
@@ -268,7 +269,8 @@ class ActionTests(TestCase):
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
-import thread, socket
+from six.moves import _thread as thread
+import socket
 LOCALPORT = 'localhost', 2000
 
 class HttpReplyCode(TestCase):
@@ -282,11 +284,14 @@ class HttpReplyCode(TestCase):
             while 1:
                 c, a = s.accept()
                 if self.exit: c.close(); break
-                while not c.recv(4096).endswith('\r\n\r\n'): pass
-                c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                ending_compat = '\r\n\r\n' if not six.PY3 else b'\r\n\r\n'
+                while not c.recv(4096).endswith(ending_compat): pass
+                http_compat = 'HTTP/1.1 %d %s\r\n' % self.reply
+                c.sendall(http_compat if not six.PY3 else http_compat.encode('utf-8'))
                 if self.content is not None:
-                    c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
-                    c.sendall(self.content)
+                    cont_length_compat = 'Content-Length: %d\r\n\r\n' % len(self.content)
+                    c.sendall(cont_length_compat if not six.PY3 else cont_length_compat.encode('utf-8'))
+                    c.sendall(self.content if not six.PY3 else self.content.encode('utf-8'))
                 c.close()
             s.close()
             self.exit = False
