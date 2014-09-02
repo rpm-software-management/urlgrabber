@@ -1298,12 +1298,12 @@ class PyCurlFileObject(object):
                     start = self._range[0] - pos
                     stop = self._range[1] - pos
                     if start < len(buf) and stop > 0:
-                        if not six.PY3 or isinstance(self.fo, StringIO):
+                        if not six.PY3 and isinstance(self.fo, StringIO):
                             self.fo.write(buf[max(start, 0):stop].decode('utf-8'))
                         else:
                             self.fo.write(buf[max(start, 0):stop])
                 else:
-                    if not six.PY3 or isinstance(self.fo, StringIO):
+                    if not six.PY3 and isinstance(self.fo, StringIO):
                         self.fo.write(buf.decode('utf-8'))
                     else:
                         self.fo.write(buf)
