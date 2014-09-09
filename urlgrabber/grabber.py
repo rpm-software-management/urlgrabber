@@ -516,7 +516,7 @@ from six.moves import urllib
 from six.moves.http_client import responses, HTTPException
 from urlgrabber.byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
-from io import StringIO
+from io import BytesIO
 
 try:
     import xattr
@@ -1235,7 +1235,7 @@ default_grabber = URLGrabber()
 class PyCurlFileObject(object):
     def __init__(self, url, filename, opts):
         self.fo = None
-        self._hdr_dump = ''
+        self._hdr_dump = b''
         self._parsed_hdr = None
         self.url = url
         self.scheme = urllib.parse.urlsplit(self.url)[0]
@@ -1246,7 +1246,7 @@ class PyCurlFileObject(object):
         if self.opts.reget == 'check_timestamp':
             raise NotImplementedError("check_timestamp regets are not implemented in this ver of urlgrabber. Please report this.")
         self._complete = False
-        self._rbuf = ''
+        self._rbuf = b''
         self._rbufsize = 1024*8
         self._ttime = time.time()
         self._tsize = 0
@@ -1298,15 +1298,9 @@ class PyCurlFileObject(object):
                     start = self._range[0] - pos
                     stop = self._range[1] - pos
                     if start < len(buf) and stop > 0:
-                        if not six.PY3 and isinstance(self.fo, StringIO):
-                            self.fo.write(buf[max(start, 0):stop].decode('utf-8'))
-                        else:
-                            self.fo.write(buf[max(start, 0):stop])
+                        self.fo.write(buf[max(start, 0):stop])
                 else:
-                    if not six.PY3 and isinstance(self.fo, StringIO):
-                        self.fo.write(buf.decode('utf-8'))
-                    else:
-                        self.fo.write(buf)
+                    self.fo.write(buf)
             except IOError as e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
@@ -1316,7 +1310,7 @@ class PyCurlFileObject(object):
             
     def _hdr_retrieve(self, buf):
         if self._hdr_ended:
-            self._hdr_dump = ''
+            self._hdr_dump = b''
             self.size = 0
             self._hdr_ended = False
 
@@ -1328,12 +1322,12 @@ class PyCurlFileObject(object):
             # but we can't do that w/o making it do 2 connects, which sucks
             # so we cheat and stuff it in here in the hdr_retrieve
             if self.scheme in ['http','https']:
-                content_length_str = 'content-length:' if not six.PY3 else b'content-length:'
+                content_length_str = b'content-length:'
                 if buf.lower().find(content_length_str) != -1:
-                    split_str = ':' if not six.PY3 else b':'
+                    split_str = b':'
                     length = buf.split(split_str)[1]
                     self.size = int(length)
-                elif (self.append or self.opts.range) and self._hdr_dump == '' and b' 200 ' in buf:
+                elif (self.append or self.opts.range) and self._hdr_dump == b'' and b' 200 ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
@@ -1349,20 +1343,19 @@ class PyCurlFileObject(object):
                     if len(s) >= 14:
                         s = None # ignore MDTM responses
                 elif buf.startswith(b'150 '):
-                    s = parse150(buf if not six.PY3 else buf.decode('utf-8'))
+                    s = parse150(buf.decode('utf-8')) # Necessary in Python 3, doesn't hurt in Python 2
                 if s:
                     self.size = int(s)
                     
-            location_str = 'location' if not six.PY3 else b'location'
+            location_str = b'location'
             if buf.lower().find(location_str) != -1:
-                buf_compat = buf if not six.PY3 else buf.decode('utf-8')
-                location = ':'.join(buf_compat.split(':')[1:])
+                location = b':'.join(buf.split(b':')[1:])
                 location = location.strip()
                 self.scheme = urllib.parse.urlsplit(location)[0]
                 self.url = location
                 
-            self._hdr_dump += buf if not six.PY3 else buf.decode('utf-8')
-            end_str = '\r\n' if not six.PY3 else b'\r\n'
+            self._hdr_dump += buf
+            end_str = b'\r\n'
             if len(self._hdr_dump) != 0 and buf == end_str:
                 self._hdr_ended = True
                 if DEBUG: DEBUG.debug('header ended:')
@@ -1374,12 +1367,12 @@ class PyCurlFileObject(object):
     def _return_hdr_obj(self):
         if self._parsed_hdr:
             return self._parsed_hdr
-        statusend = self._hdr_dump.find('\n')
+        statusend = self._hdr_dump.find(b'\n')
         statusend += 1 # ridiculous as it may seem.
-        hdrfp = StringIO()
+        hdrfp = BytesIO()
         hdrfp.write(self._hdr_dump[statusend:])
         hdrfp.seek(0)
-        self._parsed_hdr =  Message(hdrfp)
+        self._parsed_hdr = Message(hdrfp)
         return self._parsed_hdr
     
     hdr = property(_return_hdr_obj)
@@ -1709,7 +1702,7 @@ class PyCurlFileObject(object):
             return (fo, hdr)
         
     def _do_grab(self):
-        """dump the file to a filename or StringIO buffer"""
+        """dump the file to a filename or BytesIO buffer"""
 
         if self._complete:
             return
@@ -1739,7 +1732,7 @@ class PyCurlFileObject(object):
             self._prog_basename = 'MEMORY'
 
             
-            self.fo = StringIO()
+            self.fo = BytesIO()
             # if this is to be a tempfile instead....
             # it just makes crap in the tempdir
             #fh, self._temp_name = mkstemp()
@@ -1778,7 +1771,7 @@ class PyCurlFileObject(object):
                     raise err
             # re open it
             try:
-                self.fo = open(self.filename, 'r')
+                self.fo = open(self.filename, 'rb')
             except IOError as e:
                 err = URLGrabError(16, _(\
                   'error opening file from %s, IOError: %s') % (self.url, e))
@@ -1853,7 +1846,7 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = ''.join(buf)
+        self._rbuf = b''.join(buf)
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
@@ -1888,28 +1881,40 @@ class PyCurlFileObject(object):
     def read(self, amt=None):
         self._fill_buffer(amt)
         if amt is None:
-            s, self._rbuf = self._rbuf, ''
+            s, self._rbuf = self._rbuf, b''
         else:
             s, self._rbuf = self._rbuf[:amt], self._rbuf[amt:]
-        return s
+        return s if not six.PY3 else s.decode('utf-8')
 
     def readline(self, limit=-1):
         if not self._complete: self._do_grab()
-        return self.fo.readline()
+        return self.fo.readline() if not six.PY3 else self.fo.readline().decode('utf-8')
         
-        i = self._rbuf.find('\n')
+        i = self._rbuf.find(b'\n')
         while i < 0 and not (0 < limit <= len(self._rbuf)):
             L = len(self._rbuf)
             self._fill_buffer(L + self._rbufsize)
             if not len(self._rbuf) > L: break
-            i = self._rbuf.find('\n', L)
+            i = self._rbuf.find(b'\n', L)
 
         if i < 0: i = len(self._rbuf)
         else: i = i+1
         if 0 <= limit < len(self._rbuf): i = limit
 
         s, self._rbuf = self._rbuf[:i], self._rbuf[i:]
-        return s
+        return s if not six.PY3 else s.decode('utf-8')
+
+    # This was added here because we need to wrap self.fo readlines (which will
+    # always return bytes) in correct decoding
+    def readlines(self, *args, **kwargs):
+        if not six.PY3:
+            return [line for line in self.fo.readlines(*args, **kwargs)]
+        else:
+            return self._py3readlines(*args, **kwargs)
+
+    def _py3readlines(self, *args, **kwargs):
+        for line in self.fo.readlines(*args, **kwargs):
+            yield line.decode('utf-8')
 
     def close(self):
         if self._prog_running:
@@ -2055,11 +2060,9 @@ def _readlines(fd):
     buf = os.read(fd, 4096)
     if not buf: return None
     # whole lines only, no buffering
-    buf_compat = buf if not six.PY3 else buf.decode('utf-8')
-    while buf_compat[-1] != '\n':
+    while buf.decode('utf-8')[-1] != '\n':
         buf += os.read(fd, 4096)
-        buf_compat = buf if not six.PY3 else buf.decode('utf-8')
-    return buf_compat[:-1].split('\n')
+    return buf.decode('utf-8')[:-1].split('\n')
 
 import subprocess
 
@@ -2403,7 +2406,7 @@ class _TH:
         if filename and _TH.dirty is None:
             try:
                 now = int(time.time())
-                for line in open(filename):
+                for line in open(filename, 'rb'):
                     host, speed, fail, ts = line.rsplit(' ', 3)
                     _TH.hosts[host] = int(speed), int(fail), min(int(ts), now)
             except IOError: pass
@@ -2415,7 +2418,7 @@ class _TH:
         if filename and _TH.dirty is True:
             tmp = '%s.%d' % (filename, os.getpid())
             try:
-                f = open(tmp, 'w')
+                f = open(tmp, 'wb')
                 for host in _TH.hosts:
                     f.write(host + ' %d %d %d\n' % _TH.hosts[host])
                 f.close()
@@ -2536,7 +2539,7 @@ def _file_object_test(filename=None):
     if filename is None:
         filename = __file__
     print('using file "%s" for comparisons' % filename)
-    fo = open(filename)
+    fo = open(filename, 'rb')
     s_input = fo.read()
     fo.close()
 
@@ -2544,8 +2547,8 @@ def _file_object_test(filename=None):
                      _test_file_object_readall,
                      _test_file_object_readline,
                      _test_file_object_readlines]:
-        fo_input = StringIO(s_input)
-        fo_output = StringIO()
+        fo_input = BytesIO(s_input)
+        fo_output = BytesIO()
         wrapper = PyCurlFileObject(fo_input, None, 0)
         print('testing %-30s ' % testfunc.__name__, testfunc(wrapper, fo_output))
         s_output = fo_output.getvalue()

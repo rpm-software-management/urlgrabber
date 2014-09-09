@@ -27,7 +27,7 @@ from six.moves import urllib
 
 DEBUG = None
 
-from io import StringIO
+from io import BytesIO
 
 class RangeError(IOError):
     """Error raised when an unsatisfiable range is requested."""
@@ -238,8 +238,8 @@ class FileRangeHandler(urllib.request.FileHandler):
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
-        headers = email.message.Message(StringIO(
-            'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
+        headers = email.message.Message(BytesIO(
+            b'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
             (mtype or 'text/plain', size, modified)))
         return urllib.addinfourl(fo, headers, 'file:'+file)
 
@@ -323,13 +323,13 @@ class FTPRangeHandler(urllib.request.FTPHandler):
                     fp = RangeableFileObject(fp, (0,retrlen))
             # -- range support modifications end here
             
-            headers = ""
+            headers = b""
             mtype = mimetypes.guess_type(req.get_full_url())[0]
             if mtype:
-                headers += "Content-Type: %s\n" % mtype
+                headers += b"Content-Type: %s\n" % mtype
             if retrlen is not None and retrlen >= 0:
-                headers += "Content-Length: %d\n" % retrlen
-            sf = StringIO(headers)
+                headers += b"Content-Length: %d\n" % retrlen
+            sf = BytesIO(headers)
             headers = email.message.Message(sf)
             return addinfourl(fp, headers, req.get_full_url())
         except ftplib.all_errors as msg:

@@ -42,7 +42,7 @@ from urlgrabber.progress import text_progress_meter
 class FileObjectTests(TestCase):
     
     def setUp(self):
-        self.filename = tempfile.mktemp()
+        _, self.filename = tempfile.mkstemp()
         fo = open(self.filename, 'wb')
         fo.write(reference_data.encode('utf-8'))
         fo.close()
@@ -61,35 +61,36 @@ class FileObjectTests(TestCase):
     def test_readall(self):
         "PYCurlFileObject .read() method"
         s = self.wrapper.read()
-        self.fo_output.write(s)
+        self.fo_output.write(unicode(s) if not six.PY3 else s)
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_readline(self):
         "PyCurlFileObject .readline() method"
         while 1:
             s = self.wrapper.readline()
-            self.fo_output.write(s)
+            self.fo_output.write(unicode(s) if not six.PY3 else s)
             if not s: break
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
-        self.fo_output.write(''.join(li))
+        out = ''.join(li)
+        self.fo_output.write(unicode(out) if not six.PY3 else out)
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
         "PyCurlFileObject .read(N) with small N"
         while 1:
             s = self.wrapper.read(23)
-            self.fo_output.write(s)
+            self.fo_output.write(unicode(s) if not six.PY3 else s)
             if not s: break
         self.assert_(reference_data == self.fo_output.getvalue())
     
 class HTTPTests(TestCase):
     def test_reference_file(self):
         "download reference file via HTTP"
-        filename = tempfile.mktemp()
+        _, filename = tempfile.mkstemp()
         grabber.urlgrab(ref_http, filename)
 
         fo = open(filename, 'rb' if not six.PY3 else 'r')
@@ -123,7 +124,7 @@ class URLGrabberModuleTestCase(TestCase):
     
     def test_urlgrab(self):
         "module-level urlgrab() function"
-        outfile = tempfile.mktemp()
+        _, outfile = tempfile.mkstemp()
         filename = urlgrabber.urlgrab('http://www.python.org', 
                                     filename=outfile)
         os.unlink(outfile)
@@ -367,7 +368,7 @@ class CheckfuncTestCase(TestCase):
     def setUp(self):
         cf = (self._checkfunc, ('foo',), {'bar': 'baz'})
         self.g = grabber.URLGrabber(checkfunc=cf)
-        self.filename = tempfile.mktemp()
+        _, self.filename = tempfile.mkstemp()
         self.data = short_reference_data
         
     def tearDown(self):
@@ -440,7 +441,7 @@ class RegetTestBase:
     def setUp(self):
         self.ref = short_reference_data
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
-        self.filename = tempfile.mktemp()
+        _, self.filename = tempfile.mkstemp()
         self.hl = len(self.ref) / 2
         self.url = 'OVERRIDE THIS'
 
@@ -522,7 +523,7 @@ class HTTPRegetTests(FTPRegetTests):
 class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
-        tmp = tempfile.mktemp()
+        _, tmp = tempfile.mkstemp()
         tmpfo = open(tmp, 'wb' if not six.PY3 else 'w')
         tmpfo.write(self.ref)
         tmpfo.close()
@@ -534,7 +535,7 @@ class FileRegetTests(HTTPRegetTests):
 
         self.grabber = grabber.URLGrabber(reget='check_timestamp',
                                           copy_local=1)
-        self.filename = tempfile.mktemp()
+        _, self.filename = tempfile.mkstemp()
         self.hl = len(self.ref) / 2
 
     def tearDown(self):
