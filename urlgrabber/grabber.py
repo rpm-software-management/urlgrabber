@@ -1524,7 +1524,7 @@ class PyCurlFileObject(object):
                 err.url = errurl
                 raise err
                 
-            elif errcode in (42, 55, 56):
+            elif errcode == 42:
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
