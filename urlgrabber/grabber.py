@@ -1576,6 +1576,7 @@ class PyCurlFileObject(object):
                              67 : _("Authentication failure"),
                              70 : _("Out of disk space on server"),
                              73 : _("Remove file exists"),
+                             77 : _("Problem with the SSL CA cert (path? access rights?)"),
                               }
                 errstr = str(e.args[1]) or pyerr2str.get(errcode, '<Unknown>')
                 if code and not 200 <= code <= 299:
