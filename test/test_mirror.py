@@ -50,7 +50,7 @@ class BasicTests(TestCase):
 
     def test_urlgrab(self):
         """MirrorGroup.urlgrab"""
-        _, filename = tempfile.mkstemp()
+        filename = tempfile.mktemp()
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
@@ -84,7 +84,7 @@ class SubclassTests(TestCase):
     def fetchwith(self, mgclass):
         self.mg = mgclass(self.g, self.fullmirrors)
 
-        _, filename = tempfile.mkstemp()
+        filename = tempfile.mktemp()
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
@@ -137,7 +137,7 @@ class BadMirrorTests(TestCase):
 
     def test_simple_grab(self):
         """test that a bad mirror raises URLGrabError"""
-        _, filename = tempfile.mkstemp()
+        filename = tempfile.mktemp()
         url = 'reference'
         self.assertRaises(URLGrabError, self.mg.urlgrab, url, filename)
 
@@ -150,7 +150,7 @@ class FailoverTests(TestCase):
 
     def test_simple_grab(self):
         """test that a the MG fails over past a bad mirror"""
-        _, filename = tempfile.mkstemp()
+        filename = tempfile.mktemp()
         url = 'reference'
         elist = []
         def cb(e, elist=elist): elist.append(e)
