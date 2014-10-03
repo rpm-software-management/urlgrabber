@@ -24,13 +24,11 @@
 # $Id: test_grabber.py,v 1.31 2006/12/08 00:14:16 mstenner Exp $
 
 import sys
-import six
 import os
-import tempfile, random, os
-from six.moves import urllib
+import string, tempfile, random, cStringIO, os
+import urllib2
 import socket
 
-from io import StringIO
 from base_test_code import *
 
 import urlgrabber
@@ -43,12 +41,12 @@ class FileObjectTests(TestCase):
     
     def setUp(self):
         self.filename = tempfile.mktemp()
-        fo = open(self.filename, 'wb')
-        fo.write(reference_data.encode('utf-8'))
+        fo = file(self.filename, 'wb')
+        fo.write(reference_data)
         fo.close()
 
-        self.fo_input = StringIO(unicode(reference_data) if not six.PY3 else reference_data)
-        self.fo_output = StringIO()
+        self.fo_input = cStringIO.StringIO(reference_data)
+        self.fo_output = cStringIO.StringIO()
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             self.filename, grabber.default_grabber.opts)
         self.wrapper = grabber.PyCurlFileObject(
@@ -75,7 +73,7 @@ class FileObjectTests(TestCase):
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
-        self.fo_output.write(''.join(li))
+        self.fo_output.write(string.join(li, ''))
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
@@ -92,7 +90,7 @@ class HTTPTests(TestCase):
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 
-        fo = open(filename, 'rb' if not six.PY3 else 'r')
+        fo = file(filename, 'rb')
         contents = fo.read()
         fo.close()
 
@@ -138,7 +136,7 @@ class URLGrabberTestCase(TestCase):
     
     def setUp(self):
         
-        self.meter = text_progress_meter( fo=StringIO() )
+        self.meter = text_progress_meter( fo=cStringIO.StringIO() )
         pass
     
     def tearDown(self):
@@ -151,7 +149,7 @@ class URLGrabberTestCase(TestCase):
         values into the URLGrabber constructor and checks that
         they've been set properly.
         """
-        opener = urllib.request.OpenerDirector()
+        opener = urllib2.OpenerDirector()
         g = URLGrabber( progress_obj=self.meter,
                         throttle=0.9,
                         bandwidth=20,
@@ -227,13 +225,13 @@ class URLParserTestCase(TestCase):
             self.assertEquals(parts, urllist[2])
         else:
             if url == urllist[1] and parts == urllist[2]:
-                print('OK: %s' % urllist[0])
+                print 'OK: %s' % urllist[0]
             else:
-                print('ERROR: %s' % urllist[0])
-                print('  ' + urllist[1])
-                print('  ' + url)
-                print('  ' + urllist[2])
-                print('  ' + parts)
+                print 'ERROR: %s' % urllist[0]
+                print '  ' + urllist[1]
+                print '  ' + url
+                print '  ' + urllist[2]
+                print '  ' + parts
                 
 
     url_tests_all = (
@@ -382,7 +380,7 @@ class CheckfuncTestCase(TestCase):
 
         if hasattr(obj, 'filename'):
             # we used urlgrab
-            fo = open(obj.filename)
+            fo = file(obj.filename)
             data = fo.read()
             fo.close()
         else:
@@ -449,12 +447,12 @@ class RegetTestBase:
         except: pass
 
     def _make_half_zero_file(self):
-        fo = open(self.filename, 'wb' if not six.PY3 else 'w')
-        fo.write('0'*int(self.hl))
+        fo = file(self.filename, 'wb')
+        fo.write('0'*self.hl)
         fo.close()
 
     def _read_file(self):
-        fo = open(self.filename, 'rb' if not six.PY3 else 'r')
+        fo = file(self.filename, 'rb')
         data = fo.read()
         fo.close()
         return data
@@ -472,7 +470,7 @@ class FTPRegetTests(RegetTestBase, TestCase):
         # this tests to see if the server is available.  If it's not,
         # then these tests will be skipped
         try:
-            fo = urllib.request.urlopen(self.url).close()
+            fo = urllib2.urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -482,8 +480,8 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.grabber.urlgrab(self.url, self.filename, reget='simple')
         data = self._read_file()
 
-        self.assertEquals(data[:int(self.hl)], '0'*int(self.hl))
-        self.assertEquals(data[int(self.hl):], self.ref[int(self.hl):])
+        self.assertEquals(data[:self.hl], '0'*self.hl)
+        self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
 class HTTPRegetTests(FTPRegetTests):
     def setUp(self):
@@ -500,8 +498,8 @@ class HTTPRegetTests(FTPRegetTests):
             self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
             data = self._read_file()
 
-            self.assertEquals(data[:int(self.hl)], '0'*int(self.hl))
-            self.assertEquals(data[int(self.hl):], self.ref[int(self.hl):])
+            self.assertEquals(data[:self.hl], '0'*self.hl)
+            self.assertEquals(data[self.hl:], self.ref[self.hl:])
         except NotImplementedError:
             self.skip()
             
@@ -523,7 +521,7 @@ class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
         tmp = tempfile.mktemp()
-        tmpfo = open(tmp, 'wb' if not six.PY3 else 'w')
+        tmpfo = file(tmp, 'wb')
         tmpfo.write(self.ref)
         tmpfo.close()
         self.tmp = tmp
@@ -547,7 +545,7 @@ class ProFTPDSucksTests(TestCase):
     def setUp(self):
         self.url = ref_proftp
         try:
-            fo = urllib.request.urlopen(self.url).close()
+            fo = urllib2.urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -594,7 +592,7 @@ class ProxyFTPAuthTests(ProxyHTTPAuthTests):
         if not self.have_proxy():
             self.skip()
         try:
-            fo = urllib.request.urlopen(self.url).close()
+            fo = urllib2.urlopen(self.url).close()
         except IOError:
             self.skip()
         self.g = URLGrabber()

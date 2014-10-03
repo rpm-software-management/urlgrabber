@@ -54,7 +54,7 @@ def parse_args():
     return (descriptions,verbosity)
     
 def usage():
-    print(__doc__)
+    print __doc__
      
 if __name__ == '__main__':
     main()

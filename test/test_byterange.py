@@ -24,11 +24,8 @@
 # $Id: test_byterange.py,v 1.6 2004/03/31 17:02:00 mstenner Exp $
 
 import sys
-import six
 
-from io import StringIO
-
-import urlgrabber
+from cStringIO import StringIO
 from urlgrabber.byterange import RangeableFileObject
 
 from base_test_code import *
@@ -40,7 +37,7 @@ class RangeableFileObjectTestCase(TestCase):
         #            0         1         2         3         4         5          6         7         8         9
         #            0123456789012345678901234567890123456789012345678901234567 890123456789012345678901234567890
         self.test = 'Why cannot we write the entire 24 volumes of Encyclopaedia\nBrittanica on the head of a pin?\n'
-        self.fo = StringIO(unicode(self.test) if not six.PY3 else self.test)
+        self.fo = StringIO(self.test)
         self.rfo = RangeableFileObject(self.fo, (20,69))
         
     def tearDown(self):
@@ -64,8 +61,7 @@ class RangeableFileObjectTestCase(TestCase):
     
     def test_readall(self):
         """RangeableFileObject.read(): to end of file."""
-        text_compat = unicode(self.test) if not six.PY3 else self.test
-        rfo = RangeableFileObject(StringIO(text_compat),(11,))
+        rfo = RangeableFileObject(StringIO(self.test),(11,))
         self.assertEquals(self.test[11:],rfo.read())
         
     def test_readline(self):
