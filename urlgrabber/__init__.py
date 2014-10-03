@@ -52,4 +52,4 @@ __author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
               'Zdenek Pavlas <zpavlas@redhat.com>'
 __url__     = 'http://urlgrabber.baseurl.org/'
 
-from urlgrabber.grabber import urlgrab, urlopen, urlread
+from grabber import urlgrab, urlopen, urlread
