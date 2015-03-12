@@ -1,6 +1,22 @@
 # urlgrabber distutils setup
 import re as _re
+import sys as _sys
+
+class _pycurlFake(object):
+    Curl = staticmethod(lambda: None)
+
+# Unforunately __init__.py imports urlgrabber.grabber which then imports
+# pycurl package. And finally pycurl.Curl() is called in the top level
+# of grabber module. We don't need pycurl nor pycurl.Curl() during
+# setup. Fake this module to be loaded already so we don't need to have
+# pycurl installed at all. Maybe developer wants to install it in later
+# phase.
+_sys.modules["pycurl"] = _pycurlFake
+
+# We need urlgrabber package for some constants.
 import urlgrabber as _urlgrabber
+
+del _sys.modules["pycurl"]
 
 name = "urlgrabber"
 description = "A high-level cross-protocol url-grabber"
