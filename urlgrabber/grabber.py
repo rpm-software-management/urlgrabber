@@ -2377,8 +2377,11 @@ class _TH:
             try:
                 now = int(time.time())
                 for line in open(filename):
-                    host, speed, fail, ts = line.rsplit(' ', 3)
-                    _TH.hosts[host] = int(speed), int(fail), min(int(ts), now)
+                    try:
+                        host, speed, fail, ts = line.rsplit(' ', 3)
+                        _TH.hosts[host] = int(speed), int(fail), min(int(ts), now)
+                    except ValueError:
+                        if DEBUG: DEBUG.info('Error parsing timedhosts: line "%s"', line)
             except IOError: pass
             _TH.dirty = False
 
