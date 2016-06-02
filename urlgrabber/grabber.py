@@ -171,6 +171,12 @@ GENERAL ARGUMENTS (kwargs)
     The libproxy code is only used if the proxies dictionary
     does not provide any proxies.
 
+  no_cache = False
+
+    When True, server-side cache will be disabled for http and https
+    requests.  This is equivalent to setting
+      http_headers = (('Pragma', 'no-cache'),)
+
   prefix = None
 
     a url prefix that will be prepended to all requested urls.  For
@@ -1001,6 +1007,7 @@ class URLGrabberOptions:
         self.half_life = 30*24*60*60 # 30 days
         self.default_speed = 500e3 # 500 kBps
         self.ftp_disable_epsv = False
+        self.no_cache = False
         
     def __repr__(self):
         return self.format()
@@ -1439,11 +1446,15 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.SSLKEYPASSWD, opts.ssl_key_pass)
 
         #headers:
-        if opts.http_headers and self.scheme in ('http', 'https'):
+        if self.scheme in ('http', 'https'):
             headers = []
-            for (tag, content) in opts.http_headers:
-                headers.append('%s:%s' % (tag, content))
-            self.curl_obj.setopt(pycurl.HTTPHEADER, headers)
+            if opts.http_headers is not None:
+                for (tag, content) in opts.http_headers:
+                    headers.append('%s:%s' % (tag, content))
+            if opts.no_cache:
+                headers.append('Pragma:no-cache')
+            if headers:
+                self.curl_obj.setopt(pycurl.HTTPHEADER, headers)
 
         # ranges:
         if opts.range or opts.reget:
@@ -2065,7 +2076,8 @@ class _ExternalDownloader:
         'ssl_key_pass',
         'ssl_verify_peer', 'ssl_verify_host',
         'size', 'max_header_size', 'ip_resolve',
-        'ftp_disable_epsv'
+        'ftp_disable_epsv',
+        'no_cache',
     )
 
     def start(self, opts):
