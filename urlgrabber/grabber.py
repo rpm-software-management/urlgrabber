@@ -389,10 +389,11 @@ RETRY RELATED ARGUMENTS
     identical to checkfunc, except for the attributes defined in the
     CallbackObject instance.  The attributes for failure_callback are:
 
-      exception = the raised exception
-      url       = the url we're trying to fetch
-      tries     = the number of tries so far (including this one)
-      retry     = the value of the retry option
+      exception      = the raised exception
+      url            = the url we're trying to fetch
+      tries          = the number of tries so far (including this one)
+      retry          = the value of the retry option
+      retry_no_cache = the value of the retry_no_cache option
 
     The callback is present primarily to inform the calling program of
     the failure, but if it raises an exception (including the one it's
@@ -437,6 +438,19 @@ RETRY RELATED ARGUMENTS
     passed the same arguments, so you could use the same function for
     both.
       
+  retry_no_cache = False
+
+    When True, automatically enable no_cache for future retries if
+    checkfunc performs an unsuccessful check.
+
+    This option is useful if your application expects a set of files
+    from the same server to form an atomic unit and you write your
+    checkfunc to ensure each file being downloaded belongs to such a
+    unit.  If transparent proxy caching is in effect, the files can
+    become out-of-sync, disrupting the atomicity.  Enabling this option
+    will prevent that, while ensuring that you still enjoy the benefits
+    of caching when possible.
+
 BANDWIDTH THROTTLING
 
   urlgrabber supports throttling via two values: throttle and
@@ -1008,6 +1022,7 @@ class URLGrabberOptions:
         self.default_speed = 500e3 # 500 kBps
         self.ftp_disable_epsv = False
         self.no_cache = False
+        self.retry_no_cache = False
         
     def __repr__(self):
         return self.format()
@@ -1084,7 +1099,8 @@ class URLGrabber(object):
             if callback:
                 if DEBUG: DEBUG.info('calling callback: %s', callback)
                 obj = CallbackObject(exception=exception, url=args[0],
-                                     tries=tries, retry=opts.retry)
+                                     tries=tries, retry=opts.retry,
+                                     retry_no_cache=opts.retry_no_cache)
                 _run_callback(callback, obj)
 
             if (opts.retry is None) or (tries == opts.retry):
@@ -1096,6 +1112,8 @@ class URLGrabber(object):
                 if DEBUG: DEBUG.info('retrycode (%i) not in list %s, re-raising',
                                      retrycode, opts.retrycodes)
                 raise
+            if retrycode is not None and retrycode < 0 and opts.retry_no_cache:
+                opts.no_cache = True
     
     def urlopen(self, url, opts=None, **kwargs):
         """open the url and return a file object
@@ -2259,6 +2277,8 @@ def parallel_wait(meter=None):
                 except URLGrabError, ug_err:
                     retry = 0 # no retries
             if opts.tries < retry and ug_err.errno in opts.retrycodes:
+                if ug_err.errno < 0 and opts.retry_no_cache:
+                    opts.no_cache = True
                 start(opts, opts.tries + 1) # simple retry
                 continue
 
