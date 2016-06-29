@@ -268,13 +268,14 @@ class ActionTests(TestCase):
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
                 
-import thread, socket
+import threading, socket
 LOCALPORT = 'localhost', 2000
 
 class HttpReplyCode(TestCase):
     def setUp(self):
         # start the server
         self.exit = False
+        self.process = lambda data: None
         def server():
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -282,7 +283,10 @@ class HttpReplyCode(TestCase):
             while 1:
                 c, a = s.accept()
                 if self.exit: c.close(); break
-                while not c.recv(4096).endswith('\r\n\r\n'): pass
+                data = ''
+                while not data.endswith('\r\n\r\n'):
+                    data = c.recv(4096)
+                self.process(data)
                 c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
                 if self.content is not None:
                     c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
@@ -290,7 +294,8 @@ class HttpReplyCode(TestCase):
                 c.close()
             s.close()
             self.exit = False
-        thread.start_new_thread(server, ())
+        self.thread = threading.Thread(target=server)
+        self.thread.start()
 
         # create grabber and mirror group objects
         def failure(obj):
@@ -305,7 +310,7 @@ class HttpReplyCode(TestCase):
         self.exit = True
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(LOCALPORT); s.close() # wake it up
-        while self.exit: pass # poor man's join
+        self.thread.join()
 
     def test_grab(self):
         'tests the propagation of HTTP reply code'
@@ -335,6 +340,45 @@ class HttpReplyCode(TestCase):
 
         data = self.mg.urlread('foo', range = (3, 5))
         self.assertEquals(data, 'DE')
+
+    def test_retry_no_cache(self):
+        'test bypassing proxy cache on failure'
+        def process(data):
+            if 'Pragma:no-cache' in data:
+                self.content = 'version2'
+            else:
+                self.content = 'version1'
+
+        def checkfunc_read(obj):
+            if obj.data == 'version1':
+                raise URLGrabError(-1, 'Outdated version of foo')
+
+        def checkfunc_grab(obj):
+            with open('foo') as f:
+                if f.read() == 'version1':
+                    raise URLGrabError(-1, 'Outdated version of foo')
+
+        self.process = process
+        self.reply = 200, "OK"
+
+        opts = self.g.opts
+        opts.retry = 3
+        opts.retry_no_cache = True
+
+        # single
+        opts.checkfunc = checkfunc_read
+        try:
+            self.mg.urlread('foo')
+        except URLGrabError as e:
+            self.fail(str(e))
+
+        # multi
+        opts.checkfunc = checkfunc_grab
+        self.mg.urlgrab('foo', async=True)
+        try:
+            urlgrabber.grabber.parallel_wait()
+        except URLGrabError as e:
+            self.fail(str(e))
 
 def suite():
     tl = TestLoader()
