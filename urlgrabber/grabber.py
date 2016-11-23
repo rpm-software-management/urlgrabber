@@ -69,6 +69,24 @@ GENERAL ARGUMENTS (kwargs)
    is None progress_obj is used in compatibility mode: finished files
    are shown but there's no in-progress display.
 
+  curl_obj = None
+
+    a pycurl.Curl instance to be used instead of the default module-level
+    instance.
+
+    Note that you don't have to configure the passed instance in any way;
+    urlgrabber will do all the necessary work.
+
+    This option exists primarily to allow using urlgrabber from multiple
+    threads in your application, in which case you would want to instantiate a
+    fresh Curl object for each thread, to avoid race conditions.  See the curl
+    documentation on thread safety for more information:
+    https://curl.haxx.se/libcurl/c/threadsafe.html
+
+    Note that connection reuse (keepalive=1) is limited to the Curl instance it
+    was enabled on so if you're using multiple instances in your application,
+    connections won't be shared among them.
+
   text = None
   
     specifies alternative text to be passed to the progress meter
@@ -971,6 +989,7 @@ class URLGrabberOptions:
         """
         self.progress_obj = None
         self.multi_progress_obj = None
+        self.curl_obj = None
         self.throttle = 1.0
         self.bandwidth = 0
         self.retry = None
@@ -1622,7 +1641,10 @@ class PyCurlFileObject(object):
                 raise err
 
     def _do_open(self):
-        self.curl_obj = _curl_cache
+        if hasattr(self.opts, 'curl_obj') and self.opts.curl_obj is not None:
+            self.curl_obj = self.opts.curl_obj
+        else:
+            self.curl_obj = _curl_cache
         self.curl_obj.reset() # reset all old settings away, just in case
         # setup any ranges
         self._set_opts()
