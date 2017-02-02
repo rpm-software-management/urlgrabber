@@ -1,3 +1,12 @@
+2017-02-02 Valentina Mukhamedzhanova <vmukhame@redhat.com>
+
+	* Add no_cache and retry_no_cache options.
+	* Work around pycurl dependency in setup.py.
+	* Don't set speed=0 on a new mirror that 404'd.
+	* Add a comprehensive error message to pycurl error 77.
+	* Don't crash on timedhosts parsing error.
+	* bump version to 3.10.2
+
 2013-10-09  Zdenek Pavlas <zpavlas@redhat.com>
 
 	* lots of enahncements and bugfixes
