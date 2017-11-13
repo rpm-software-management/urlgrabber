@@ -2137,6 +2137,11 @@ import subprocess
 
 class _ExternalDownloader:
     def __init__(self):
+        # raise if urlgrabber-ext-down is not installed so the user gets a
+        # an obvious error message instead of "[Errno 5] [Errno 2] No such file
+        # or directory"
+        if not os.path.exists('/usr/libexec/urlgrabber-ext-down') and os.getenv('URLGRABBER_EXT_DOWN') is None:
+            raise OSError('"/usr/libexec/urlgrabber-ext-down" is not installed')
         urlgrabber_path = (os.getenv('URLGRABBER_EXT_DOWN', None)
                            or '/usr/libexec/urlgrabber-ext-down')
         self.popen = subprocess.Popen(
