@@ -25,7 +25,14 @@
 
 import sys
 
-from cStringIO import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
 from urlgrabber.byterange import RangeableFileObject
 
 from base_test_code import *

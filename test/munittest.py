@@ -107,6 +107,15 @@ import string
 import os
 import types
 
+from six import class_types
+
+
+def cmp(a, b):
+    try:
+        return (a > b) - (a < b)
+    except TypeError:
+        import pudb; pudb.set_trace()
+
 ##############################################################################
 # Exported classes and functions
 ##############################################################################
@@ -190,7 +199,7 @@ class TestResult:
 
     def _exc_info_to_string(self, err):
         """Converts a sys.exc_info()-style tuple of values into a string."""
-        return string.join(traceback.format_exception(*err), '')
+        return ''.join(traceback.format_exception(*err))
 
     def __repr__(self):
         return "<%s run=%i errors=%i failures=%i>" % \
@@ -251,8 +260,8 @@ class TestCase:
             testMethod = getattr(self, methodName)
             self._testMethodDoc = testMethod.__doc__
         except AttributeError:
-            raise ValueError, "no such test method in %s: %s" % \
-                  (self.__class__, methodName)
+            raise(ValueError, "no such test method in %s: %s" % \
+                  (self.__class__, methodName))
 
     def setUp(self):
         "Hook method for setting up the test fixture before exercising it."
@@ -276,7 +285,7 @@ class TestCase:
         the specified test method's docstring.
         """
         doc = self._testMethodDoc
-        return doc and string.strip(string.split(doc, "\n")[0]) or None
+        return doc and doc.split("\n")[0].strip() or None
 
     def id(self):
         return "%s.%s" % (_strclass(self.__class__), self._testMethodName)
@@ -361,15 +370,15 @@ class TestCase:
 
     def fail(self, msg=None):
         """Fail immediately, with the given message."""
-        raise self.failureException, msg
+        raise(self.failureException, msg)
 
     def failIf(self, expr, msg=None):
         "Fail the test if the expression is true."
-        if expr: raise self.failureException, msg
+        if expr: raise(self.failureException, msg)
 
     def failUnless(self, expr, msg=None):
         """Fail the test unless the expression is true."""
-        if not expr: raise self.failureException, msg
+        if not expr: raise(self.failureException, msg)
 
     def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
         """Fail unless an exception of class excClass is thrown
@@ -386,23 +395,23 @@ class TestCase:
         else:
             if hasattr(excClass,'__name__'): excName = excClass.__name__
             else: excName = str(excClass)
-            raise self.failureException, excName
+            raise(self.failureException, excName)
 
     def failUnlessEqual(self, first, second, msg=None):
         """Fail if the two objects are unequal as determined by the '=='
            operator.
         """
         if not first == second:
-            raise self.failureException, \
-                  (msg or '%s != %s' % (`first`, `second`))
+            raise(self.failureException, \
+                  (msg or '%s != %s' % (repr(first), repr(second))))
 
     def failIfEqual(self, first, second, msg=None):
         """Fail if the two objects are equal as determined by the '=='
            operator.
         """
         if first == second:
-            raise self.failureException, \
-                  (msg or '%s == %s' % (`first`, `second`))
+            raise(self.failureException, \
+                  (msg or '%s == %s' % (repr(first), repr(second))))
 
     def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are unequal as determined by their
@@ -413,8 +422,8 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) != 0:
-            raise self.failureException, \
-                  (msg or '%s != %s within %s places' % (`first`, `second`, `places` ))
+            raise(self.failureException, \
+                  (msg or '%s != %s within %s places' % (repr(first), repr(second), repr(places) )))
 
     def failIfAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are equal as determined by their
@@ -425,8 +434,8 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) == 0:
-            raise self.failureException, \
-                  (msg or '%s == %s within %s places' % (`first`, `second`, `places`))
+            raise(self.failureException, \
+                  (msg or '%s == %s within %s places' % (repr(first), repr(second), repr(places))))
 
     assertEqual = assertEquals = failUnlessEqual
 
@@ -442,15 +451,16 @@ class TestCase:
 
     def skip(self, msg=None):
         """Skip the test"""
-        raise self.skipException, msg
+        raise(self.skipException, msg)
 
     def skipIf(self, expr, msg=None):
         "Skip the test if the expression is true."
-        if expr: raise self.skipException, msg
+        if expr:
+            raise(self.skipException, msg)
 
     def skipUnless(self, expr, msg=None):
         """Skip the test unless the expression is true."""
-        if not expr: raise self.skipException, msg
+        if not expr: raise(self.skipException, msg)
 
 
 
@@ -496,16 +506,20 @@ class TestSuite:
         return self(result)
 
     def __call__(self, result):
-        try: result.startSuite(self)
-        except AttributeError: pass
+        try:
+            result.startSuite(self)
+        except AttributeError:
+            pass
         
         for test in self._tests:
             if result.shouldStop:
                 break
             test(result)
 
-        try: result.endSuite(self)
-        except AttributeError: pass
+        try:
+            result.endSuite(self)
+        except AttributeError:
+            pass
 
         return result
 
@@ -585,9 +599,9 @@ class TestLoader:
         tests = []
         for name in dir(module):
             obj = getattr(module, name)
-            if (isinstance(obj, (type, types.ClassType)) and
+            if (isinstance(obj, class_types) and 
                 issubclass(obj, TestCase) and
-                not obj in [TestCase, FunctionTestCase]):
+                obj not in [TestCase, FunctionTestCase]):
                 tests.append(self.loadTestsFromTestCase(obj))
         description = getattr(module, '__doc__') \
                       or module.__name__
@@ -606,7 +620,7 @@ class TestLoader:
         parts = string.split(name, '.')
         if module is None:
             if not parts:
-                raise ValueError, "incomplete test name: %s" % name
+                raise(ValueError, "incomplete test name: %s" % name)
             else:
                 parts_copy = parts[:]
                 while parts_copy:
@@ -633,11 +647,11 @@ class TestLoader:
             test = obj()
             if not isinstance(test, unittest.TestCase) and \
                not isinstance(test, unittest.TestSuite):
-                raise ValueError, \
-                      "calling %s returned %s, not a test" % (obj,test)
+                raise(ValueError,
+                      "calling %s returned %s, not a test" % (obj, test))
             return test
         else:
-            raise ValueError, "don't know how to make test from: %s" % obj
+            raise(ValueError, "don't know how to make test from: %s" % obj)
 
     def loadTestsFromNames(self, names, module=None):
         """Return a suite of all tests cases found using the given sequence
@@ -651,14 +665,15 @@ class TestLoader:
     def getTestCaseNames(self, testCaseClass):
         """Return a sorted sequence of method names found within testCaseClass
         """
-        testFnNames = filter(lambda n,p=self.testMethodPrefix: n[:len(p)] == p,
-                             dir(testCaseClass))
+        def _f(n):
+            return n.startswith(self.testMethodPrefix)
+        testFnNames = list(filter(_f, dir(testCaseClass)))
         for baseclass in testCaseClass.__bases__:
             for testFnName in self.getTestCaseNames(baseclass):
                 if testFnName not in testFnNames:  # handle overridden methods
                     testFnNames.append(testFnName)
-        if self.sortTestMethodsUsing:
-            testFnNames.sort(self.sortTestMethodsUsing)
+        # if self.sortTestMethodsUsing:
+        #     testFnNames.sort(key=self.sortTestMethodsUsing)
         return testFnNames
 
 
@@ -737,7 +752,8 @@ class _TextTestResult(TestResult):
         if self.showAll and self.descriptions:
             self.stream.write(self.indent * self.depth)
             try: desc = self.getDescription(suite)
-            except AttributeError: desc = '(no description)'
+            except AttributeError:
+                desc = '(no description)'
             self.stream.writeln(desc)
         self.depth += 1
         
@@ -886,21 +902,22 @@ Examples:
         self.runTests()
 
     def usageExit(self, msg=None):
-        if msg: print msg
-        print self.USAGE % self.__dict__
+        if msg:
+            print(msg)
+        print(self.USAGE % self.__dict__)
         sys.exit(2)
 
     def parseArgs(self, argv):
         import getopt
         try:
             options, args = getopt.getopt(argv[1:], 'hHvq',
-                                          ['help','verbose','quiet'])
+                                          ['help', 'verbose', 'quiet'])
             for opt, value in options:
-                if opt in ('-h','-H','--help'):
+                if opt in ('-h', '-H', '--help'):
                     self.usageExit()
-                if opt in ('-q','--quiet'):
+                if opt in ('-q', '--quiet'):
                     self.verbosity = 0
-                if opt in ('-v','--verbose'):
+                if opt in ('-v', '--verbose'):
                     self.verbosity = 2
             if len(args) == 0 and self.defaultTest is None:
                 self.test = self.testLoader.loadTestsFromModule(self.module)
@@ -910,7 +927,7 @@ Examples:
             else:
                 self.testNames = (self.defaultTest,)
             self.createTests()
-        except getopt.error, msg:
+        except getopt.error as msg:
             self.usageExit(msg)
 
     def createTests(self):

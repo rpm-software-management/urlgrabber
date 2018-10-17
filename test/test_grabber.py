@@ -25,8 +25,25 @@
 
 import sys
 import os
-import string, tempfile, random, cStringIO, os
-import urllib2
+import string
+import tempfile
+import random
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
+try:
+    from urllib2 import OpenerDirector
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import OpenerDirector
+    from urllib.request import urlopen
+
 import socket
 
 from base_test_code import *
@@ -45,8 +62,8 @@ class FileObjectTests(TestCase):
         fo.write(reference_data)
         fo.close()
 
-        self.fo_input = cStringIO.StringIO(reference_data)
-        self.fo_output = cStringIO.StringIO()
+        self.fo_input = StringIO(reference_data)
+        self.fo_output = StringIO()
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             self.filename, grabber.default_grabber.opts)
         self.wrapper = grabber.PyCurlFileObject(
@@ -122,8 +139,8 @@ class URLGrabberModuleTestCase(TestCase):
     def test_urlgrab(self):
         "module-level urlgrab() function"
         outfile = tempfile.mktemp()
-        filename = urlgrabber.urlgrab('http://www.python.org', 
-                                    filename=outfile)
+        filename = urlgrabber.urlgrab('http://www.python.org',
+                                      filename=outfile)
         os.unlink(outfile)
     
     def test_urlread(self):
@@ -135,8 +152,7 @@ class URLGrabberTestCase(TestCase):
     """Test grabber.URLGrabber class"""
     
     def setUp(self):
-        
-        self.meter = text_progress_meter( fo=cStringIO.StringIO() )
+        self.meter = text_progress_meter(fo=StringIO())
         pass
     
     def tearDown(self):
@@ -149,7 +165,7 @@ class URLGrabberTestCase(TestCase):
         values into the URLGrabber constructor and checks that
         they've been set properly.
         """
-        opener = urllib2.OpenerDirector()
+        opener = OpenerDirector()
         g = URLGrabber( progress_obj=self.meter,
                         throttle=0.9,
                         bandwidth=20,
@@ -225,13 +241,13 @@ class URLParserTestCase(TestCase):
             self.assertEquals(parts, urllist[2])
         else:
             if url == urllist[1] and parts == urllist[2]:
-                print 'OK: %s' % urllist[0]
+                print('OK: %s' % urllist[0])
             else:
-                print 'ERROR: %s' % urllist[0]
-                print '  ' + urllist[1]
-                print '  ' + url
-                print '  ' + urllist[2]
-                print '  ' + parts
+                print('ERROR: %s' % urllist[0])
+                print('  ' + urllist[1])
+                print('  ' + url)
+                print('  ' + urllist[2])
+                print('  ' + parts)
                 
 
     url_tests_all = (
@@ -327,11 +343,17 @@ class InterruptTestCase(TestCase):
     """Test interrupt callback behavior"""
 
     class InterruptProgress:
-        def start(self, *args, **kwargs): pass
-        def update(self, *args, **kwargs): raise KeyboardInterrupt
-        def end(self, *args, **kwargs): pass
+        def start(self, *args, **kwargs):
+            pass
 
-    class TestException(Exception): pass
+        def update(self, *args, **kwargs):
+            raise KeyboardInterrupt
+
+        def end(self, *args, **kwargs):
+            pass
+
+    class TestException(Exception):
+        pass
 
     def _interrupt_callback(self, obj, *args, **kwargs):
         self.interrupt_callback_called = 1
@@ -378,6 +400,7 @@ class CheckfuncTestCase(TestCase):
         self.args = args
         self.kwargs = kwargs
 
+        #import pudb; pudb.set_trace()
         if hasattr(obj, 'filename'):
             # we used urlgrab
             fo = file(obj.filename)
@@ -387,8 +410,10 @@ class CheckfuncTestCase(TestCase):
             # we used urlread
             data = obj.data
 
-        if data == self.data: return
-        else: raise URLGrabError(-2, "data doesn't match")
+        if data == self.data:
+            return
+        else:
+            raise URLGrabError(-2, "data doesn't match")
         
     def _check_common_args(self):
         "check the args that are common to both urlgrab and urlread"
@@ -470,7 +495,7 @@ class FTPRegetTests(RegetTestBase, TestCase):
         # this tests to see if the server is available.  If it's not,
         # then these tests will be skipped
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -545,7 +570,7 @@ class ProFTPDSucksTests(TestCase):
     def setUp(self):
         self.url = ref_proftp
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -592,7 +617,7 @@ class ProxyFTPAuthTests(ProxyHTTPAuthTests):
         if not self.have_proxy():
             self.skip()
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
         self.g = URLGrabber()
