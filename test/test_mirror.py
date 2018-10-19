@@ -295,14 +295,14 @@ class HttpReplyCode(TestCase):
             while 1:
                 c, a = s.accept()
                 if self.exit: c.close(); break
-                data = ''
-                while not data.endswith('\r\n\r\n'):
+                data = b''
+                while not data.endswith(b'\r\n\r\n'):
                     data = c.recv(4096)
                 self.process(data)
-                c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                c.sendall('HTTP/1.1 {0} {1}\r\n'.format(*self.reply).encode('utf8'))
                 if self.content is not None:
-                    c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
-                    c.sendall(self.content)
+                    c.sendall(b'Content-Length: %d\r\n\r\n' % len(self.content))
+                    c.sendall(self.content.encode('utf8'))
                 c.close()
             s.close()
             self.exit = False
@@ -313,17 +313,25 @@ class HttpReplyCode(TestCase):
         def failure(obj):
             self.code = getattr(obj.exception, 'code', None)
             return {}
-        self.g  = URLGrabber()
+        self.g = URLGrabber()
         self.mg = MirrorGroup(self.g, ['http://%s:%d' % LOCALPORT],
-                              failure_callback = failure)
+                              failure_callback=failure)
 
     def tearDown(self):
         # shut down the server
         self.exit = True
-        # TODO: Why is this needed????
-        s = socket.create_connection(LOCALPORT)
-        s.shutdown(socket.SHUT_RDWR)
-        s.close() # wake it up
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect(LOCALPORT)
+            s.close()
+        except:
+            pass
+
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # # FIXME: Weird race condition here
+        # s.connect(LOCALPORT)
+        # s.close()
+
         self.thread.join()
 
     def test_grab(self):
@@ -363,7 +371,7 @@ class HttpReplyCode(TestCase):
     def test_retry_no_cache(self):
         'test bypassing proxy cache on failure'
         def process(data):
-            if 'Pragma:no-cache' in data:
+            if b'Pragma:no-cache' in data:
                 self.content = 'version2'
             else:
                 self.content = 'version1'
@@ -374,7 +382,7 @@ class HttpReplyCode(TestCase):
 
         def checkfunc_grab(obj):
             with open('foo') as f:
-                if f.read() == 'version1':
+                if f.read() == b'version1':
                     raise URLGrabError(-1, 'Outdated version of foo')
 
         self.process = process

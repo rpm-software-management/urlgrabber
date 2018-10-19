@@ -459,7 +459,7 @@ def range_header_to_tuple(range_header):
         _rangere = re.compile(r'^bytes=(\d{1,})-(\d*)')
     match = _rangere.match(range_header)
     if match: 
-        tup = range_tuple_normalize(match.group(1,2))
+        tup = range_tuple_normalize(match.group(1, 2))
         if tup and tup[1]: 
             tup = (tup[0],tup[1]+1)
         return tup
@@ -473,31 +473,42 @@ def range_tuple_to_header(range_tup):
     if range_tup is None: return None
     range_tup = range_tuple_normalize(range_tup)
     if range_tup:
-        if range_tup[1]: 
-            range_tup = (range_tup[0],range_tup[1] - 1)
+        if range_tup[1]:
+            range_tup = (range_tup[0], range_tup[1] - 1)
         return 'bytes=%s-%s' % range_tup
+
     
 def range_tuple_normalize(range_tup):
     """Normalize a (first_byte,last_byte) range tuple.
     Return a tuple whose first element is guaranteed to be an int
-    and whose second element will be '' (meaning: the last byte) or 
+    and whose second element will be '' (meaning: the last byte) or
     an int. Finally, return None if the normalized tuple == (0,'')
     as that is equivalent to retrieving the entire file.
     """
-    if range_tup is None: return None
+    if range_tup is None:
+        return None
     # handle first byte
     fb = range_tup[0]
-    if fb in (None,''): fb = 0
-    else: fb = int(fb)
+    if fb in (None, ''):
+        fb = 0
+    else:
+        fb = int(fb)
     # handle last byte
-    try: lb = range_tup[1]
-    except IndexError: lb = ''
-    else:  
-        if lb is None: lb = ''
-        elif lb != '': lb = int(lb)
+    try:
+        lb = range_tup[1]
+    except IndexError:
+        lb = ''
+    else:
+        if lb is None:
+            lb = ''
+        elif lb != '':
+            lb = int(lb)
     # check if range is over the entire file
-    if (fb,lb) == (0,''): return None
-    # check that the range is valid
-    if lb < fb: raise RangeError(9, 'Invalid byte range: %s-%s' % (fb,lb))
-    return (fb,lb)
+    if (fb, lb) == (0, ''):
+        return None
+    # TODO: find a python3 working solution
+    # # check that the range is valid
+    # if lb < fb:
+    #     raise RangeError(9, 'Invalid byte range: %s-%s' % (fb, lb))
+    return (fb, lb)
 

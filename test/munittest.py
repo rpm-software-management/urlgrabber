@@ -111,10 +111,7 @@ from six import class_types
 
 
 def cmp(a, b):
-    try:
-        return (a > b) - (a < b)
-    except TypeError:
-        import pudb; pudb.set_trace()
+    return (a > b) - (a < b)
 
 ##############################################################################
 # Exported classes and functions
@@ -207,7 +204,8 @@ class TestResult:
                 len(self.failures))
 
 
-class TestCase:
+import unittest
+class TestCase(unittest.TestCase):
     """A class whose instances are single test cases.
 
     By default, the test code itself should be placed in a method named
@@ -240,7 +238,8 @@ class TestCase:
     # used when some resource needed to perform the test isn't avialable,
     # or when a lengthy test is deliberately skipped for time.
 
-    class skipException(Exception): pass
+    class skipException(Exception):
+        pass
 
     # whether receiving KeyboardInterrupt during setUp or the test causes
     # the test to be interpreted as skipped.  The default is no.  It's
@@ -249,27 +248,6 @@ class TestCase:
     # inside the test method
 
     interrupt_skips = 0
-
-    def __init__(self, methodName='runTest'):
-        """Create an instance of the class that will use the named test
-           method when executed. Raises a ValueError if the instance does
-           not have a method with the specified name.
-        """
-        try:
-            self._testMethodName = methodName
-            testMethod = getattr(self, methodName)
-            self._testMethodDoc = testMethod.__doc__
-        except AttributeError:
-            raise(ValueError, "no such test method in %s: %s" % \
-                  (self.__class__, methodName))
-
-    def setUp(self):
-        "Hook method for setting up the test fixture before exercising it."
-        pass
-
-    def tearDown(self):
-        "Hook method for deconstructing the test fixture after testing it."
-        pass
 
     def countTestCases(self):
         return 1
@@ -296,9 +274,6 @@ class TestCase:
     def __repr__(self):
         return "<%s testMethod=%s>" % \
                (_strclass(self.__class__), self._testMethodName)
-
-    def run(self, result=None):
-        return self(result)
 
     def __call__(self, result=None):
         if result is None: result = self.defaultTestResult()
@@ -402,7 +377,7 @@ class TestCase:
            operator.
         """
         if not first == second:
-            raise(self.failureException, \
+            raise(self.failureException,
                   (msg or '%s != %s' % (repr(first), repr(second))))
 
     def failIfEqual(self, first, second, msg=None):
@@ -410,7 +385,7 @@ class TestCase:
            operator.
         """
         if first == second:
-            raise(self.failureException, \
+            raise(self.failureException,
                   (msg or '%s == %s' % (repr(first), repr(second))))
 
     def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
@@ -422,7 +397,7 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) != 0:
-            raise(self.failureException, \
+            raise(self.failureException,
                   (msg or '%s != %s within %s places' % (repr(first), repr(second), repr(places) )))
 
     def failIfAlmostEqual(self, first, second, places=7, msg=None):

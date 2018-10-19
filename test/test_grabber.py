@@ -29,6 +29,8 @@ import string
 import tempfile
 import random
 
+
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -40,9 +42,11 @@ except ImportError:
 try:
     from urllib2 import OpenerDirector
     from urllib2 import urlopen
+    from urllib2 import URLError
 except ImportError:
     from urllib.request import OpenerDirector
     from urllib.request import urlopen
+    from urllib.error import URLError
 
 import socket
 
@@ -58,9 +62,8 @@ class FileObjectTests(TestCase):
     
     def setUp(self):
         self.filename = tempfile.mktemp()
-        fo = file(self.filename, 'wb')
-        fo.write(reference_data)
-        fo.close()
+        with open(self.filename, 'wb') as fo:
+            fo.write(reference_data.encode('utf8'))
 
         self.fo_input = StringIO(reference_data)
         self.fo_output = StringIO()
@@ -107,9 +110,8 @@ class HTTPTests(TestCase):
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 
-        fo = file(filename, 'rb')
-        contents = fo.read()
-        fo.close()
+        with open(filename, 'rb') as fo:
+            contents = fo.read()
 
         self.assert_(contents == reference_data)
 
@@ -403,9 +405,8 @@ class CheckfuncTestCase(TestCase):
         #import pudb; pudb.set_trace()
         if hasattr(obj, 'filename'):
             # we used urlgrab
-            fo = file(obj.filename)
-            data = fo.read()
-            fo.close()
+            with open(obj.filename, 'rb') as fo:
+                data = fo.read()
         else:
             # we used urlread
             data = obj.data
@@ -464,7 +465,7 @@ class RegetTestBase:
         self.ref = short_reference_data
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
         self.filename = tempfile.mktemp()
-        self.hl = len(self.ref) / 2
+        self.hl = int(len(self.ref) / 2)
         self.url = 'OVERRIDE THIS'
 
     def tearDown(self):
@@ -472,21 +473,21 @@ class RegetTestBase:
         except: pass
 
     def _make_half_zero_file(self):
-        fo = file(self.filename, 'wb')
-        fo.write('0'*self.hl)
-        fo.close()
+        with open(self.filename, 'wb') as fo:
+            fo.write(b'0'*self.hl)
 
     def _read_file(self):
-        fo = file(self.filename, 'rb')
-        data = fo.read()
-        fo.close()
+        with open(self.filename, 'rb') as fo:
+            data = fo.read()
         return data
-    
+
+
 class CommonRegetTests(RegetTestBase, TestCase):
     def test_bad_reget_type(self):
         "exception raised for illegal reget mode"
         self.assertRaises(URLGrabError, self.grabber.urlgrab,
                           self.url, self.filename, reget='junk')
+
 
 class FTPRegetTests(RegetTestBase, TestCase):
     def setUp(self):
@@ -546,9 +547,8 @@ class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
         tmp = tempfile.mktemp()
-        tmpfo = file(tmp, 'wb')
-        tmpfo.write(self.ref)
-        tmpfo.close()
+        with open(tmp, 'wb') as tmpfo:
+            tmpfo.write(self.ref.encode('utf8'))
         self.tmp = tmp
         
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
@@ -558,7 +558,7 @@ class FileRegetTests(HTTPRegetTests):
         self.grabber = grabber.URLGrabber(reget='check_timestamp',
                                           copy_local=1)
         self.filename = tempfile.mktemp()
-        self.hl = len(self.ref) / 2
+        self.hl = int(len(self.ref) / 2)
 
     def tearDown(self):
         try: os.unlink(self.filename)
@@ -571,7 +571,7 @@ class ProFTPDSucksTests(TestCase):
         self.url = ref_proftp
         try:
             fo = urlopen(self.url).close()
-        except IOError:
+        except URLError:
             self.skip()
 
     def test_restart_workaround(self):

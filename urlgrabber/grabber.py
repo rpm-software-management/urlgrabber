@@ -520,6 +520,9 @@ BANDWIDTH THROTTLING
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from ftplib import parse150
+from io import StringIO
+
 import os
 import sys
 import time
@@ -527,7 +530,6 @@ import string
 import six
 try:
     # Python2
-    import thread as _thread
     import mimetools
     from httplib import responses
     from httplib import HTTPException
@@ -540,7 +542,6 @@ try:
     from urllib import url2pathname
 except ImportError:
     # Python3
-    import _thread
     import email
     from http.client import responses
     from http.client import HTTPException
@@ -551,11 +552,8 @@ except ImportError:
     from urllib.parse import urlsplit
     from urllib.request import pathname2url
     from urllib.request import url2pathname
-import types
 import stat
 import pycurl
-from ftplib import parse150
-from io import StringIO
 import socket, select, fcntl
 from .byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
@@ -679,7 +677,7 @@ def _(st):
 def _to_utf8(obj, errors='replace'):
     '''convert 'unicode' to an encoded utf-8 byte string '''
     # stolen from yum.i18n
-    if isinstance(obj, str):
+    if six.PY2 and isinstance(obj, str):
         obj = obj.encode('utf-8', errors)
     return obj
 
@@ -893,7 +891,7 @@ class URLParser:
         (scheme, host, path, parm, query, frag) = parts
         if ' ' in path:
             return 1
-        ind = string.find(path, '%')
+        ind = path.find('%')
         if ind > -1:
             while ind > -1:
                 if len(path) < ind+3:
@@ -902,7 +900,7 @@ class URLParser:
                 if     code[0] not in self.hexvals or \
                        code[1] not in self.hexvals:
                     return 1
-                ind = string.find(path, '%', ind+1)
+                ind = path.find('%', ind+1)
             return 0
         return 1
 
@@ -1113,18 +1111,20 @@ class URLGrabber(object):
                 if DEBUG:
                     DEBUG.info('success')
                 return r
-            except URLGrabError as e:
-                exception = e
+            except URLGrabError as err1:
+                exception = err1
                 callback = opts.failure_callback
-            except KeyboardInterrupt as e:
-                exception = e
+            except KeyboardInterrupt as err2:
+                exception = err2
                 callback = opts.interrupt_callback
                 if not callback:
                     raise sys.exc_info()[1]
 
-            if DEBUG: DEBUG.info('exception: %s', exception)
+            if DEBUG:
+                DEBUG.info('exception: %s', exception)
             if callback:
-                if DEBUG: DEBUG.info('calling callback: %s', callback)
+                if DEBUG:
+                    DEBUG.info('calling callback: %s', callback)
                 obj = CallbackObject(exception=exception, url=args[0],
                                      tries=tries, retry=opts.retry,
                                      retry_no_cache=opts.retry_no_cache)
@@ -1134,7 +1134,7 @@ class URLGrabber(object):
                 message = 'retries exceeded, re-raising'
                 if DEBUG:
                     DEBUG.info(message)
-                raise sys.exc_info()[1]
+                raise exception
 
             retrycode = getattr(exception, 'errno', None)
             if (retrycode is not None) and (retrycode not in opts.retrycodes):
@@ -1345,10 +1345,10 @@ class PyCurlFileObject(object):
                     self._prog_running = True
                     self.opts.progress_obj.update(self._amount_read)
 
+            buf_orig = buf
             if type(buf) != six.text_type:
-                buf = unicode(buf.decode('utf-8'))
+                buf = buf.decode('utf-8')
             self._amount_read += len(buf)
-            # import pudb; pudb.set_trace()
             try:
                 if self._range:
                     # client-side ranges
@@ -1358,7 +1358,10 @@ class PyCurlFileObject(object):
                     if start < len(buf) and stop > 0:
                         self.fo.write(buf[max(start, 0):stop])
                 else:
-                    self.fo.write(buf)
+                    if isinstance(self.fo, StringIO):
+                        self.fo.write(buf)
+                    else:
+                        self.fo.write(buf.encode('utf8'))
             except IOError as e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
@@ -1367,6 +1370,7 @@ class PyCurlFileObject(object):
             return -1
             
     def _hdr_retrieve(self, buf):
+        buf = buf.decode('utf8')
         if self._hdr_ended:
             self._hdr_dump = ''
             self.size = 0
@@ -1906,7 +1910,7 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = string.join(buf, '')
+        self._rbuf = "".join(buf)
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
