@@ -1209,7 +1209,6 @@ class URLGrabber(object):
             _async_queue.append(opts)
             return filename
 
-        # import pudb; pudb.set_trace()
         def retryfunc(opts, url, filename):
             fo = PyCurlFileObject(url, filename, opts)
             try:
@@ -1562,7 +1561,6 @@ class PyCurlFileObject(object):
             return
         
         try:
-            # import pudb; pudb.set_trace()
             self.curl_obj.perform()
         except pycurl.error as e:
             # XXX - break some of these out a bit more clearly

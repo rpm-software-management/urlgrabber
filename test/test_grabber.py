@@ -48,6 +48,7 @@ except ImportError:
     from urllib.request import urlopen
     from urllib.error import URLError
 
+import six
 import socket
 
 from base_test_code import *
@@ -63,9 +64,15 @@ class FileObjectTests(TestCase):
     def setUp(self):
         self.filename = tempfile.mktemp()
         with open(self.filename, 'wb') as fo:
-            fo.write(reference_data.encode('utf8'))
+            if type(reference_data) in six.string_types:
+                fo.write(reference_data.encode('utf8'))
+            else:
+                fo.write(reference_data)
 
-        self.fo_input = StringIO(reference_data)
+        if type(reference_data) in six.string_types:
+            self.fo_input = StringIO(reference_data)
+        else:
+            self.fo_input = StringIO(reference_data.decode("utf8"))
         self.fo_output = StringIO()
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             self.filename, grabber.default_grabber.opts)
@@ -80,29 +87,31 @@ class FileObjectTests(TestCase):
         "PYCurlFileObject .read() method"
         s = self.wrapper.read()
         self.fo_output.write(s)
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.assert_(reference_data == self.fo_output.getvalue().encode("utf8"))
 
     def test_readline(self):
         "PyCurlFileObject .readline() method"
         while 1:
             s = self.wrapper.readline()
             self.fo_output.write(s)
-            if not s: break
-        self.assert_(reference_data == self.fo_output.getvalue())
+            if not s:
+                break
+        self.assert_(reference_data == self.fo_output.getvalue().encode("utf8"))
 
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
-        self.fo_output.write(string.join(li, ''))
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.fo_output.write(''.join(li))
+        self.assert_(reference_data == self.fo_output.getvalue().encode("utf8"))
 
     def test_smallread(self):
         "PyCurlFileObject .read(N) with small N"
         while 1:
             s = self.wrapper.read(23)
             self.fo_output.write(s)
-            if not s: break
-        self.assert_(reference_data == self.fo_output.getvalue())
+            if not s:
+                break
+        self.assert_(reference_data == self.fo_output.getvalue().encode("utf8"))
     
 class HTTPTests(TestCase):
     def test_reference_file(self):
@@ -409,7 +418,7 @@ class CheckfuncTestCase(TestCase):
                 data = fo.read()
         else:
             # we used urlread
-            data = obj.data
+            data = obj.data.encode("utf8")
 
         if data == self.data:
             return
@@ -436,7 +445,8 @@ class CheckfuncTestCase(TestCase):
         "check for proper args when used with urlread"
         self.g.urlread(short_ref_http)
         self._check_common_args()
-        self.assertEquals(self.obj.data, short_reference_data)
+        # TODO: Why is obj.data a string in the first place?
+        self.assertEquals(self.obj.data.encode("utf8"), short_reference_data)
 
     def test_checkfunc_urlgrab_success(self):
         "check success with urlgrab checkfunc"
@@ -506,7 +516,7 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.grabber.urlgrab(self.url, self.filename, reget='simple')
         data = self._read_file()
 
-        self.assertEquals(data[:self.hl], '0'*self.hl)
+        self.assertEquals(data[:self.hl], b'0'*self.hl)
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
 class HTTPRegetTests(FTPRegetTests):
@@ -548,7 +558,7 @@ class FileRegetTests(HTTPRegetTests):
         self.ref = short_reference_data
         tmp = tempfile.mktemp()
         with open(tmp, 'wb') as tmpfo:
-            tmpfo.write(self.ref.encode('utf8'))
+                tmpfo.write(self.ref)
         self.tmp = tmp
         
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(

@@ -65,18 +65,17 @@ class BasicTests(TestCase):
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
-        fo = open(filename)
-        data = fo.read()
-        fo.close()
+        with open(filename) as fo:
+            data = fo.read()
 
-        self.assertEqual(data, short_reference_data)
+        self.assertEqual(data.encode('utf8'), short_reference_data)
 
     def test_urlread(self):
         """MirrorGroup.urlread"""
         url = 'short_reference'
         data = self.mg.urlread(url)
 
-        self.assertEqual(data, short_reference_data)
+        self.assertEqual(data.encode('utf8'), short_reference_data)
 
     def test_urlopen(self):
         """MirrorGroup.urlopen"""
@@ -85,7 +84,7 @@ class BasicTests(TestCase):
         data = fo.read()
         fo.close()
 
-        self.assertEqual(data, short_reference_data)
+        self.assertEqual(data.encode('utf8'), short_reference_data)
 
 class SubclassTests(TestCase):
     def setUp(self):
@@ -103,7 +102,7 @@ class SubclassTests(TestCase):
         data = fo.read()
         fo.close()
 
-        self.assertEqual(data, short_reference_data)
+        self.assertEqual(data.encode('utf8'), short_reference_data)
 
     def test_MGRandomStart(self):
         "MGRandomStart.urlgrab"
@@ -130,7 +129,7 @@ class CallbackTests(TestCase):
             tl.append(str(cb_obj.exception))
         self.mg.failure_callback = failure_callback, (tricky_list, ), {}
         data = self.mg.urlread('reference')
-        self.assert_(data == reference_data)
+        self.assert_(data.encode('utf8') == reference_data)
         self.assertEquals(tricky_list[0][:25],
                           '[Errno 14] HTTP Error 403')
 
@@ -176,7 +175,7 @@ class FailoverTests(TestCase):
         self.assertEqual(len(elist), 1)
         # now be sure that the second mirror succeeded and the correct
         # data was returned
-        self.assertEqual(contents, reference_data)
+        self.assertEqual(contents.encode('utf8'), reference_data)
 
 class FakeGrabber:
     def __init__(self, resultlist=None):
