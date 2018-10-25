@@ -25,7 +25,7 @@ from urlgrabber.grabber import \
 
 def write(fmt, *arg):
     try: os.write(1, fmt % arg)
-    except OSError, e:
+    except OSError as e:
         if e.args[0] != errno.EPIPE: raise
         sys.exit(1)
 
@@ -66,7 +66,7 @@ def main():
                     dlsz = fo._tm_last[0] - fo._tm_first[0]
                     dltm = fo._tm_last[1] - fo._tm_first[1]
                 ug_err = 'OK'
-            except URLGrabError, e:
+            except URLGrabError as e:
                 size = 0
                 ug_err = '%d %d %s' % (e.errno, getattr(e, 'code', 0), e.strerror)
             write('%d %d %d %.3f %s\n', opts._id, size, dlsz, dltm, ug_err)
