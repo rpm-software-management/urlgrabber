@@ -411,7 +411,6 @@ class CheckfuncTestCase(TestCase):
         self.args = args
         self.kwargs = kwargs
 
-        #import pudb; pudb.set_trace()
         if hasattr(obj, 'filename'):
             # we used urlgrab
             with open(obj.filename, 'rb') as fo:

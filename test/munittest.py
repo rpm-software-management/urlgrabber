@@ -381,7 +381,6 @@ class TestCase(unittest.TestCase):
            operator.
         """
         if not first == second:
-            import pudb; pudb.set_trace()
             raise self.failureException(
                 msg or '%s != %s' % (repr(first), repr(second)))
         
