@@ -11,9 +11,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -57,7 +57,7 @@ CLIENT OPTIONS
      'http://foo.com/index.html' will be written to 'index.html'.  You
      can override this for your convenience or when necessary for urls
      like 'http://foo.com/'
-     
+
   -O
 
      Print the local name of each downloaded file to STDOUT.  This is
@@ -84,7 +84,7 @@ CLIENT OPTIONS
 
      Turn on internal urlgrabber debugging.  This is equivalent (but
      overrides) running with the environment variable:
-       URLGRABBER_DEBUG=SPEC 
+       URLGRABBER_DEBUG=SPEC
      SPEC can be of the form LEVEL,FILENAME, where
      LEVEL can be string (DEBUG, WARN, etc) or number.
      FILENAME can be the name of a file or "-" for STDOUT.  The
@@ -94,7 +94,7 @@ CLIENT OPTIONS
 
   -D
 
-     A convenience alias for: --verbose=3 --progress --debug=INFO,- 
+     A convenience alias for: --verbose=3 --progress --debug=INFO,-
 
   --profile
 
@@ -127,7 +127,7 @@ options:
                     turn on urlgrabber module debugging with
                     SPEC=LEVEL,FILENAME.  e.g. -d 1,debug.txt
   -D                a convenience option equivalent to:
-                    --verbose=3 --progress --debug=INFO,- 
+                    --verbose=3 --progress --debug=INFO,-
   --profile         profile the actual fetching and print the results
   """
 
@@ -144,14 +144,14 @@ class client_options:
     def __init__(self):
         self.ug_options, self.ug_defaults = self.get_ug_options()
         self.process_command_line()
-    
+
     def get_ug_options(self):
         ugo = URLGrabberOptions()
         ug_options = ['copy_local', 'keepalive', 'prefix', 'reget',
                       'data', 'quote', 'throttle', 'bandwidth',
                       'proxies', 'retry', 'retrycodes',
-                      'range', 'user_agent', 
-                      'http_headers', 'ftp_headers', 
+                      'range', 'user_agent',
+                      'http_headers', 'ftp_headers',
                       'ssl_ca_cert', 'ssl_context',
                       'text', 'close_connection',
                       'cache_openers','timeout']
@@ -191,7 +191,7 @@ class client_options:
         self.profile = 0
         self.ugops = {}
         self.args = args
-        
+
         ug_dash = [ '--' + o for o in self.ug_options ]
         if not args: self.help(args)
         for (o, v) in optlist:
@@ -268,7 +268,7 @@ class client_options:
         else:
             print('  %s:  no help found for this option' % option)
         print('')
-            
+
 class ugclient:
     def __init__(self):
         op = client_options()
@@ -302,7 +302,7 @@ class ugclient:
             except URLGrabError as e:
                 print(e)
                 sys.exit(1)
-        
+
     def set_debug_logger(self, dbspec):
         try:
             dbinfo = dbspec.split(',')
@@ -310,7 +310,7 @@ class ugclient:
             level = logging._levelNames.get(dbinfo[0], None)
             if level is None: level = int(dbinfo[0])
             if level < 1: raise ValueError()
-            
+
             formatter = logging.Formatter('%(asctime)s %(message)s')
             if len(dbinfo) > 1: filename = dbinfo[1]
             else: filename = ''
