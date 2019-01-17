@@ -33,7 +33,7 @@ package_dir = {'urlgrabber':'urlgrabber'}
 scripts = ['scripts/urlgrabber']
 data_files = [
     ('share/doc/' + name + '-' + version, ['README','LICENSE', 'TODO', 'ChangeLog']),
-    ('libexec', ['scripts/urlgrabber-ext-down']),
+#    ('libexec', ['scripts/urlgrabber-ext-down']),
 ]
 options = { 'clean' : { 'all' : 1 } }
 classifiers = [
