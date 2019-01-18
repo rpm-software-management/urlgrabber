@@ -1364,7 +1364,7 @@ class PyCurlFileObject(object):
             except IOError as e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
-            return len(buf)
+            return len(buf_orig)
         except KeyboardInterrupt:
             return -1
 
