@@ -876,7 +876,7 @@ class URLParser:
         passing into urlgrabber.
         """
         (scheme, host, path, parm, query, frag) = parts
-        path = quote(path)
+        path = quote(path, safe='/$')
         return (scheme, host, path, parm, query, frag)
 
     hexvals = '0123456789ABCDEF'

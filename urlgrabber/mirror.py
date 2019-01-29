@@ -95,6 +95,7 @@ from __future__ import unicode_literals
 
 import sys
 import random
+import urlparse
 try:
     import thread as _thread  # needed for locking to make this threadsafe
 except ImportError:
@@ -408,10 +409,11 @@ class MirrorGroup:
     # by overriding the configuration methods :)
 
     def _join_url(self, base_url, rel_url):
-        if base_url.endswith('/') or rel_url.startswith('/'):
-            return base_url + rel_url
+        (scheme, netloc, path, query, fragid) = urlparse.urlsplit(base_url)
+        if path.endswith('/') or rel_url.startswith('/'):
+            return urlparse.urlunsplit((scheme, netloc, path + rel_url, query, fragid))
         else:
-            return base_url + '/' + rel_url
+            return urlparse.urlunsplit((scheme, netloc, path + '/' + rel_url, query, fragid))
         
     def _mirror_try(self, func, url, kw):
         gr = GrabRequest()
