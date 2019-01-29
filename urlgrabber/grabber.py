@@ -528,6 +528,8 @@ import sys
 import time
 import string
 import six
+import chardet
+
 try:
     # Python2
     import mimetools
@@ -1346,7 +1348,8 @@ class PyCurlFileObject(object):
 
             buf_orig = buf
             if type(buf) != six.text_type:
-                buf = buf.decode('utf-8')
+                buf_encoding = chardet.detect(buf)
+                buf = buf.decode(buf_encoding.get('encoding', 'utf-8'))
             self._amount_read += len(buf)
             try:
                 if self._range:
