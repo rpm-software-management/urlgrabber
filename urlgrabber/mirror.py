@@ -95,7 +95,6 @@ from __future__ import unicode_literals
 
 import sys
 import random
-import urlparse
 try:
     import thread as _thread  # needed for locking to make this threadsafe
 except ImportError:
@@ -104,12 +103,16 @@ except ImportError:
 
 try:
     # Python2
+    from urlparse import urlsplit
+    from urlparse import urlunsplit
     from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
     from grabber import _run_callback, _do_raise
     from grabber import exception2msg
     from grabber import _TH
 except ImportError:
     # Python3
+    from urllib.parse import urlsplit
+    from urllib.parse import urlunsplit
     from .grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
     from .grabber import _run_callback, _do_raise
     from .grabber import exception2msg
@@ -409,11 +412,11 @@ class MirrorGroup:
     # by overriding the configuration methods :)
 
     def _join_url(self, base_url, rel_url):
-        (scheme, netloc, path, query, fragid) = urlparse.urlsplit(base_url)
+        (scheme, netloc, path, query, fragid) = urlsplit(base_url)
         if path.endswith('/') or rel_url.startswith('/'):
-            return urlparse.urlunsplit((scheme, netloc, path + rel_url, query, fragid))
+            return urlunsplit((scheme, netloc, path + rel_url, query, fragid))
         else:
-            return urlparse.urlunsplit((scheme, netloc, path + '/' + rel_url, query, fragid))
+            return urlunsplit((scheme, netloc, path + '/' + rel_url, query, fragid))
         
     def _mirror_try(self, func, url, kw):
         gr = GrabRequest()
