@@ -522,6 +522,7 @@ from __future__ import unicode_literals
 
 from ftplib import parse150
 from io import StringIO
+from io import BytesIO
 
 import os
 import sys
@@ -529,6 +530,7 @@ import time
 import string
 import six
 import chardet
+import mimetypes
 
 try:
     # Python2
@@ -542,6 +544,8 @@ try:
     from urlparse import urlsplit
     from urllib import pathname2url
     from urllib import url2pathname
+    from urllib2 import urlopen as urllib_urlopen
+    from urllib2 import Request
 except ImportError:
     # Python3
     import email
@@ -554,6 +558,8 @@ except ImportError:
     from urllib.parse import urlsplit
     from urllib.request import pathname2url
     from urllib.request import url2pathname
+    from urllib.request import urlopen as urllib_urlopen
+    from urllib.request import Request
 import stat
 import pycurl
 import socket, select, fcntl
@@ -1291,6 +1297,7 @@ default_grabber = URLGrabber()
 class PyCurlFileObject(object):
     def __init__(self, url, filename, opts):
         self.fo = None
+        self.is_binary = None
         self._hdr_dump = ''
         self._parsed_hdr = None
         self.url = url
@@ -1302,7 +1309,7 @@ class PyCurlFileObject(object):
         if self.opts.reget == 'check_timestamp':
             raise NotImplementedError("check_timestamp regets are not implemented in this ver of urlgrabber. Please report this.")
         self._complete = False
-        self._rbuf = ''
+        self._rbuf = None
         self._rbufsize = 1024*8
         self._ttime = time.time()
         self._tsize = 0
@@ -1337,7 +1344,7 @@ class PyCurlFileObject(object):
 
             if not self._prog_running:
                 if self.opts.progress_obj:
-                    size  = self.size + self._reget_length
+                    size = self.size + self._reget_length
                     self.opts.progress_obj.start(self._prog_reportname,
                                                  unquote(self.url),
                                                  self._prog_basename,
@@ -1347,7 +1354,7 @@ class PyCurlFileObject(object):
                     self.opts.progress_obj.update(self._amount_read)
 
             buf_orig = buf
-            if type(buf) != six.text_type:
+            if not self.is_binary:
                 buf_encoding = chardet.detect(buf)
                 buf = buf.decode(buf_encoding.get('encoding', 'utf-8'))
             self._amount_read += len(buf)
@@ -1360,10 +1367,10 @@ class PyCurlFileObject(object):
                     if start < len(buf) and stop > 0:
                         self.fo.write(buf[max(start, 0):stop])
                 else:
-                    if isinstance(self.fo, StringIO):
+                    if self.is_binary:
                         self.fo.write(buf)
                     else:
-                        self.fo.write(buf.encode('utf8'))
+                        self.fo.write(buf)
             except IOError as e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
@@ -1798,8 +1805,24 @@ class PyCurlFileObject(object):
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
 
+            # Getting content type from the server
+            request = Request(self.url)
+            request.get_method = lambda : 'HEAD'
+            response = urllib_urlopen(request)
+            content_type = None
+            try:
+                content_type = response.info().get_content_type()
+            except:
+                content_type = response.info().type
 
-            self.fo = StringIO()
+            if not content_type or content_type.startswith("text/"):
+                self.fo = StringIO()
+                self._rbuf = ''
+            else:
+                self.fo = BytesIO()
+                self.is_binary = True
+                self._rbuf = b''
+
             # if this is to be a tempfile instead....
             # it just makes crap in the tempdir
             #fh, self._temp_name = mkstemp()
@@ -1911,7 +1934,8 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = "".join(buf)
+        for entry in buf:
+            self._rbuf += entry
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
