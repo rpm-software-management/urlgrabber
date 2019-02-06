@@ -1334,7 +1334,31 @@ class PyCurlFileObject(object):
             return getattr(self.fo, name)
         raise AttributeError(name)
 
+    def _initialize_according_to_content_type(self):
+        """Performs a HEAD request to the URL and retrieves the content type.
+        Depending on the content type, we are then initializing self.fo with
+        StringIO or BytesIO and set self.is_binary."""
+        if self.url and self.is_binary == None:
+            request = Request(self.url)
+            request.get_method = lambda : 'HEAD'
+            response = urllib_urlopen(request)
+            content_type = None
+            try:
+                content_type = response.info().get_content_type()
+            except:
+                content_type = response.info().type
+            if not content_type or content_type.startswith("text/"):
+                if not self.fo:
+                    self.fo = StringIO()
+                self._rbuf = ''
+            else:
+                if not self.fo:
+                    self.fo = BytesIO()
+                self.is_binary = True
+                self._rbuf = b''
+
     def _retrieve(self, buf):
+        self._initialize_according_to_content_type()
         try:
             tm = self._amount_read + len(buf), time.time()
             if self._tm_first is None:
@@ -1805,23 +1829,6 @@ class PyCurlFileObject(object):
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
 
-            # Getting content type from the server
-            request = Request(self.url)
-            request.get_method = lambda : 'HEAD'
-            response = urllib_urlopen(request)
-            content_type = None
-            try:
-                content_type = response.info().get_content_type()
-            except:
-                content_type = response.info().type
-
-            if not content_type or content_type.startswith("text/"):
-                self.fo = StringIO()
-                self._rbuf = ''
-            else:
-                self.fo = BytesIO()
-                self.is_binary = True
-                self._rbuf = b''
 
             # if this is to be a tempfile instead....
             # it just makes crap in the tempdir
