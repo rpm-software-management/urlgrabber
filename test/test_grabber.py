@@ -23,8 +23,6 @@ from __future__ import print_function
 
 """grabber.py tests"""
 
-# $Id: test_grabber.py,v 1.31 2006/12/08 00:14:16 mstenner Exp $
-
 import sys
 import os
 import string, tempfile, random, cStringIO, os

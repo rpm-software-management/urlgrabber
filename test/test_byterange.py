@@ -23,8 +23,6 @@ from __future__ import print_function
 
 """byterange.py tests"""
 
-# $Id: test_byterange.py,v 1.6 2004/03/31 17:02:00 mstenner Exp $
-
 import sys
 
 from cStringIO import StringIO

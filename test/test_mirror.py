@@ -21,8 +21,6 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.12 2005/10/22 21:57:27 mstenner Exp $
-
 import sys
 import os
 import string, tempfile, random, cStringIO, os

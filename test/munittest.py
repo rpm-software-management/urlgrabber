@@ -101,8 +101,6 @@ AND THERE IS NO OBLIGATION WHATSOEVER TO PROVIDE MAINTENANCE,
 SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 """
 
-# $Id: munittest.py,v 1.2 2004/03/31 01:27:24 mstenner Exp $
-
 import time
 import sys
 import traceback
