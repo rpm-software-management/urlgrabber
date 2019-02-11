@@ -437,7 +437,7 @@ class MirrorGroup:
     def urlgrab(self, url, filename=None, **kwargs):
         kw = dict(kwargs)
         kw['filename'] = filename
-        if kw.get('async'):
+        if kw.get('async_') or kw.get('async'):
             # enable mirror failovers in async path
             kw['mirror_group'] = self, [], {}, set()
             kw['relative_url'] = url

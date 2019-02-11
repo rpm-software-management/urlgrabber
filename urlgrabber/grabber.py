@@ -292,7 +292,7 @@ GENERAL ARGUMENTS (kwargs)
     What type of name to IP resolving to use, default is to do both IPV4 and
     IPV6.
 
-  async = (key, limit)
+  async_ = (key, limit)
 
     When this option is set, the urlgrab() is not processed immediately
     but queued.  parallel_wait() then processes grabs in parallel, limiting
@@ -960,6 +960,8 @@ class URLGrabberOptions:
         if 'range' in kwargs:
             # normalize the supplied range value
             self.range = range_tuple_normalize(self.range)
+        if 'async' in kwargs:
+            self.async_ = self.__dict__.pop('async')
         if not self.reget in [None, 'simple', 'check_timestamp']:
             raise URLGrabError(11, _('Illegal reget mode: %s') \
                                % (self.reget, ))
@@ -1014,7 +1016,7 @@ class URLGrabberOptions:
         self.size = None # if we know how big the thing we're getting is going
                          # to be. this is ultimately a MAXIMUM size for the file
         self.max_header_size = 2097152 #2mb seems reasonable for maximum header size
-        self.async = None # blocking by default
+        self.async_ = None # blocking by default
         self.mirror_group = None
         self.max_connections = 5
         self.timedhosts = None
@@ -1170,7 +1172,7 @@ class URLGrabber(object):
                     _run_callback(opts.checkfunc, obj)
                 return path
 
-        if opts.async:
+        if opts.async_:
             opts.url = url
             opts.filename = filename
             opts.size = int(opts.size or 0)
@@ -2135,7 +2137,7 @@ class _ExternalDownloader:
                 if line[5] != '0':
                     ug_err.code = int(line[5])
                 if DEBUG: DEBUG.info('failure: %s', ug_err)
-            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async[0])
+            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async_[0])
             ret.append((opts, size, ug_err))
         return ret
 
@@ -2225,7 +2227,7 @@ def parallel_wait(meter=None):
             _run_callback(opts.failfunc, opts)
             return
 
-        key, limit = opts.async
+        key, limit = opts.async_
         host_con[key] = host_con.get(key, 0) + 1
         if opts.progress_obj:
             if opts.multi_progress_obj:
@@ -2236,7 +2238,7 @@ def parallel_wait(meter=None):
 
     def perform():
         for opts, size, ug_err in dl.perform():
-            key, limit = opts.async
+            key, limit = opts.async_
             host_con[key] -= 1
 
             if ug_err is None:
@@ -2363,7 +2365,7 @@ def parallel_wait(meter=None):
                 # update the current mirror and limit
                 key = best['mirror']
                 limit = best.get('kwargs', {}).get('max_connections')
-                opts.async = key, limit
+                opts.async_ = key, limit
 
                 # update URL and proxy
                 url = mg._join_url(key, opts.relative_url)
@@ -2372,7 +2374,7 @@ def parallel_wait(meter=None):
                 opts.url = url
 
             # check host limit, then start
-            key, limit = opts.async
+            key, limit = opts.async_
             if key in single:
                 limit = 1
             while host_con.get(key, 0) >= (limit or 2):

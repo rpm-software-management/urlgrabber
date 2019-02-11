@@ -321,7 +321,7 @@ class HttpReplyCode(TestCase):
 
         # multi
         err = []
-        self.mg.urlgrab('foo', async = True, failfunc = err.append)
+        self.mg.urlgrab('foo', async_=True, failfunc=err.append)
         urlgrabber.grabber.parallel_wait()
         self.assertEquals([e.exception.errno for e in err], [256])
         self.assertEquals(self.code, 503); del self.code
@@ -372,7 +372,7 @@ class HttpReplyCode(TestCase):
 
         # multi
         opts.checkfunc = checkfunc_grab
-        self.mg.urlgrab('foo', async=True)
+        self.mg.urlgrab('foo', async_=True)
         try:
             urlgrabber.grabber.parallel_wait()
         except URLGrabError as e:
