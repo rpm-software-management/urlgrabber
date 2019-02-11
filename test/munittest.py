@@ -251,8 +251,8 @@ class TestCase:
             testMethod = getattr(self, methodName)
             self._testMethodDoc = testMethod.__doc__
         except AttributeError:
-            raise ValueError, "no such test method in %s: %s" % \
-                  (self.__class__, methodName)
+            raise ValueError("no such test method in %s: %s" % \
+                  (self.__class__, methodName))
 
     def setUp(self):
         "Hook method for setting up the test fixture before exercising it."
@@ -361,15 +361,15 @@ class TestCase:
 
     def fail(self, msg=None):
         """Fail immediately, with the given message."""
-        raise self.failureException, msg
+        raise self.failureException(msg)
 
     def failIf(self, expr, msg=None):
         "Fail the test if the expression is true."
-        if expr: raise self.failureException, msg
+        if expr: raise self.failureException(msg)
 
     def failUnless(self, expr, msg=None):
         """Fail the test unless the expression is true."""
-        if not expr: raise self.failureException, msg
+        if not expr: raise self.failureException(msg)
 
     def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
         """Fail unless an exception of class excClass is thrown
@@ -386,23 +386,21 @@ class TestCase:
         else:
             if hasattr(excClass,'__name__'): excName = excClass.__name__
             else: excName = str(excClass)
-            raise self.failureException, excName
+            raise self.failureException(excName)
 
     def failUnlessEqual(self, first, second, msg=None):
         """Fail if the two objects are unequal as determined by the '=='
            operator.
         """
         if not first == second:
-            raise self.failureException, \
-                  (msg or '%s != %s' % (`first`, `second`))
+            raise self.failureException(msg or '%s != %s' % (`first`, `second`))
 
     def failIfEqual(self, first, second, msg=None):
         """Fail if the two objects are equal as determined by the '=='
            operator.
         """
         if first == second:
-            raise self.failureException, \
-                  (msg or '%s == %s' % (`first`, `second`))
+            raise self.failureException(msg or '%s == %s' % (`first`, `second`))
 
     def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are unequal as determined by their
@@ -413,8 +411,7 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) != 0:
-            raise self.failureException, \
-                  (msg or '%s != %s within %s places' % (`first`, `second`, `places` ))
+            raise self.failureException(msg or '%s != %s within %s places' % (`first`, `second`, `places` ))
 
     def failIfAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are equal as determined by their
@@ -425,8 +422,7 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) == 0:
-            raise self.failureException, \
-                  (msg or '%s == %s within %s places' % (`first`, `second`, `places`))
+            raise self.failureException(msg or '%s == %s within %s places' % (`first`, `second`, `places`))
 
     assertEqual = assertEquals = failUnlessEqual
 
@@ -442,15 +438,15 @@ class TestCase:
 
     def skip(self, msg=None):
         """Skip the test"""
-        raise self.skipException, msg
+        raise self.skipException(msg)
 
     def skipIf(self, expr, msg=None):
         "Skip the test if the expression is true."
-        if expr: raise self.skipException, msg
+        if expr: raise self.skipException(msg)
 
     def skipUnless(self, expr, msg=None):
         """Skip the test unless the expression is true."""
-        if not expr: raise self.skipException, msg
+        if not expr: raise self.skipException(msg)
 
 
 
@@ -606,7 +602,7 @@ class TestLoader:
         parts = string.split(name, '.')
         if module is None:
             if not parts:
-                raise ValueError, "incomplete test name: %s" % name
+                raise ValueError("incomplete test name: %s" % name)
             else:
                 parts_copy = parts[:]
                 while parts_copy:
@@ -633,11 +629,10 @@ class TestLoader:
             test = obj()
             if not isinstance(test, unittest.TestCase) and \
                not isinstance(test, unittest.TestSuite):
-                raise ValueError, \
-                      "calling %s returned %s, not a test" % (obj,test)
+                raise ValueError("calling %s returned %s, not a test" % (obj,test))
             return test
         else:
-            raise ValueError, "don't know how to make test from: %s" % obj
+            raise ValueError("don't know how to make test from: %s" % obj)
 
     def loadTestsFromNames(self, names, module=None):
         """Return a suite of all tests cases found using the given sequence

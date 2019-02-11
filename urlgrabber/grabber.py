@@ -899,7 +899,7 @@ class URLGrabberOptions:
     def __getattr__(self, name):
         if self.delegate and hasattr(self.delegate, name):
             return getattr(self.delegate, name)
-        raise AttributeError, name
+        raise AttributeError(name)
     
     def raw_throttle(self):
         """Calculate raw throttle value from throttle and bandwidth 
@@ -1266,7 +1266,7 @@ class PyCurlFileObject(object):
         self.reget_time = None
         self.opts = opts
         if self.opts.reget == 'check_timestamp':
-            raise NotImplementedError, "check_timestamp regets are not implemented in this ver of urlgrabber. Please report this."
+            raise NotImplementedError("check_timestamp regets are not implemented in this ver of urlgrabber. Please report this.")
         self._complete = False
         self._rbuf = ''
         self._rbufsize = 1024*8
@@ -1291,7 +1291,7 @@ class PyCurlFileObject(object):
 
         if hasattr(self.fo, name):
             return getattr(self.fo, name)
-        raise AttributeError, name
+        raise AttributeError(name)
 
     def _retrieve(self, buf):
         try:
@@ -2009,7 +2009,7 @@ def _dumps(v):
         return "(%s)" % ','.join(map(_dumps, v))
     if type(v) == list:
         return "[%s]" % ','.join(map(_dumps, v))
-    raise TypeError, 'Can\'t serialize %s' % v
+    raise TypeError('Can\'t serialize %s' % v)
 
 def _loads(s):
     def decode(v):
