@@ -907,7 +907,7 @@ class URLGrabberOptions:
         """
         if self.throttle <= 0:
             return 0
-        elif type(self.throttle) == type(0):
+        elif isinstance(self.throttle, type(0)):
             return float(self.throttle)
         else: # throttle is a float
             return self.bandwidth * self.throttle
@@ -1066,7 +1066,7 @@ class URLGrabber(object):
 
     def _retry(self, opts, func, *args):
         tries = 0
-        while 1:
+        while True:
             # there are only two ways out of this loop.  The second has
             # several "sub-ways"
             #   1) via the return in the "try" block
@@ -1999,14 +1999,14 @@ def _dumps(v):
     if v is False: return 'False'
     if type(v) in (int, long, float):
         return str(v)
-    if type(v) == unicode:
+    if isinstance(v, unicode):
         v = v.encode('UTF8')
-    if type(v) == str:
+    if isinstance(v, str):
         def quoter(c): return _quoter_map.get(c, c)
         return "'%s'" % ''.join(map(quoter, v))
-    if type(v) == tuple:
+    if isinstance(v, tuple):
         return "(%s)" % ','.join(map(_dumps, v))
-    if type(v) == list:
+    if isinstance(v, list):
         return "[%s]" % ','.join(map(_dumps, v))
     raise TypeError('Can\'t serialize %s' % v)
 
@@ -2562,7 +2562,7 @@ def _file_object_test(filename=None):
         else: print('FAILED')
 
 def _test_file_object_smallread(wrapper, fo_output):
-    while 1:
+    while True:
         s = wrapper.read(23)
         fo_output.write(s)
         if not s: return
@@ -2572,7 +2572,7 @@ def _test_file_object_readall(wrapper, fo_output):
     fo_output.write(s)
 
 def _test_file_object_readline(wrapper, fo_output):
-    while 1:
+    while True:
         s = wrapper.readline()
         fo_output.write(s)
         if not s: return

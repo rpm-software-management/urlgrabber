@@ -316,7 +316,7 @@ class MirrorGroup:
         #                       the callback)
         cb = gr.kw.get('failure_callback') or self.failure_callback
         if cb:
-            if type(cb) == type( () ):
+            if isinstance(cb, type( () )):
                 cb, args, kwargs = cb
             else:
                 args, kwargs = (), {}
@@ -412,7 +412,7 @@ class MirrorGroup:
             except KeyError: pass
 
         tries = 0
-        while 1:
+        while True:
             tries += 1
             mirrorchoice = self._get_mirror(gr)
             fullurl = self._join_url(mirrorchoice['mirror'], gr.url)

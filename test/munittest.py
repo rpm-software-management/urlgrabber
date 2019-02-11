@@ -619,12 +619,12 @@ class TestLoader:
             obj = getattr(obj, part)
 
         import unittest
-        if type(obj) == types.ModuleType:
+        if isinstance(obj, types.ModuleType):
             return self.loadTestsFromModule(obj)
         elif (isinstance(obj, (type, types.ClassType)) and
               issubclass(obj, unittest.TestCase)):
             return self.loadTestsFromTestCase(obj)
-        elif type(obj) == types.UnboundMethodType:
+        elif isinstance(obj, types.UnboundMethodType):
             return obj.im_class(obj.__name__)
         elif callable(obj):
             test = obj()
@@ -865,7 +865,7 @@ Examples:
 """
     def __init__(self, module='__main__', defaultTest=None,
                  argv=None, testRunner=None, testLoader=defaultTestLoader):
-        if type(module) == type(''):
+        if isinstance(module, type('')):
             self.module = __import__(module)
             for part in string.split(module,'.')[1:]:
                 self.module = getattr(self.module, part)

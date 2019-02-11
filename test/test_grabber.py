@@ -64,7 +64,7 @@ class FileObjectTests(TestCase):
 
     def test_readline(self):
         "PyCurlFileObject .readline() method"
-        while 1:
+        while True:
             s = self.wrapper.readline()
             self.fo_output.write(s)
             if not s: break
@@ -78,7 +78,7 @@ class FileObjectTests(TestCase):
 
     def test_smallread(self):
         "PyCurlFileObject .read(N) with small N"
-        while 1:
+        while True:
             s = self.wrapper.read(23)
             self.fo_output.write(s)
             if not s: break

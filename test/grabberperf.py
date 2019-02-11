@@ -110,7 +110,7 @@ def speedtest(size):
         t = time.time()
         in_fo = open(tempsrc)
         out_fo = open(tempdst, 'wb')
-        while 1:
+        while True:
             s = in_fo.read(1024 * 8)
             if not s: break
             out_fo.write(s)

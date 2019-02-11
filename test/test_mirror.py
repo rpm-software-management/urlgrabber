@@ -278,7 +278,7 @@ class HttpReplyCode(TestCase):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(LOCALPORT); s.listen(1)
-            while 1:
+            while True:
                 c, a = s.accept()
                 if self.exit: c.close(); break
                 data = ''
