@@ -393,14 +393,14 @@ class TestCase:
            operator.
         """
         if not first == second:
-            raise self.failureException(msg or '%s != %s' % (`first`, `second`))
+            raise self.failureException(msg or '%r != %r' % (first, second))
 
     def failIfEqual(self, first, second, msg=None):
         """Fail if the two objects are equal as determined by the '=='
            operator.
         """
         if first == second:
-            raise self.failureException(msg or '%s == %s' % (`first`, `second`))
+            raise self.failureException(msg or '%r == %r' % (first, second))
 
     def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are unequal as determined by their
@@ -411,7 +411,7 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) != 0:
-            raise self.failureException(msg or '%s != %s within %s places' % (`first`, `second`, `places` ))
+            raise self.failureException(msg or '%r != %r within %s places' % (first, second, places))
 
     def failIfAlmostEqual(self, first, second, places=7, msg=None):
         """Fail if the two objects are equal as determined by their
@@ -422,7 +422,7 @@ class TestCase:
            as significant digits (measured from the most significant digit).
         """
         if round(second-first, places) == 0:
-            raise self.failureException(msg or '%s == %s within %s places' % (`first`, `second`, `places`))
+            raise self.failureException(msg or '%r == %r within %r places' % (first, second, places))
 
     assertEqual = assertEquals = failUnlessEqual
 
