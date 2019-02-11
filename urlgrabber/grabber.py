@@ -957,7 +957,7 @@ class URLGrabberOptions:
     def _set_attributes(self, **kwargs):
         """Update object attributes with those provided in kwargs."""
         self.__dict__.update(kwargs)
-        if kwargs.has_key('range'):
+        if 'range' in kwargs:
             # normalize the supplied range value
             self.range = range_tuple_normalize(self.range)
         if not self.reget in [None, 'simple', 'check_timestamp']:
