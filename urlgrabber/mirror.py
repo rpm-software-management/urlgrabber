@@ -93,8 +93,17 @@ CUSTOMIZATION
 
 import sys
 import random
-import thread  # needed for locking to make this threadsafe
-import urlparse
+
+if sys.version_info >= (3,):
+    # We use a version check because python2 also has _thread
+    import _thread as thread
+else:
+    import thread
+
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    import urlparse
 
 from six import string_types
 

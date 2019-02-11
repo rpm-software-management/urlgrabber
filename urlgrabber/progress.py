@@ -22,10 +22,15 @@ from __future__ import print_function
 import sys
 import time
 import math
-import thread
 import fcntl
 import struct
 import termios
+
+if sys.version_info >= (3,):
+    # We use a version check because python2 also has _thread
+    import _thread as thread
+else:
+    import thread
 
 from six import integer_types
 

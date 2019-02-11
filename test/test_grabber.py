@@ -25,9 +25,21 @@ from __future__ import print_function
 
 import sys
 import os
-import tempfile, random, cStringIO, os
-import urllib2
+import tempfile, random, os
 import socket
+
+if sys.version_info >= (3,):
+    # We do an explicit version check here because because python2
+    # also has an io module with StringIO, but it is incompatible,
+    # and returns str instead of unicode somewhere.
+    from io import StringIO
+else:
+    from cStringIO import StringIO
+
+try:
+    from urllib.request import urlopen, OpenerDirector
+except ImportError:
+    from urllib2 import urlopen, OpenerDirector
 
 from base_test_code import *
 
@@ -44,8 +56,8 @@ class FileObjectTests(TestCase):
         with open(self.filename, 'wb') as fo:
             fo.write(reference_data)
 
-        self.fo_input = cStringIO.StringIO(reference_data)
-        self.fo_output = cStringIO.StringIO()
+        self.fo_input = StringIO(reference_data)
+        self.fo_output = StringIO()
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             self.filename, grabber.default_grabber.opts)
         self.wrapper = grabber.PyCurlFileObject(
@@ -133,7 +145,7 @@ class URLGrabberTestCase(TestCase):
 
     def setUp(self):
 
-        self.meter = text_progress_meter( fo=cStringIO.StringIO() )
+        self.meter = text_progress_meter( fo=StringIO() )
         pass
 
     def tearDown(self):
@@ -146,7 +158,7 @@ class URLGrabberTestCase(TestCase):
         values into the URLGrabber constructor and checks that
         they've been set properly.
         """
-        opener = urllib2.OpenerDirector()
+        opener = OpenerDirector()
         g = URLGrabber( progress_obj=self.meter,
                         throttle=0.9,
                         bandwidth=20,
@@ -462,7 +474,7 @@ class FTPRegetTests(RegetTestBase, TestCase):
         # this tests to see if the server is available.  If it's not,
         # then these tests will be skipped
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -536,7 +548,7 @@ class ProFTPDSucksTests(TestCase):
     def setUp(self):
         self.url = ref_proftp
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
 
@@ -583,7 +595,7 @@ class ProxyFTPAuthTests(ProxyHTTPAuthTests):
         if not self.have_proxy():
             self.skip()
         try:
-            fo = urllib2.urlopen(self.url).close()
+            fo = urlopen(self.url).close()
         except IOError:
             self.skip()
         self.g = URLGrabber()

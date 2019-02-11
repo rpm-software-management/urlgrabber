@@ -519,21 +519,34 @@ BANDWIDTH THROTTLING
 
 import os
 import sys
-import urlparse
 import time
 import string
 import urllib
-import urllib2
-from httplib import responses
-import email
-import thread
 import types
 import stat
 import pycurl
 from ftplib import parse150
-from StringIO import StringIO
-from httplib import HTTPException
 import socket, select, fcntl
+
+try:
+    import urllib.parse as urlparse
+    from urllib.request import HTTPError
+except ImportError:
+    import urlparse
+    from urllib2 import HTTPError
+
+try:
+    from http.client import responses, HTTPException
+except ImportError:
+    from httplib import responses, HTTPException
+
+if sys.version_info >= (3,):
+    # We do an explicit version check here because because python2
+    # also has an io module with StringIO, but it is incompatible,
+    # and returns str instead of unicode somewhere.
+    from io import StringIO
+else:
+    from cStringIO import StringIO
 
 from six import text_type, string_types
 
@@ -1698,7 +1711,7 @@ class PyCurlFileObject(object):
             err = URLGrabError(9, _('%s on %s') % (e, self.url))
             err.url = self.url
             raise err
-        except urllib2.HTTPError as e:
+        except HTTPError as e:
             new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
             new_e.code = e.code
             new_e.exception = e
@@ -2545,7 +2558,6 @@ def _retry_test():
     else: print('LOCAL FILE:', name)
 
 def _file_object_test(filename=None):
-    import cStringIO
     if filename is None:
         filename = __file__
     print('using file "%s" for comparisons' % filename)
@@ -2557,8 +2569,8 @@ def _file_object_test(filename=None):
                      _test_file_object_readall,
                      _test_file_object_readline,
                      _test_file_object_readlines]:
-        fo_input = cStringIO.StringIO(s_input)
-        fo_output = cStringIO.StringIO()
+        fo_input = StringIO(s_input)
+        fo_output = StringIO()
         wrapper = PyCurlFileObject(fo_input, None, 0)
         print('testing %-30s ' % testfunc.__name__, end=' ')
         testfunc(wrapper, fo_output)

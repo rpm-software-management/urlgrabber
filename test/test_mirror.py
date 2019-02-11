@@ -23,7 +23,7 @@
 
 import sys
 import os
-import tempfile, random, cStringIO, os
+import tempfile, random, os
 
 import urlgrabber.grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError, URLGrabberOptions

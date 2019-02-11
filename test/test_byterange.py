@@ -25,7 +25,14 @@ from __future__ import print_function
 
 import sys
 
-from cStringIO import StringIO
+if sys.version_info >= (3,):
+    # We do an explicit version check here because because python2
+    # also has an io module with StringIO, but it is incompatible,
+    # and returns str instead of unicode somewhere.
+    from io import StringIO
+else:
+    from cStringIO import StringIO
+
 from urlgrabber.byterange import RangeableFileObject
 
 from base_test_code import *
