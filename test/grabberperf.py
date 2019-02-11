@@ -11,9 +11,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -46,7 +46,7 @@ def main():
     # remove temp files
     os.unlink(tempsrc)
     os.unlink(tempdst)
-    
+
 def setuptemp(size):
     if DEBUG: print 'writing %d KB to temporary file (%s).' % (size / 1024, tempsrc)
     file = open(tempsrc, 'w', 1024)
@@ -55,7 +55,7 @@ def setuptemp(size):
         file.write(chars[i % 10])
     file.flush()
     file.close()
-    
+
 def speedtest(size):
     setuptemp(size)
     full_times = []
@@ -70,7 +70,7 @@ def speedtest(size):
         print 'not using progress meter'
     else:
         tpm = text_progress_meter(fo=open('/dev/null', 'w'))
-        
+
     # to address concerns that the overhead from the progress meter
     # and throttling slow things down, we do this little test.
     #
@@ -81,16 +81,16 @@ def speedtest(size):
     # note: it _is_ even slower to direct the progress meter to a real
     # tty or file, but I'm just interested in the overhead from _this_
     # module.
-    
+
     # get it nicely cached before we start comparing
     if DEBUG: print 'pre-caching'
     for i in range(100):
         urlgrab(tempsrc, tempdst, copy_local=1, throttle=None, proxies=proxies)
-    
+
     if DEBUG: print 'running speed test.'
     reps = 500
     for i in range(reps):
-        if DEBUG: 
+        if DEBUG:
             print '\r%4i/%-4i' % (i+1, reps),
             sys.stdout.flush()
         t = time.time()

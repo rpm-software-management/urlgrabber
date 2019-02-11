@@ -11,9 +11,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -110,7 +110,7 @@ class CallbackTests(TestCase):
             # test assumes mirrors are not re-ordered
             urlgrabber.grabber._TH.hosts.clear()
         self.mg = MirrorGroup(self.g, fullmirrors)
-    
+
     def test_failure_callback(self):
         "test that MG executes the failure callback correctly"
         tricky_list = []
@@ -158,7 +158,7 @@ class FailoverTests(TestCase):
         fo = open(filename)
         contents = fo.read()
         fo.close()
-        
+
         # first be sure that the first mirror failed and that the
         # callback was called
         self.assertEqual(len(elist), 1)
@@ -172,7 +172,7 @@ class FakeGrabber:
         self.index = 0
         self.calls = []
         self.opts = URLGrabberOptions()
-        
+
     def urlgrab(self, url, filename=None, **kwargs):
         self.calls.append( (url, filename) )
         res = self.resultlist[self.index]
@@ -191,7 +191,7 @@ class ActionTests(TestCase):
 
     def tearDown(self):
         urlgrabber.mirror.DEBUG = self.db
-        
+
     def test_defaults(self):
         'test default action policy'
         self.mg.urlgrab('somefile')
@@ -207,10 +207,10 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [a b c d e f] 2',
              'MIRROR: trying somefile -> c/somefile']
-            
+
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
     def test_instance_action(self):
         'test the effects of passed-in default_action'
         self.mg.default_action = {'remove_master': 1}
@@ -227,10 +227,10 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
-            
+
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
     def test_method_action(self):
         'test the effects of method-level default_action'
         self.mg.urlgrab('somefile', default_action={'remove_master': 1})
@@ -246,13 +246,13 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
-            
+
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
 
     def callback(self, e): return {'fail': 1}
-    
+
     def test_callback_action(self):
         'test the effects of a callback-returned action'
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'somefile',
@@ -267,7 +267,7 @@ class ActionTests(TestCase):
 
         self.assertEquals(self.g.calls, expected_calls)
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
 import threading, socket
 LOCALPORT = 'localhost', 2000
 
@@ -387,4 +387,4 @@ def suite():
 if __name__ == '__main__':
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
-     
+

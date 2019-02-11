@@ -11,9 +11,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -38,7 +38,7 @@ from urlgrabber.grabber import URLGrabber, URLGrabError, CallbackObject, \
 from urlgrabber.progress import text_progress_meter
 
 class FileObjectTests(TestCase):
-    
+
     def setUp(self):
         self.filename = tempfile.mktemp()
         fo = file(self.filename, 'wb')
@@ -83,7 +83,7 @@ class FileObjectTests(TestCase):
             self.fo_output.write(s)
             if not s: break
         self.assert_(reference_data == self.fo_output.getvalue())
-    
+
 class HTTPTests(TestCase):
     def test_reference_file(self):
         "download reference file via HTTP"
@@ -110,41 +110,41 @@ class URLGrabberModuleTestCase(TestCase):
     """Test module level functions defined in grabber.py"""
     def setUp(self):
         pass
-        
+
     def tearDown(self):
         pass
-    
+
     def test_urlopen(self):
         "module-level urlopen() function"
         fo = urlgrabber.urlopen('http://www.python.org')
         fo.close()
-    
+
     def test_urlgrab(self):
         "module-level urlgrab() function"
         outfile = tempfile.mktemp()
-        filename = urlgrabber.urlgrab('http://www.python.org', 
+        filename = urlgrabber.urlgrab('http://www.python.org',
                                     filename=outfile)
         os.unlink(outfile)
-    
+
     def test_urlread(self):
         "module-level urlread() function"
         s = urlgrabber.urlread('http://www.python.org')
 
-       
+
 class URLGrabberTestCase(TestCase):
     """Test grabber.URLGrabber class"""
-    
+
     def setUp(self):
-        
+
         self.meter = text_progress_meter( fo=cStringIO.StringIO() )
         pass
-    
+
     def tearDown(self):
         pass
-    
+
     def testKeywordArgs(self):
         """grabber.URLGrabber.__init__() **kwargs handling.
-        
+
         This is a simple test that just passes some arbitrary
         values into the URLGrabber constructor and checks that
         they've been set properly.
@@ -171,8 +171,8 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals( opts.user_agent, 'test ua/1.0' )
         self.assertEquals( opts.proxies, {'http' : 'http://www.proxy.com:9090'} )
         self.assertEquals( opts.opener, opener )
-        
-        nopts = grabber.URLGrabberOptions(delegate=opts, throttle=0.5, 
+
+        nopts = grabber.URLGrabberOptions(delegate=opts, throttle=0.5,
                                         copy_local=0)
         self.assertEquals( nopts.progress_obj, self.meter )
         self.assertEquals( nopts.throttle, 0.5 )
@@ -185,7 +185,7 @@ class URLGrabberTestCase(TestCase):
         self.assertEquals( nopts.proxies, {'http' : 'http://www.proxy.com:9090'} )
         nopts.opener = None
         self.assertEquals( nopts.opener, None )
-        
+
     def test_make_callback(self):
         """grabber.URLGrabber._make_callback() tests"""
         def cb(e): pass
@@ -197,7 +197,7 @@ class URLGrabberTestCase(TestCase):
 class URLParserTestCase(TestCase):
     def setUp(self):
         pass
-    
+
     def tearDown(self):
         pass
 
@@ -207,7 +207,7 @@ class URLParserTestCase(TestCase):
         bases = [base, base+'/']
         filename = 'bar/baz'
         target = base + '/' + filename
-        
+
         for b in bases:
             g = URLGrabber(prefix=b)
             (url, parts) = g.opts.urlparser.parse(filename, g.opts)
@@ -219,7 +219,7 @@ class URLParserTestCase(TestCase):
         except IndexError: quote = None
         g.opts.quote = quote
         (url, parts) = g.opts.urlparser.parse(urllist[0], g.opts)
-        
+
         if 1:
             self.assertEquals(url, urllist[1])
             self.assertEquals(parts, urllist[2])
@@ -232,7 +232,7 @@ class URLParserTestCase(TestCase):
                 print '  ' + url
                 print '  ' + urllist[2]
                 print '  ' + parts
-                
+
 
     url_tests_all = (
         ['http://host.com/path/basename.ext?arg1=val1&arg2=val2#hash',
@@ -252,13 +252,13 @@ class URLParserTestCase(TestCase):
          'http://host.com/Should%2520Not',
          ('http', 'host.com', '/Should%2520Not', '', '', ''), 1],
         )
-        
+
     url_tests_posix = (
         ['/etc/passwd',
          'file:///etc/passwd',
          ('file', '', '/etc/passwd', '', '', '')],
         )
-    
+
     url_tests_nt = (
         [r'\\foo.com\path\file.ext',
          'file://foo.com/path/file.ext',
@@ -296,7 +296,7 @@ class FailureTestCase(TestCase):
         self.obj = obj
         self.args = args
         self.kwargs = kwargs
-        
+
     def test_failure_callback_called(self):
         "failure callback is called on retry"
         self.failure_callback_called = 0
@@ -340,7 +340,7 @@ class InterruptTestCase(TestCase):
         self.kwargs = kwargs
         if kwargs.get('exception', None):
             raise kwargs['exception']
-        
+
     def test_interrupt_callback_called(self):
         "interrupt callback is called on retry"
         self.interrupt_callback_called = 0
@@ -367,12 +367,12 @@ class CheckfuncTestCase(TestCase):
         self.g = grabber.URLGrabber(checkfunc=cf)
         self.filename = tempfile.mktemp()
         self.data = short_reference_data
-        
+
     def tearDown(self):
         try: os.unlink(self.filename)
         except: pass
         if hasattr(self, 'obj'): del self.obj
-        
+
     def _checkfunc(self, obj, *args, **kwargs):
         self.obj = obj
         self.args = args
@@ -389,7 +389,7 @@ class CheckfuncTestCase(TestCase):
 
         if data == self.data: return
         else: raise URLGrabError(-2, "data doesn't match")
-        
+
     def _check_common_args(self):
         "check the args that are common to both urlgrab and urlread"
         self.assert_(hasattr(self, 'obj'))
@@ -456,7 +456,7 @@ class RegetTestBase:
         data = fo.read()
         fo.close()
         return data
-    
+
 class CommonRegetTests(RegetTestBase, TestCase):
     def test_bad_reget_type(self):
         "exception raised for illegal reget mode"
@@ -487,14 +487,14 @@ class HTTPRegetTests(FTPRegetTests):
     def setUp(self):
         RegetTestBase.setUp(self)
         self.url = short_ref_http
-        
+
     def test_older_check_timestamp(self):
         try:
             # define this here rather than in the FTP tests because currently,
             # we get no timestamp information back from ftp servers.
             self._make_half_zero_file()
             ts = 1600000000 # set local timestamp to 2020
-            os.utime(self.filename, (ts, ts)) 
+            os.utime(self.filename, (ts, ts))
             self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
             data = self._read_file()
 
@@ -502,21 +502,21 @@ class HTTPRegetTests(FTPRegetTests):
             self.assertEquals(data[self.hl:], self.ref[self.hl:])
         except NotImplementedError:
             self.skip()
-            
+
     def test_newer_check_timestamp(self):
         try:
             # define this here rather than in the FTP tests because currently,
             # we get no timestamp information back from ftp servers.
             self._make_half_zero_file()
             ts = 1 # set local timestamp to 1969
-            os.utime(self.filename, (ts, ts)) 
+            os.utime(self.filename, (ts, ts))
             self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
             data = self._read_file()
 
             self.assertEquals(data, self.ref)
         except:
             self.skip()
-            
+
 class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
@@ -525,7 +525,7 @@ class FileRegetTests(HTTPRegetTests):
         tmpfo.write(self.ref)
         tmpfo.close()
         self.tmp = tmp
-        
+
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             tmp, grabber.default_grabber.opts)
         self.url = url
@@ -552,7 +552,7 @@ class ProFTPDSucksTests(TestCase):
     def test_restart_workaround(self):
         inst = grabber.URLGrabber()
         rslt = inst.urlread(self.url, range=(500, 1000))
-        
+
 class BaseProxyTests(TestCase):
     good_p = '%s://%s:%s@%s:%i' % (proxy_proto, proxy_user,
                                    good_proxy_pass, proxy_host, proxy_port)
@@ -605,4 +605,4 @@ if __name__ == '__main__':
     grabber.DEBUG = 0
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
-     
+

@@ -9,9 +9,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -100,7 +100,7 @@ from grabber import _run_callback, _do_raise
 from grabber import exception2msg
 from grabber import _TH
 
-def _(st): 
+def _(st):
     return st
 
 class GrabRequest:
@@ -142,7 +142,7 @@ class MirrorGroup:
 
       In addition to the required arguments "grabber" and "mirrors",
       MirrorGroup also takes the following optional arguments:
-      
+
       default_action
 
         A dict that describes the actions to be taken upon failure
@@ -173,7 +173,7 @@ class MirrorGroup:
         or by returning an action dict from the failure_callback
           return {'fail':0}
         in increasing precedence.
-        
+
         If all three of these were done, the net result would be:
               {'increment': 0,         # set in method
                'increment_master': 1,  # class default
@@ -278,11 +278,11 @@ class MirrorGroup:
     # methods, they will be stripped before getting passed on to the
     # grabber
     options = ['default_action', 'failure_callback']
-    
+
     def _process_kwargs(self, kwargs):
         self.failure_callback = kwargs.get('failure_callback')
         self.default_action   = kwargs.get('default_action')
-       
+
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
         for m in mirrors:
@@ -290,7 +290,7 @@ class MirrorGroup:
                 m = {'mirror': _to_utf8(m)}
             parsed_mirrors.append(m)
         return parsed_mirrors
-    
+
     def _load_gr(self, gr):
         # OVERRIDE IDEAS:
         #   shuffle gr list
@@ -351,7 +351,7 @@ class MirrorGroup:
         urlopen, there's no good way for the mirror group to know that
         an error occurs mid-download (it's already returned and given
         you the file object).
-        
+
         remove  ---  can have several values
            0   do not remove the mirror from the list
            1   remove the mirror for this download only
@@ -373,7 +373,7 @@ class MirrorGroup:
                 self._next += 1
             if self._next >= len(self.mirrors): self._next = 0
         self._lock.release()
-        
+
         if action.get('remove', 1):
             del gr.mirrors[gr._next]
         elif action.get('increment', 1):
@@ -398,7 +398,7 @@ class MirrorGroup:
             return base_url + rel_url
         else:
             return base_url + '/' + rel_url
-        
+
     def _mirror_try(self, func, url, kw):
         gr = GrabRequest()
         gr.func = func
@@ -449,7 +449,7 @@ class MirrorGroup:
         except URLGrabError as e:
             obj = CallbackObject(url=url, filename=filename, exception=e, **kwargs)
             return _run_callback(kwargs.get('failfunc', _do_raise), obj)
-    
+
     def urlopen(self, url, **kwargs):
         kw = dict(kwargs)
         func = 'urlopen'
@@ -460,7 +460,7 @@ class MirrorGroup:
         kw['limit'] = limit
         func = 'urlread'
         return self._mirror_try(func, url, kw)
-            
+
 
 class MGRandomStart(MirrorGroup):
     """A mirror group that starts at a random mirror in the list.

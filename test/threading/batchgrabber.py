@@ -9,9 +9,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -19,10 +19,10 @@
 
 """Module for testing urlgrabber under multiple threads.
 
-This module can be used from the command line. Each argument is 
+This module can be used from the command line. Each argument is
 a URL to grab.
 
-The BatchURLGrabber class has an interface similar to URLGrabber 
+The BatchURLGrabber class has an interface similar to URLGrabber
 but instead of pulling files when urlgrab is called, the request
 is queued. Calling BatchURLGrabber.batchgrab causes all files to
 be pulled in multiple threads.
@@ -48,10 +48,10 @@ class BatchURLGrabber:
     self.queue = []
     self.threads = []
     self.sem = Semaphore()
-    
+
   def urlgrab(self, url, filename=None, **kwargs):
     self.queue.append( (url, filename, kwargs) )
-  
+
   def batchgrab(self):
     if hasattr(self.grabber.opts.progress_obj, 'start'):
         self.grabber.opts.progress_obj.start(len(self.queue))
@@ -71,7 +71,7 @@ class BatchURLGrabber:
         #if len(self.threads) == self.maxthreads:
         #  sleep(0.2)
         sleep(0.2)
-        
+
 class Worker(Thread):
   def __init__(self, parent, url, filename, kwargs):
     Thread.__init__(self)
@@ -79,7 +79,7 @@ class Worker(Thread):
     self.url = url
     self.filename = filename
     self.kwargs = kwargs
-  
+
   def run(self):
     if DEBUG: print "worker thread started."
     grabber = self.parent.grabber
@@ -90,7 +90,7 @@ class Worker(Thread):
       rslt = self.parent.grabber.urlgrab(self.url, self.filename, **self.kwargs)
     except URLGrabError as e:
       print '%s, %s' % (e, self.url)
-      
+
 def main():
   progress_obj = None
   # uncomment to play with BatchProgressMeter (doesn't work right now)
@@ -103,8 +103,8 @@ def main():
     g.batchgrab()
   except KeyboardInterrupt:
     sys.exit(1)
-    
+
   if DEBUG: print "after batchgrab"
-  
+
 if __name__ == '__main__':
   main()

@@ -463,12 +463,12 @@ class TestSuite:
         self._tests = []
         self.addTests(tests)
         self.description = description or '(no description)'
-        
+
     def __repr__(self):
         return "<%s tests=%s>" % (_strclass(self.__class__), self._tests)
 
     __str__ = __repr__
-    
+
     def shortDescription(self):
         return self.description
 
@@ -494,7 +494,7 @@ class TestSuite:
     def __call__(self, result):
         try: result.startSuite(self)
         except AttributeError: pass
-        
+
         for test in self._tests:
             if result.shouldStop:
                 break
@@ -575,7 +575,7 @@ class TestLoader:
         description = (description.splitlines()[0]).strip()
         suite = self.suiteClass(instance_list, description)
         return suite
-    
+
     def loadTestsFromModule(self, module):
         """Return a suite of all tests cases contained in the given module"""
         tests = []
@@ -735,7 +735,7 @@ class _TextTestResult(TestResult):
             except AttributeError: desc = '(no description)'
             self.stream.writeln(desc)
         self.depth += 1
-        
+
     def startTest(self, test):
         TestResult.startTest(self, test)
         if self.showAll:
