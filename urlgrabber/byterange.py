@@ -22,7 +22,7 @@ import os
 import stat
 import urllib
 import urllib2
-import rfc822
+import email
 
 DEBUG = None
 
@@ -218,13 +218,12 @@ class FileRangeHandler(urllib2.FileHandler):
     """
     def open_local_file(self, req):
         import mimetypes
-        import mimetools
         host = req.get_host()
         file = req.get_selector()
         localfile = urllib.url2pathname(file)
         stats = os.stat(localfile)
         size = stats[stat.ST_SIZE]
-        modified = rfc822.formatdate(stats[stat.ST_MTIME])
+        modified = email.utils.formatdate(stats[stat.ST_MTIME])
         mtype = mimetypes.guess_type(file)[0]
         if host:
             host, port = urllib.splitport(host)
@@ -241,9 +240,9 @@ class FileRangeHandler(urllib2.FileHandler):
                 raise RangeError(9, 'Requested Range Not Satisfiable')
             size = (lb - fb)
             fo = RangeableFileObject(fo, (fb,lb))
-        headers = mimetools.Message(StringIO(
+        headers = email.message_from_string(
             'Content-Type: %s\nContent-Length: %d\nLast-modified: %s\n' %
-            (mtype or 'text/plain', size, modified)))
+            (mtype or 'text/plain', size, modified))
         return urllib.addinfourl(fo, headers, 'file:'+file)
 
 
@@ -260,7 +259,6 @@ import ftplib
 import socket
 import sys
 import mimetypes
-import mimetools
 
 class FTPRangeHandler(urllib2.FTPHandler):
     def ftp_open(self, req):

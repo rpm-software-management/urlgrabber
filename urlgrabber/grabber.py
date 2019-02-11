@@ -525,7 +525,7 @@ import string
 import urllib
 import urllib2
 from httplib import responses
-import mimetools
+import email
 import thread
 import types
 import stat
@@ -1391,7 +1391,7 @@ class PyCurlFileObject(object):
         hdrfp = StringIO()
         hdrfp.write(self._hdr_dump[statusend:])
         hdrfp.seek(0)
-        self._parsed_hdr =  mimetools.Message(hdrfp)
+        self._parsed_hdr =  email.message_from_string(hdrfp)
         return self._parsed_hdr
 
     hdr = property(_return_hdr_obj)
