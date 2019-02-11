@@ -1083,7 +1083,7 @@ class URLGrabber(object):
             if DEBUG: DEBUG.info('attempt %i/%s: %s',
                                  tries, opts.retry, args[0])
             try:
-                r = apply(func, (opts,) + args, {})
+                r = func(opts, *args)
                 if DEBUG: DEBUG.info('success')
                 return r
             except URLGrabError as e:
@@ -2501,7 +2501,7 @@ def _main_test():
     except ImportError as e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
-    try: name = apply(urlgrab, (url, filename), kwargs)
+    try: name = urlgrab(url, filename, **kwargs)
     except URLGrabError as e: print(e)
     else: print('LOCAL FILE:', name)
 
@@ -2536,7 +2536,7 @@ def _retry_test():
         return
 
     kwargs['checkfunc'] = (cfunc, ('hello',), {'there':'there'})
-    try: name = apply(retrygrab, (url, filename), kwargs)
+    try: name = retrygrab(url, filename, **kwargs)
     except URLGrabError as e: print(e)
     else: print('LOCAL FILE:', name)
 
