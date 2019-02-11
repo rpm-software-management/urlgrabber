@@ -534,6 +534,9 @@ from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
 import socket, select, fcntl
+
+from six import text_type, string_types
+
 from .byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -656,7 +659,7 @@ def _(st):
 def _to_utf8(obj, errors='replace'):
     '''convert 'unicode' to an encoded utf-8 byte string '''
     # stolen from yum.i18n
-    if isinstance(obj, unicode):
+    if isinstance(obj, text_type):
         obj = obj.encode('utf-8', errors)
     return obj
 
@@ -665,7 +668,7 @@ def exception2msg(e):
         return str(e)
     except UnicodeEncodeError:
         # always use byte strings
-        return unicode(e).encode('utf8')
+        return text_type(e).encode('utf8')
 
 ########################################################################
 #                 END UTILITY FUNCTIONS
@@ -1731,7 +1734,7 @@ class PyCurlFileObject(object):
         if self._complete:
             return
         _was_filename = False
-        if type(self.filename) in types.StringTypes and self.filename:
+        if isinstance(self.filename, string_types) and self.filename:
             _was_filename = True
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
@@ -2001,7 +2004,7 @@ def _dumps(v):
     if v is False: return 'False'
     if type(v) in (int, long, float):
         return str(v)
-    if isinstance(v, unicode):
+    if isinstance(v, text_type):
         v = v.encode('UTF8')
     if isinstance(v, str):
         def quoter(c): return _quoter_map.get(c, c)

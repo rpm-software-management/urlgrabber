@@ -95,6 +95,8 @@ import sys
 import random
 import thread  # needed for locking to make this threadsafe
 
+from six import string_types
+
 from .grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
 from .grabber import _run_callback, _do_raise
 from .grabber import exception2msg
@@ -286,7 +288,7 @@ class MirrorGroup:
     def _parse_mirrors(self, mirrors):
         parsed_mirrors = []
         for m in mirrors:
-            if isinstance(m, basestring):
+            if isinstance(m, string_types):
                 m = {'mirror': _to_utf8(m)}
             parsed_mirrors.append(m)
         return parsed_mirrors
