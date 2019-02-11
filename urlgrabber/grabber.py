@@ -1034,8 +1034,7 @@ class URLGrabberOptions:
         keys.sort()
         s = '{\n'
         for k in keys:
-            s = s + indent + '%-15s: %s,\n' % \
-                (repr(k), repr(self.__dict__[k]))
+            s = s + indent + '%-15r: %r,\n' % (k, self.__dict__[k])
         if self.delegate:
             df = self.delegate.format(indent + '  ')
             s = s + indent + '%-15s: %s\n' % ("'delegate'", df)
@@ -1124,7 +1123,7 @@ class URLGrabber(object):
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
         (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
         def retryfunc(opts, url):
@@ -1139,7 +1138,7 @@ class URLGrabber(object):
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
         (url,parts) = opts.urlparser.parse(url, opts)
         (scheme, host, path, parm, query, frag) = parts
         opts.find_proxy(url, scheme)
@@ -1209,7 +1208,7 @@ class URLGrabber(object):
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
         (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
         if limit is not None:
