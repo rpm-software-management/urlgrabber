@@ -17,6 +17,7 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
+from __future__ import print_function
 
 import sys
 import time
@@ -806,7 +807,7 @@ def _tst(fn, cur, tot, beg, size, *args):
     tm.end(size)
 
 def _mtst(datas, *args):
-    print '-' * 79
+    print('-' * 79)
     tm = TextMultiFileMeter(threaded=False)
 
     dl_sizes = {}

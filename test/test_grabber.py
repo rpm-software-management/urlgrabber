@@ -19,6 +19,8 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
+from __future__ import print_function
+
 """grabber.py tests"""
 
 # $Id: test_grabber.py,v 1.31 2006/12/08 00:14:16 mstenner Exp $
@@ -225,13 +227,13 @@ class URLParserTestCase(TestCase):
             self.assertEquals(parts, urllist[2])
         else:
             if url == urllist[1] and parts == urllist[2]:
-                print 'OK: %s' % urllist[0]
+                print('OK: %s' % urllist[0])
             else:
-                print 'ERROR: %s' % urllist[0]
-                print '  ' + urllist[1]
-                print '  ' + url
-                print '  ' + urllist[2]
-                print '  ' + parts
+                print('ERROR: %s' % urllist[0])
+                print('  ' + urllist[1])
+                print('  ' + url)
+                print('  ' + urllist[2])
+                print('  ' + parts)
 
 
     url_tests_all = (

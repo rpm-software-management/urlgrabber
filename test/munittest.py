@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+from __future__ import print_function
+
 """
 This is a modified version of the unittest module has been modified by
 Michael D. Stenner from Steve Purcell's version (revision 1.46, as
@@ -881,8 +884,8 @@ Examples:
         self.runTests()
 
     def usageExit(self, msg=None):
-        if msg: print msg
-        print self.USAGE % self.__dict__
+        if msg: print(msg)
+        print(self.USAGE % self.__dict__)
         sys.exit(2)
 
     def parseArgs(self, argv):

@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import print_function
+
 """Usage: python runtests.py [OPTIONS]
 Quick script to run all unit tests from source directory
 (e.g. without having to install.)
@@ -54,7 +56,7 @@ def parse_args():
     return (descriptions,verbosity)
 
 def usage():
-    print __doc__
+    print(__doc__)
 
 if __name__ == '__main__':
     main()

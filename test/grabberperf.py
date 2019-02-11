@@ -19,6 +19,8 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
+from __future__ import print_function
+
 import sys
 import os
 from os.path import dirname, join as joinpath
@@ -48,7 +50,7 @@ def main():
     os.unlink(tempdst)
 
 def setuptemp(size):
-    if DEBUG: print 'writing %d KB to temporary file (%s).' % (size / 1024, tempsrc)
+    if DEBUG: print('writing %d KB to temporary file (%s).' % (size / 1024, tempsrc))
     file = open(tempsrc, 'w', 1024)
     chars = '0123456789'
     for i in range(size):
@@ -67,7 +69,7 @@ def speedtest(size):
         from urlgrabber.progress import text_progress_meter
     except ImportError as e:
         tpm = None
-        print 'not using progress meter'
+        print('not using progress meter')
     else:
         tpm = text_progress_meter(fo=open('/dev/null', 'w'))
 
@@ -83,15 +85,15 @@ def speedtest(size):
     # module.
 
     # get it nicely cached before we start comparing
-    if DEBUG: print 'pre-caching'
+    if DEBUG: print('pre-caching')
     for i in range(100):
         urlgrab(tempsrc, tempdst, copy_local=1, throttle=None, proxies=proxies)
 
-    if DEBUG: print 'running speed test.'
+    if DEBUG: print('running speed test.')
     reps = 500
     for i in range(reps):
         if DEBUG:
-            print '\r%4i/%-4i' % (i+1, reps),
+            print('\r%4i/%-4i' % (i+1, reps), end=' ')
             sys.stdout.flush()
         t = time.time()
         urlgrab(tempsrc, tempdst,
@@ -116,9 +118,9 @@ def speedtest(size):
         out_fo.close()
         none_times.append(1000 * (time.time() - t))
 
-    if DEBUG: print '\r'
+    if DEBUG: print('\r')
 
-    print "%d KB Results:" % (size / 1024)
+    print("%d KB Results:" % (size / 1024))
     print_result('full', full_times)
     print_result('raw', raw_times)
     print_result('none', none_times)
@@ -131,7 +133,7 @@ def print_result(label, result_list):
     for i in result_list: mean += i
     mean = mean/len(result_list)
     median = result_list[int(len(result_list)/2)]
-    print format % (label, mean, median, result_list[0], result_list[-1])
+    print(format % (label, mean, median, result_list[0], result_list[-1]))
 
 if __name__ == '__main__':
     main()

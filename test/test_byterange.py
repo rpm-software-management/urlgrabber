@@ -19,6 +19,8 @@
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
+from __future__ import print_function
+
 """byterange.py tests"""
 
 # $Id: test_byterange.py,v 1.6 2004/03/31 17:02:00 mstenner Exp $
