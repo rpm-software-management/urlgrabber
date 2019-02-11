@@ -870,7 +870,7 @@ class URLParser:
         (scheme, host, path, parm, query, frag) = parts
         if ' ' in path:
             return 1
-        ind = string.find(path, '%')
+        ind = path.find('%')
         if ind > -1:
             while ind > -1:
                 if len(path) < ind+3:
@@ -879,7 +879,7 @@ class URLParser:
                 if     code[0] not in self.hexvals or \
                        code[1] not in self.hexvals:
                     return 1
-                ind = string.find(path, '%', ind+1)
+                ind = path.find('%', ind+1)
             return 0
         return 1
 
@@ -1866,7 +1866,7 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = string.join(buf, '')
+        self._rbuf = ''.join(buf)
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
@@ -1910,12 +1910,12 @@ class PyCurlFileObject(object):
         if not self._complete: self._do_grab()
         return self.fo.readline()
 
-        i = string.find(self._rbuf, '\n')
+        i = self._rbuf.find('\n')
         while i < 0 and not (0 < limit <= len(self._rbuf)):
             L = len(self._rbuf)
             self._fill_buffer(L + self._rbufsize)
             if not len(self._rbuf) > L: break
-            i = string.find(self._rbuf, '\n', L)
+            i = self._rbuf.find('\n', L)
 
         if i < 0: i = len(self._rbuf)
         else: i = i+1
@@ -2490,7 +2490,7 @@ def _main_test():
 
     kwargs = {}
     for a in sys.argv[3:]:
-        k, v = string.split(a, '=', 1)
+        k, v = a.split('=', 1)
         kwargs[k] = int(v)
 
     set_throttle(1.0)
@@ -2516,7 +2516,7 @@ def _retry_test():
 
     kwargs = {}
     for a in sys.argv[3:]:
-        k, v = string.split(a, '=', 1)
+        k, v = a.split('=', 1)
         kwargs[k] = int(v)
 
     try: from .progress import text_progress_meter
@@ -2581,7 +2581,7 @@ def _test_file_object_readline(wrapper, fo_output):
 
 def _test_file_object_readlines(wrapper, fo_output):
     li = wrapper.readlines()
-    fo_output.write(string.join(li, ''))
+    fo_output.write(''.join(li))
 
 if __name__ == '__main__':
     _main_test()

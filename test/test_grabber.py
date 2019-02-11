@@ -25,7 +25,7 @@ from __future__ import print_function
 
 import sys
 import os
-import string, tempfile, random, cStringIO, os
+import tempfile, random, cStringIO, os
 import urllib2
 import socket
 
@@ -73,7 +73,7 @@ class FileObjectTests(TestCase):
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
-        self.fo_output.write(string.join(li, ''))
+        self.fo_output.write(''.join(li))
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
