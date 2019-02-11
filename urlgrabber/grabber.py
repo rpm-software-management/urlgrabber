@@ -534,7 +534,7 @@ from ftplib import parse150
 from StringIO import StringIO
 from httplib import HTTPException
 import socket, select, fcntl
-from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
+from .byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
     import xattr
@@ -2497,7 +2497,7 @@ def _main_test():
     print("throttle: %s,  throttle bandwidth: %s B/s" % (default_grabber.throttle,
                                                         default_grabber.bandwidth))
 
-    try: from progress import text_progress_meter
+    try: from .progress import text_progress_meter
     except ImportError as e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
@@ -2518,7 +2518,7 @@ def _retry_test():
         k, v = string.split(a, '=', 1)
         kwargs[k] = int(v)
 
-    try: from progress import text_progress_meter
+    try: from .progress import text_progress_meter
     except ImportError as e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 

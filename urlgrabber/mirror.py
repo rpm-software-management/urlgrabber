@@ -95,10 +95,10 @@ import sys
 import random
 import thread  # needed for locking to make this threadsafe
 
-from grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
-from grabber import _run_callback, _do_raise
-from grabber import exception2msg
-from grabber import _TH
+from .grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
+from .grabber import _run_callback, _do_raise
+from .grabber import exception2msg
+from .grabber import _TH
 
 def _(st):
     return st
