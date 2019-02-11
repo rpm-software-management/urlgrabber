@@ -107,6 +107,12 @@ import traceback
 import os
 import types
 
+try:
+    cmp
+except NameError:
+    def cmp(a, b):
+        return (a > b) - (a < b)
+
 ##############################################################################
 # Exported classes and functions
 ##############################################################################
