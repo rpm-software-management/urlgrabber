@@ -88,7 +88,7 @@ class Worker(Thread):
       self.kwargs['progress_obj'] = progress_obj.newMeter()
     try:
       rslt = self.parent.grabber.urlgrab(self.url, self.filename, **self.kwargs)
-    except URLGrabError, e:
+    except URLGrabError as e:
       print '%s, %s' % (e, self.url)
       
 def main():

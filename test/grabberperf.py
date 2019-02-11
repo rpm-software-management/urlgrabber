@@ -65,7 +65,7 @@ def speedtest(size):
 
     try:
         from urlgrabber.progress import text_progress_meter
-    except ImportError, e:
+    except ImportError as e:
         tpm = None
         print 'not using progress meter'
     else:
