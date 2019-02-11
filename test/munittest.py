@@ -107,6 +107,8 @@ import traceback
 import os
 import types
 
+from six import class_types
+
 try:
     cmp
 except NameError:
@@ -586,7 +588,7 @@ class TestLoader:
         tests = []
         for name in dir(module):
             obj = getattr(module, name)
-            if (isinstance(obj, (type, types.ClassType)) and
+            if (isinstance(obj, class_types) and
                 issubclass(obj, TestCase) and
                 not obj in [TestCase, FunctionTestCase]):
                 tests.append(self.loadTestsFromTestCase(obj))
@@ -625,7 +627,7 @@ class TestLoader:
         import unittest
         if isinstance(obj, types.ModuleType):
             return self.loadTestsFromModule(obj)
-        elif (isinstance(obj, (type, types.ClassType)) and
+        elif (isinstance(obj, class_types) and
               issubclass(obj, unittest.TestCase)):
             return self.loadTestsFromTestCase(obj)
         elif isinstance(obj, types.UnboundMethodType):
