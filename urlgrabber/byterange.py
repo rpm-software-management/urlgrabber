@@ -456,6 +456,7 @@ def range_tuple_normalize(range_tup):
     # check if range is over the entire file
     if (fb,lb) == (0,''): return None
     # check that the range is valid
-    if lb < fb: raise RangeError(9, 'Invalid byte range: %s-%s' % (fb,lb))
+    if lb != '' and fb >= lb:
+        raise RangeError(9, 'Invalid byte range: %s-%s' % (fb,lb))
     return (fb,lb)
 
