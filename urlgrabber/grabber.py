@@ -530,10 +530,13 @@ import socket, select, fcntl
 
 try:
     import urllib.parse as urlparse
-    from urllib.request import HTTPError
+    urlquote, urlunquote = urlparse.quote, urlparse.unquote
+    from urllib.request import HTTPError, url2pathname, pathname2url
 except ImportError:
     import urlparse
     from urllib2 import HTTPError
+    urlquote, urlunquote = urllib.quote, urllib.unquote
+    from urllib import url2pathname, pathname2url
 
 try:
     from http.client import responses, HTTPException
@@ -833,7 +836,7 @@ class URLParser:
         if not scheme or (len(scheme) == 1 and scheme in string.letters):
             # if a scheme isn't specified, we guess that it's "file:"
             if url[0] not in '/\\': url = os.path.abspath(url)
-            url = 'file:' + urllib.pathname2url(url)
+            url = 'file:' + pathname2url(url)
             parts = urlparse.urlparse(url)
             quote = 0 # pathname2url quotes, so we won't do it again
 
@@ -869,7 +872,7 @@ class URLParser:
         passing into urlgrabber.
         """
         (scheme, host, path, parm, query, frag) = parts
-        path = urllib.quote(path, safe='/$')
+        path = urlquote(path, safe='/$')
         return (scheme, host, path, parm, query, frag)
 
     hexvals = '0123456789ABCDEF'
@@ -1161,14 +1164,14 @@ class URLGrabber(object):
         (scheme, host, path, parm, query, frag) = parts
         opts.find_proxy(url, scheme)
         if filename is None:
-            filename = os.path.basename( urllib.unquote(path) )
+            filename = os.path.basename( urlunquote(path) )
             if not filename:
                 # This is better than nothing.
                 filename = 'index.html'
         if scheme == 'file' and not opts.copy_local:
             # just return the name of the local file - don't make a
             # copy currently
-            path = urllib.url2pathname(path)
+            path = url2pathname(path)
             if host:
                 path = os.path.normpath('//' + host + path)
             if not os.path.exists(path):
@@ -1322,7 +1325,7 @@ class PyCurlFileObject(object):
                 if self.opts.progress_obj:
                     size  = self.size + self._reget_length
                     self.opts.progress_obj.start(self._prog_reportname,
-                                                 urllib.unquote(self.url),
+                                                 urlunquote(self.url),
                                                  self._prog_basename,
                                                  size=size,
                                                  text=self.opts.text)
@@ -1544,7 +1547,7 @@ class PyCurlFileObject(object):
 
             code = self.http_code
             errcode = e.args[0]
-            errurl = urllib.unquote(self.url)
+            errurl = urlunquote(self.url)
 
             if self._error[0]:
                 errcode = self._error[0]
@@ -1635,7 +1638,7 @@ class PyCurlFileObject(object):
             if self._error[1]:
                 msg = self._error[1]
                 err = URLGrabError(14, msg)
-                err.url = urllib.unquote(self.url)
+                err.url = urlunquote(self.url)
                 raise err
 
     def _do_open(self):
