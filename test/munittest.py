@@ -608,7 +608,7 @@ class TestLoader:
               issubclass(obj, unittest.TestCase)):
             return self.loadTestsFromTestCase(obj)
         elif isinstance(obj, types.UnboundMethodType):
-            return obj.im_class(obj.__name__)
+            return obj.__self__.__class__(obj.__name__)
         elif callable(obj):
             test = obj()
             if not isinstance(test, unittest.TestCase) and \
