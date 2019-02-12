@@ -504,33 +504,37 @@ class HTTPRegetTests(FTPRegetTests):
         self.url = short_ref_http
 
     def test_older_check_timestamp(self):
-        try:
-            # define this here rather than in the FTP tests because currently,
-            # we get no timestamp information back from ftp servers.
-            self._make_half_zero_file()
-            ts = 1600000000 # set local timestamp to 2020
-            os.utime(self.filename, (ts, ts))
-            self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
-            data = self._read_file()
+        # define this here rather than in the FTP tests because currently,
+        # we get no timestamp information back from ftp servers.
+        self._make_half_zero_file()
+        ts = 1600000000 # set local timestamp to 2020
+        os.utime(self.filename, (ts, ts))
 
-            self.assertEquals(data[:self.hl], b'0'*self.hl)
-            self.assertEquals(data[self.hl:], self.ref[self.hl:])
+        try:
+            self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
         except NotImplementedError:
             self.skip()
 
-    def test_newer_check_timestamp(self):
-        try:
-            # define this here rather than in the FTP tests because currently,
-            # we get no timestamp information back from ftp servers.
-            self._make_half_zero_file()
-            ts = 1 # set local timestamp to 1969
-            os.utime(self.filename, (ts, ts))
-            self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
-            data = self._read_file()
+        data = self._read_file()
 
-            self.assertEquals(data, self.ref)
-        except:
+        self.assertEquals(data[:self.hl], b'0'*self.hl)
+        self.assertEquals(data[self.hl:], self.ref[self.hl:])
+
+    def test_newer_check_timestamp(self):
+        # define this here rather than in the FTP tests because currently,
+        # we get no timestamp information back from ftp servers.
+        self._make_half_zero_file()
+        ts = 1 # set local timestamp to 1969
+        os.utime(self.filename, (ts, ts))
+
+        try:
+            self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
+        except NotImplementedError:
             self.skip()
+
+        data = self._read_file()
+
+        self.assertEquals(data, self.ref)
 
 class FileRegetTests(HTTPRegetTests):
     def setUp(self):
@@ -619,4 +623,3 @@ if __name__ == '__main__':
     grabber.DEBUG = 0
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
-
