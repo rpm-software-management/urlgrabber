@@ -261,17 +261,19 @@ class ActionTests(TestCase):
         self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
 
 import threading, socket
-LOCALPORT = 'localhost', 2000
 
 class HttpReplyCode(TestCase):
     def setUp(self):
         # start the server
         self.exit = False
         self.process = lambda data: None
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('localhost', 0)); s.listen(1)
+        self.port = s.getsockname()[1]
+
         def server():
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(LOCALPORT); s.listen(1)
             while True:
                 c, a = s.accept()
                 if self.exit: c.close(); break
@@ -286,6 +288,7 @@ class HttpReplyCode(TestCase):
                 c.close()
             s.close()
             self.exit = False
+
         self.thread = threading.Thread(target=server)
         self.thread.start()
 
@@ -294,14 +297,19 @@ class HttpReplyCode(TestCase):
             self.code = getattr(obj.exception, 'code', None)
             return {}
         self.g  = URLGrabber()
-        self.mg = MirrorGroup(self.g, ['http://%s:%d' % LOCALPORT],
+        self.mg = MirrorGroup(self.g, ['http://localhost:%d' % self.port],
                               failure_callback = failure)
 
     def tearDown(self):
         # shut down the server
         self.exit = True
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(LOCALPORT); s.close() # wake it up
+        try:
+            s.connect(('localhost', self.port)) # wake it up
+        except ConnectionRefusedError:
+            # already gone?
+            pass
+        s.close()
         self.thread.join()
 
     def test_grab(self):
