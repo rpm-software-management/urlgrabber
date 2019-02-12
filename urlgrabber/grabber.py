@@ -2041,9 +2041,14 @@ def _dumps(v):
     if v is False: return 'False'
     if isinstance(v, numbers.Number):
         return str(v)
-    if isinstance(v, text_type):
-        v = v.encode('UTF8')
-    if isinstance(v, str):
+    if isinstance(v, (str, text_type, bytes)):
+        # standarize to str on both py2 to py3
+        if sys.version_info < (3,):
+            if isinstance(v, text_type):
+                v = v.encode('utf8')
+        else:
+            if isinstance(v, bytes):
+                v = v.decode('utf8')
         return "'%s'" % ''.join(map(_quoter, v))
     if isinstance(v, tuple):
         return "(%s)" % ','.join(map(_dumps, v))
@@ -2103,9 +2108,9 @@ def _readlines(fd):
     buf = os.read(fd, 4096)
     if not buf: return None
     # whole lines only, no buffering
-    while buf[-1] != '\n':
+    while not buf.endswith(b'\n'):
         buf += os.read(fd, 4096)
-    return buf[:-1].split('\n')
+    return buf[:-1].split(b'\n')
 
 import subprocess
 
@@ -2153,7 +2158,7 @@ class _ExternalDownloader:
 
         self.cnt += 1
         self.running[self.cnt] = opts
-        os.write(self.stdin, arg +'\n')
+        os.write(self.stdin, (arg +'\n').encode('utf8'))
 
     def perform(self):
         ret = []
