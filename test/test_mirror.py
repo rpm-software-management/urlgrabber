@@ -114,7 +114,7 @@ class CallbackTests(TestCase):
         data = self.mg.urlread('reference')
         self.assert_(data == reference_data)
         self.assertEquals(tricky_list[0][:25],
-                          '[Errno 14] HTTP Error 403')
+                          '[Errno 14] HTTP Error 404')
 
     def test_callback_reraise(self):
         "test that the callback can correctly re-raise the exception"
