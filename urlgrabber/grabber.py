@@ -528,6 +528,7 @@ import pycurl
 from ftplib import parse150
 import socket, select, fcntl
 from io import BytesIO
+import numbers
 
 try:
     import urllib.parse as urlparse
@@ -2038,7 +2039,7 @@ def _dumps(v):
     if v is None: return 'None'
     if v is True: return 'True'
     if v is False: return 'False'
-    if type(v) in (int, long, float):
+    if isinstance(v, numbers.Number):
         return str(v)
     if isinstance(v, text_type):
         v = v.encode('UTF8')
