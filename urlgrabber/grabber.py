@@ -853,7 +853,7 @@ class URLParser:
         passing into urlgrabber.
         """
         (scheme, host, path, parm, query, frag) = parts
-        path = urllib.quote(path)
+        path = urllib.quote(path, safe='/$')
         return (scheme, host, path, parm, query, frag)
 
     hexvals = '0123456789ABCDEF'
