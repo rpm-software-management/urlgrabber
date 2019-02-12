@@ -444,13 +444,13 @@ class CheckfuncTestCase(TestCase):
         "check failure with urlgrab checkfunc"
         self.data = 'other data'
         self.assertRaises(URLGrabError, self.g.urlgrab,
-                          short_ref_http, self.filename)
+                          ref_404, self.filename)
 
     def test_checkfunc_urlread_failure(self):
         "check failure with urlread checkfunc"
         self.data = 'other data'
         self.assertRaises(URLGrabError, self.g.urlread,
-                          short_ref_http)
+                          ref_404)
 
 class RegetTestBase:
     def setUp(self):
