@@ -2289,8 +2289,10 @@ def parallel_wait(meter=None):
 
             if ug_err is None:
                 if opts.checkfunc:
-                    try: _run_callback(opts.checkfunc, opts)
-                    except URLGrabError as ug_err: pass
+                    try:
+                        _run_callback(opts.checkfunc, opts)
+                    except URLGrabError as e:
+                        ug_err = e
 
             if opts.progress_obj:
                 if opts.multi_progress_obj:
@@ -2320,8 +2322,10 @@ def parallel_wait(meter=None):
             retry = opts.retry or 0
             if opts.failure_callback:
                 opts.exception = ug_err
-                try: _run_callback(opts.failure_callback, opts)
-                except URLGrabError as ug_err:
+                try:
+                    _run_callback(opts.failure_callback, opts)
+                except URLGrabError as e:
+                    ug_err = e
                     retry = 0 # no retries
             if opts.tries < retry and ug_err.errno in opts.retrycodes:
                 if ug_err.errno < 0 and opts.retry_no_cache:
