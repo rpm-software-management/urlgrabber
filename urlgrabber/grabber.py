@@ -527,6 +527,7 @@ import stat
 import pycurl
 from ftplib import parse150
 import socket, select, fcntl
+from io import BytesIO
 
 try:
     import urllib.parse as urlparse
@@ -847,7 +848,10 @@ class URLParser:
         if not scheme or (len(scheme) == 1 and scheme in string.letters):
             # if a scheme isn't specified, we guess that it's "file:"
             if url[0] not in b'/\\': url = os.path.abspath(url)
-            url = b'file:' + pathname2url(url)
+            pathname = pathname2url(url)
+            if not isinstance(pathname, bytes):
+                pathname = pathname.encode('utf8')
+            url = b'file:' + pathname
             parts = urlparse.urlparse(url)
             quote = 0 # pathname2url quotes, so we won't do it again
 
@@ -863,7 +867,7 @@ class URLParser:
         return url, parts
 
     def add_prefix(self, url, prefix):
-        if prefix[-1] == b'/' or url[0] == b'/':
+        if prefix.endswith(b'/') or url.startswith(b'/'):
             url = prefix + url
         else:
             url = prefix + b'/' + url
@@ -900,6 +904,8 @@ class URLParser:
         else       ->  1
         """
         (scheme, host, path, parm, query, frag) = parts
+        if not isinstance(path, text_type):
+            path = path.decode('utf8')
         if ' ' in path:
             return 1
         ind = path.find('%')
@@ -1380,7 +1386,7 @@ class PyCurlFileObject(object):
                 if buf.lower().find(b'content-length:') != -1:
                     length = buf.split(b':')[1]
                     self.size = int(length)
-                elif (self.append or self.opts.range) and self._hdr_dump == '' and b' 200 ' in buf:
+                elif (self.append or self.opts.range) and not self._hdr_dump and b' 200 ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
@@ -1669,7 +1675,7 @@ class PyCurlFileObject(object):
     def _build_range(self):
         reget_length = 0
         rt = None
-        if self.opts.reget and type(self.filename) in types.StringTypes:
+        if self.opts.reget and isinstance(self.filename, string_types):
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1787,7 +1793,7 @@ class PyCurlFileObject(object):
             self._prog_basename = 'MEMORY'
 
 
-            self.fo = StringIO()
+            self.fo = BytesIO()
             # if this is to be a tempfile instead....
             # it just makes crap in the tempdir
             #fh, self._temp_name = mkstemp()

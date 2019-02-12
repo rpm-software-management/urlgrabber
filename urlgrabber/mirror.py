@@ -389,9 +389,9 @@ class MirrorGroup:
         if gr._next >= len(gr.mirrors): gr._next = 0
 
         if DEBUG:
-            grm = [m['mirror'] for m in gr.mirrors]
+            grm = [m['mirror'].decode() for m in gr.mirrors]
             DEBUG.info('GR   mirrors: [%s] %i', ' '.join(grm), gr._next)
-            selfm = [m['mirror'] for m in self.mirrors]
+            selfm = [m['mirror'].decode() for m in self.mirrors]
             DEBUG.info('MAIN mirrors: [%s] %i', ' '.join(selfm), self._next)
 
     #####################################################################
@@ -403,7 +403,14 @@ class MirrorGroup:
 
     def _join_url(self, base_url, rel_url):
         (scheme, netloc, path, query, fragid) = urlparse.urlsplit(base_url)
-        sep = '' if path.endswith('/') or rel_url.startswith('/') else '/'
+
+        if isinstance(base_url, bytes):
+            if not isinstance(rel_url, bytes):
+                rel_url = rel_url.encode('utf8')
+            sep = b'' if path.endswith(b'/') or rel_url.startswith(b'/') else b'/'
+        else:
+            sep = '' if path.endswith('/') or rel_url.startswith('/') else '/'
+
         return urlparse.urlunsplit((scheme, netloc, path + sep + rel_url, query, fragid))
 
     def _mirror_try(self, func, url, kw):

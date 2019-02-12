@@ -187,7 +187,7 @@ class ActionTests(TestCase):
     def test_defaults(self):
         'test default action policy'
         self.mg.urlgrab('somefile')
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -207,7 +207,7 @@ class ActionTests(TestCase):
         'test the effects of passed-in default_action'
         self.mg.default_action = {'remove_master': 1}
         self.mg.urlgrab('somefile')
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -226,7 +226,7 @@ class ActionTests(TestCase):
     def test_method_action(self):
         'test the effects of method-level default_action'
         self.mg.urlgrab('somefile', default_action={'remove_master': 1})
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -249,7 +249,7 @@ class ActionTests(TestCase):
         'test the effects of a callback-returned action'
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'somefile',
                           failure_callback=self.callback)
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:1] ]
         expected_logs = \
                       ['MIRROR: trying somefile -> a/somefile',

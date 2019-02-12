@@ -7,11 +7,11 @@ base_ftp  = 'ftp://localhost/test/'
 # bugs in their implementation in byterange.py.
 base_proftp = 'ftp://localhost/test/'
 
-reference_data = ''.join(str(i) + '\n' for i in range(20000))
+reference_data = ''.join(str(i) + '\n' for i in range(20000)).encode('utf8')
 ref_http = base_http + 'reference'
 ref_ftp = base_ftp + 'reference'
 ref_proftp = base_proftp + 'reference'
-short_reference_data = ' '.join(str(i) for i in range(10))
+short_reference_data = ' '.join(str(i) for i in range(10)).encode('utf8')
 short_ref_http = base_http + 'short_reference'
 short_ref_ftp = base_ftp + 'short_reference'
 

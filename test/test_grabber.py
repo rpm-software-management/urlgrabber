@@ -27,6 +27,8 @@ import sys
 import os
 import tempfile, random, os
 import socket
+from io import BytesIO
+from six import string_types
 
 if sys.version_info >= (3,):
     # We do an explicit version check here because because python2
@@ -56,8 +58,8 @@ class FileObjectTests(TestCase):
         with open(self.filename, 'wb') as fo:
             fo.write(reference_data)
 
-        self.fo_input = StringIO(reference_data)
-        self.fo_output = StringIO()
+        self.fo_input = BytesIO(reference_data)
+        self.fo_output = BytesIO()
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(
             self.filename, grabber.default_grabber.opts)
         self.wrapper = grabber.PyCurlFileObject(
@@ -227,11 +229,14 @@ class URLParserTestCase(TestCase):
         try: quote = urllist[3]
         except IndexError: quote = None
         g.opts.quote = quote
-        (url, parts) = g.opts.urlparser.parse(urllist[0], g.opts)
+        url = urllist[0].encode('utf8')
+        expected_url = urllist[1].encode('utf8')
+        expected_parts = tuple(part.encode('utf8') for part in urllist[2])
+        (url, parts) = g.opts.urlparser.parse(url, g.opts)
 
         if 1:
-            self.assertEquals(url, urllist[1])
-            self.assertEquals(parts, urllist[2])
+            self.assertEquals(url, expected_url)
+            self.assertEquals(parts, expected_parts)
         else:
             if url == urllist[1] and parts == urllist[2]:
                 print('OK: %s' % urllist[0])
@@ -328,7 +333,10 @@ class FailureTestCase(TestCase):
         self.assertEquals(self.args, ('foo',))
         self.assertEquals(self.kwargs, {'bar': 'baz'})
         self.assert_(isinstance(self.obj, CallbackObject))
-        self.assertEquals(self.obj.url, ref_404)
+        url = self.obj.url
+        if not isinstance(url, string_types):
+            url = url.decode('utf8')
+        self.assertEquals(url, ref_404)
         self.assert_(isinstance(self.obj.exception, URLGrabError))
         del self.obj
 
