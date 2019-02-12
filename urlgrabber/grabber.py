@@ -883,8 +883,10 @@ class URLParser:
         passing into urlgrabber.
         """
         (scheme, host, path, parm, query, frag) = parts
-        path = urlquote(path, safe='/$')
-        return (scheme, host, path, parm, query, frag)
+        newpath = urlquote(path, safe='/$')
+        if not isinstance(path, text_type) and isinstance(newpath, text_type):
+            newpath = newpath.encode('utf8')
+        return (scheme, host, newpath, parm, query, frag)
 
     hexvals = '0123456789ABCDEF'
     def guess_should_quote(self, parts):
