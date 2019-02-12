@@ -84,7 +84,7 @@ class FileObjectTests(TestCase):
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
-        self.fo_output.write(''.join(li))
+        self.fo_output.write(b''.join(li))
         self.assert_(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
@@ -212,10 +212,10 @@ class URLParserTestCase(TestCase):
 
     def test_parse_url_with_prefix(self):
         """grabber.URLParser.parse() with opts.prefix"""
-        base = 'http://foo.com/dir'
-        bases = [base, base+'/']
-        filename = 'bar/baz'
-        target = base + '/' + filename
+        base = b'http://foo.com/dir'
+        bases = [base, base + b'/']
+        filename = b'bar/baz'
+        target = base + b'/' + filename
 
         for b in bases:
             g = URLGrabber(prefix=b)
@@ -389,7 +389,7 @@ class CheckfuncTestCase(TestCase):
 
         if hasattr(obj, 'filename'):
             # we used urlgrab
-            data = open(obj.filename).read()
+            data = open(obj.filename, 'rb').read()
         else:
             # we used urlread
             data = obj.data
@@ -405,7 +405,10 @@ class CheckfuncTestCase(TestCase):
         self.assertEquals(self.args, ('foo',))
         self.assertEquals(self.kwargs, {'bar': 'baz'})
         self.assert_(isinstance(self.obj, CallbackObject))
-        self.assertEquals(self.obj.url, short_ref_http)
+        url = self.obj.url
+        if not isinstance(url, string_types):
+            url = url.decode()
+        self.assertEquals(url, short_ref_http)
 
     def test_checkfunc_urlgrab_args(self):
         "check for proper args when used with urlgrab"
@@ -484,7 +487,7 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.grabber.urlgrab(self.url, self.filename, reget='simple')
         data = self._read_file()
 
-        self.assertEquals(data[:self.hl], '0'*self.hl)
+        self.assertEquals(data[:self.hl], b'0'*self.hl)
         self.assertEquals(data[self.hl:], self.ref[self.hl:])
 
 class HTTPRegetTests(FTPRegetTests):
@@ -502,7 +505,7 @@ class HTTPRegetTests(FTPRegetTests):
             self.grabber.urlgrab(self.url, self.filename, reget='check_timestamp')
             data = self._read_file()
 
-            self.assertEquals(data[:self.hl], '0'*self.hl)
+            self.assertEquals(data[:self.hl], b'0'*self.hl)
             self.assertEquals(data[self.hl:], self.ref[self.hl:])
         except NotImplementedError:
             self.skip()

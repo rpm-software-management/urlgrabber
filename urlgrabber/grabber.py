@@ -835,12 +835,12 @@ class URLParser:
 
         if not scheme or (len(scheme) == 1 and scheme in string.letters):
             # if a scheme isn't specified, we guess that it's "file:"
-            if url[0] not in '/\\': url = os.path.abspath(url)
-            url = 'file:' + pathname2url(url)
+            if url[0] not in b'/\\': url = os.path.abspath(url)
+            url = b'file:' + pathname2url(url)
             parts = urlparse.urlparse(url)
             quote = 0 # pathname2url quotes, so we won't do it again
 
-        if scheme in ['http', 'https']:
+        if scheme in [b'http', b'https']:
             parts = self.process_http(parts, url)
 
         if quote is None:
@@ -852,10 +852,10 @@ class URLParser:
         return url, parts
 
     def add_prefix(self, url, prefix):
-        if prefix[-1] == '/' or url[0] == '/':
+        if prefix[-1] == b'/' or url[0] == b'/':
             url = prefix + url
         else:
-            url = prefix + '/' + url
+            url = prefix + b'/' + url
         return url
 
     def process_http(self, parts, url):
@@ -1277,7 +1277,7 @@ default_grabber = URLGrabber()
 class PyCurlFileObject(object):
     def __init__(self, url, filename, opts):
         self.fo = None
-        self._hdr_dump = ''
+        self._hdr_dump = b''
         self._parsed_hdr = None
         self.url = url
         self.scheme = urlparse.urlsplit(self.url)[0]
@@ -1288,7 +1288,7 @@ class PyCurlFileObject(object):
         if self.opts.reget == 'check_timestamp':
             raise NotImplementedError("check_timestamp regets are not implemented in this ver of urlgrabber. Please report this.")
         self._complete = False
-        self._rbuf = ''
+        self._rbuf = b''
         self._rbufsize = 1024*8
         self._ttime = time.time()
         self._tsize = 0
@@ -1352,7 +1352,7 @@ class PyCurlFileObject(object):
 
     def _hdr_retrieve(self, buf):
         if self._hdr_ended:
-            self._hdr_dump = ''
+            self._hdr_dump = b''
             self.size = 0
             self._hdr_ended = False
 
@@ -1363,11 +1363,11 @@ class PyCurlFileObject(object):
             # we have to get the size before we do the progress obj start
             # but we can't do that w/o making it do 2 connects, which sucks
             # so we cheat and stuff it in here in the hdr_retrieve
-            if self.scheme in ['http','https']:
-                if buf.lower().find('content-length:') != -1:
-                    length = buf.split(':')[1]
+            if self.scheme in [b'http', b'https']:
+                if buf.lower().find(b'content-length:') != -1:
+                    length = buf.split(b':')[1]
                     self.size = int(length)
-                elif (self.append or self.opts.range) and self._hdr_dump == '' and ' 200 ' in buf:
+                elif (self.append or self.opts.range) and self._hdr_dump == '' and b' 200 ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
@@ -1376,25 +1376,25 @@ class PyCurlFileObject(object):
                     self._reget_length = 0
                     self._range = self.opts.range
                     self.fo.truncate(0)
-            elif self.scheme in ['ftp']:
+            elif self.scheme in [b'ftp']:
                 s = None
-                if buf.startswith('213 '):
+                if buf.startswith(b'213 '):
                     s = buf[3:].strip()
                     if len(s) >= 14:
                         s = None # ignore MDTM responses
-                elif buf.startswith('150 '):
+                elif buf.startswith(b'150 '):
                     s = parse150(buf)
                 if s:
                     self.size = int(s)
 
-            if buf.lower().find('location') != -1:
-                location = ':'.join(buf.split(':')[1:])
+            if buf.lower().find(b'location') != -1:
+                location = b':'.join(buf.split(b':')[1:])
                 location = location.strip()
                 self.scheme = urlparse.urlsplit(location)[0]
                 self.url = location
 
             self._hdr_dump += buf
-            if len(self._hdr_dump) != 0 and buf == '\r\n':
+            if len(self._hdr_dump) != 0 and buf == b'\r\n':
                 self._hdr_ended = True
                 if DEBUG: DEBUG.debug('header ended:')
 
@@ -1405,7 +1405,7 @@ class PyCurlFileObject(object):
     def _return_hdr_obj(self):
         if self._parsed_hdr:
             return self._parsed_hdr
-        statusend = self._hdr_dump.find('\n')
+        statusend = self._hdr_dump.find(b'\n')
         statusend += 1 # ridiculous as it may seem.
         hdrfp = StringIO()
         hdrfp.write(self._hdr_dump[statusend:])
@@ -1463,7 +1463,7 @@ class PyCurlFileObject(object):
         self.curl_obj.setopt(pycurl.LOW_SPEED_TIME, timeout)
 
         # ssl options
-        if self.scheme == 'https':
+        if self.scheme == b'https':
             if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
                 self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
                 self.curl_obj.setopt(pycurl.CAINFO, opts.ssl_ca_cert)
@@ -1484,7 +1484,7 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.SSLKEYPASSWD, opts.ssl_key_pass)
 
         #headers:
-        if self.scheme in ('http', 'https'):
+        if self.scheme in (b'http', b'https'):
             headers = []
             if opts.http_headers is not None:
                 for (tag, content) in opts.http_headers:
@@ -1512,7 +1512,7 @@ class PyCurlFileObject(object):
                 pycurl.HTTPAUTH_ANY - pycurl.HTTPAUTH_GSSNEGOTIATE)
 
         if opts.username and opts.password:
-            if self.scheme in ('http', 'https'):
+            if self.scheme in (b'http', b'https'):
                 self.curl_obj.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_ANY)
 
             if opts.username and opts.password:
@@ -1885,7 +1885,7 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = ''.join(buf)
+        self._rbuf = b''.join(buf)
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
@@ -1920,7 +1920,7 @@ class PyCurlFileObject(object):
     def read(self, amt=None):
         self._fill_buffer(amt)
         if amt is None:
-            s, self._rbuf = self._rbuf, ''
+            s, self._rbuf = self._rbuf, b''
         else:
             s, self._rbuf = self._rbuf[:amt], self._rbuf[amt:]
         return s
@@ -2141,19 +2141,19 @@ class _ExternalDownloader:
             raise KeyboardInterrupt
         for line in lines:
             # parse downloader output
-            line = line.split(' ', 6)
+            line = line.split(b' ', 6)
             _id, size = map(int, line[:2])
             if len(line) == 2:
                 self.running[_id]._progress.update(size)
                 continue
             # job done
             opts = self.running.pop(_id)
-            if line[4] == 'OK':
+            if line[4] == b'OK':
                 ug_err = None
                 if DEBUG: DEBUG.info('success')
             else:
                 ug_err = URLGrabError(int(line[4]), line[6])
-                if line[5] != '0':
+                if line[5] != b'0':
                     ug_err.code = int(line[5])
                 if DEBUG: DEBUG.info('failure: %s', ug_err)
             _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async_[0])
@@ -2455,7 +2455,7 @@ class _TH:
     def update(url, dl_size, dl_time, ug_err, baseurl=None):
         # Use hostname from URL.  If it's a file:// URL, use baseurl.
         # If no baseurl, do not update timedhosts.
-        host = urlparse.urlsplit(url).netloc.split('@')[-1] or baseurl
+        host = urlparse.urlsplit(url).netloc.split(b'@')[-1] or baseurl
         if not host: return
 
         _TH.load()
@@ -2487,7 +2487,7 @@ class _TH:
         _TH.load()
 
         # Use just the hostname, unless it's a file:// baseurl.
-        host = urlparse.urlsplit(baseurl).netloc.split('@')[-1] or baseurl
+        host = urlparse.urlsplit(baseurl).netloc.split(b'@')[-1] or baseurl
 
         default_speed = default_grabber.opts.default_speed
         try: speed, fail, ts = _TH.hosts[host]

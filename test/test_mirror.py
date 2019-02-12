@@ -275,13 +275,13 @@ class HttpReplyCode(TestCase):
             while True:
                 c, a = s.accept()
                 if self.exit: c.close(); break
-                data = ''
-                while not data.endswith('\r\n\r\n'):
+                data = b''
+                while not data.endswith(b'\r\n\r\n'):
                     data = c.recv(4096)
                 self.process(data)
-                c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                c.sendall(b'HTTP/1.1 %d %s\r\n' % self.reply)
                 if self.content is not None:
-                    c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
+                    c.sendall(b'Content-Length: %d\r\n\r\n' % len(self.content))
                     c.sendall(self.content)
                 c.close()
             s.close()
@@ -306,7 +306,7 @@ class HttpReplyCode(TestCase):
 
     def test_grab(self):
         'tests the propagation of HTTP reply code'
-        self.reply = 503, "Busy"
+        self.reply = 503, b'Busy'
         self.content = None
 
         # single
@@ -323,23 +323,23 @@ class HttpReplyCode(TestCase):
     def test_range(self):
         'test client-side processing of HTTP ranges'
         # server does not process ranges
-        self.reply = 200, "OK"
-        self.content = 'ABCDEF'
+        self.reply = 200, b'OK'
+        self.content = b'ABCDEF'
 
         # no range specified
         data = self.mg.urlread('foo')
-        self.assertEquals(data, 'ABCDEF')
+        self.assertEquals(data, b'ABCDEF')
 
         data = self.mg.urlread('foo', range = (3, 5))
-        self.assertEquals(data, 'DE')
+        self.assertEquals(data, b'DE')
 
     def test_retry_no_cache(self):
         'test bypassing proxy cache on failure'
         def process(data):
-            if 'Pragma:no-cache' in data:
-                self.content = 'version2'
+            if b'Pragma:no-cache' in data:
+                self.content = b'version2'
             else:
-                self.content = 'version1'
+                self.content = b'version1'
 
         def checkfunc_read(obj):
             if obj.data == 'version1':
@@ -351,7 +351,7 @@ class HttpReplyCode(TestCase):
                     raise URLGrabError(-1, 'Outdated version of foo')
 
         self.process = process
-        self.reply = 200, "OK"
+        self.reply = 200, b'OK'
 
         opts = self.g.opts
         opts.retry = 3
@@ -379,4 +379,3 @@ def suite():
 if __name__ == '__main__':
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
-
