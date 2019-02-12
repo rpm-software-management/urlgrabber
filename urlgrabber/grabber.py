@@ -1109,13 +1109,13 @@ class URLGrabber(object):
 
             if (opts.retry is None) or (tries == opts.retry):
                 if DEBUG: DEBUG.info('retries exceeded, re-raising')
-                raise
+                raise exception
 
             retrycode = getattr(exception, 'errno', None)
             if (retrycode is not None) and (retrycode not in opts.retrycodes):
                 if DEBUG: DEBUG.info('retrycode (%i) not in list %s, re-raising',
                                      retrycode, opts.retrycodes)
-                raise
+                raise exception
             if retrycode is not None and retrycode < 0 and opts.retry_no_cache:
                 opts.no_cache = True
 
