@@ -439,7 +439,7 @@ class RegetTestBase:
         self.ref = short_reference_data
         self.grabber = grabber.URLGrabber(reget='check_timestamp')
         self.filename = tempfile.mktemp()
-        self.hl = len(self.ref) / 2
+        self.hl = len(self.ref) // 2
         self.url = 'OVERRIDE THIS'
 
     def tearDown(self):
@@ -533,7 +533,7 @@ class FileRegetTests(HTTPRegetTests):
         self.grabber = grabber.URLGrabber(reget='check_timestamp',
                                           copy_local=1)
         self.filename = tempfile.mktemp()
-        self.hl = len(self.ref) / 2
+        self.hl = len(self.ref) // 2
 
     def tearDown(self):
         try: os.unlink(self.filename)

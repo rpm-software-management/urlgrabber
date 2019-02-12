@@ -708,7 +708,7 @@ class URLGrabError(IOError):
         -1   - retry the download, unknown reason
 
     Note: to test which group a code is in, you can simply do integer
-    division by 256: e.errno / 256
+    division by 256: e.errno // 256
 
     Negative codes are reserved for use by functions passed in to
     retrygrab with checkfunc.  The value -1 is built in as a generic
