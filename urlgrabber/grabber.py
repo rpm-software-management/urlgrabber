@@ -2112,8 +2112,10 @@ import subprocess
 
 class _ExternalDownloader:
     def __init__(self):
+        urlgrabber_path = (os.getenv('URLGRABBER_EXT_DOWN', None)
+                           or '/usr/libexec/urlgrabber-ext-down')
         self.popen = subprocess.Popen(
-            '/usr/libexec/urlgrabber-ext-down',
+            urlgrabber_path,
             stdin = subprocess.PIPE,
             stdout = subprocess.PIPE,
         )
