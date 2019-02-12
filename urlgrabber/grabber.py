@@ -569,6 +569,11 @@ def _bytes_repr(s):
     else:
         return repr(s)[2:-1]
 
+def _urlunquote_convert(s):
+    if not isinstance(s, text_type):
+        s = s.decode('utf8')
+    return urlunquote(s)
+
 ########################################################################
 #                     MODULE INITIALIZATION
 ########################################################################
@@ -1170,7 +1175,7 @@ class URLGrabber(object):
         (scheme, host, path, parm, query, frag) = parts
         opts.find_proxy(url, scheme)
         if filename is None:
-            filename = os.path.basename( urlunquote(path) )
+            filename = os.path.basename(_urlunquote_convert(path))
             if not filename:
                 # This is better than nothing.
                 filename = 'index.html'
@@ -1331,7 +1336,7 @@ class PyCurlFileObject(object):
                 if self.opts.progress_obj:
                     size  = self.size + self._reget_length
                     self.opts.progress_obj.start(self._prog_reportname,
-                                                 urlunquote(self.url),
+                                                 _urlunquote_convert(self.url),
                                                  self._prog_basename,
                                                  size=size,
                                                  text=self.opts.text)
@@ -1553,7 +1558,7 @@ class PyCurlFileObject(object):
 
             code = self.http_code
             errcode = e.args[0]
-            errurl = urlunquote(self.url)
+            errurl = _urlunquote_convert(self.url)
 
             if self._error[0]:
                 errcode = self._error[0]
@@ -1645,7 +1650,7 @@ class PyCurlFileObject(object):
             if self._error[1]:
                 msg = self._error[1]
                 err = URLGrabError(14, msg)
-                err.url = urlunquote(self.url)
+                err.url = _urlunquote_convert(self.url)
                 raise err
 
     def _do_open(self):
