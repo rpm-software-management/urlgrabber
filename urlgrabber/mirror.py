@@ -287,12 +287,7 @@ class MirrorGroup:
         self.default_action   = kwargs.get('default_action')
 
     def _parse_mirrors(self, mirrors):
-        parsed_mirrors = []
-        for m in mirrors:
-            if isinstance(m, string_types):
-                m = {'mirror': _to_utf8(m)}
-            parsed_mirrors.append(m)
-        return parsed_mirrors
+        return [{'mirror':_to_utf8(m)} for m in mirrors]
 
     def _load_gr(self, gr):
         # OVERRIDE IDEAS:
