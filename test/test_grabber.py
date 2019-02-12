@@ -41,9 +41,8 @@ class FileObjectTests(TestCase):
 
     def setUp(self):
         self.filename = tempfile.mktemp()
-        fo = file(self.filename, 'wb')
-        fo.write(reference_data)
-        fo.close()
+        with open(self.filename, 'wb') as fo:
+            fo.write(reference_data)
 
         self.fo_input = cStringIO.StringIO(reference_data)
         self.fo_output = cStringIO.StringIO()
@@ -90,9 +89,7 @@ class HTTPTests(TestCase):
         filename = tempfile.mktemp()
         grabber.urlgrab(ref_http, filename)
 
-        fo = file(filename, 'rb')
-        contents = fo.read()
-        fo.close()
+        contents = open(filename, 'rb').read()
 
         self.assert_(contents == reference_data)
 
@@ -380,9 +377,7 @@ class CheckfuncTestCase(TestCase):
 
         if hasattr(obj, 'filename'):
             # we used urlgrab
-            fo = file(obj.filename)
-            data = fo.read()
-            fo.close()
+            data = open(obj.filename).read()
         else:
             # we used urlread
             data = obj.data
@@ -447,14 +442,11 @@ class RegetTestBase:
         except: pass
 
     def _make_half_zero_file(self):
-        fo = file(self.filename, 'wb')
-        fo.write('0'*self.hl)
-        fo.close()
+        with open(self.filename, 'wb') as fo:
+            fo.write(b'0' * self.hl)
 
     def _read_file(self):
-        fo = file(self.filename, 'rb')
-        data = fo.read()
-        fo.close()
+        data = open(self.filename, 'rb').read()
         return data
 
 class CommonRegetTests(RegetTestBase, TestCase):
@@ -521,9 +513,8 @@ class FileRegetTests(HTTPRegetTests):
     def setUp(self):
         self.ref = short_reference_data
         tmp = tempfile.mktemp()
-        tmpfo = file(tmp, 'wb')
-        tmpfo.write(self.ref)
-        tmpfo.close()
+        with open(tmp, 'wb') as tmpfo:
+            tmpfo.write(self.ref)
         self.tmp = tmp
 
         (url, parts) = grabber.default_grabber.opts.urlparser.parse(

@@ -51,9 +51,7 @@ class BasicTests(TestCase):
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
-        fo = open(filename)
-        data = fo.read()
-        fo.close()
+        data = open(filename, 'rb').read()
 
         self.assertEqual(data, short_reference_data)
 
@@ -85,9 +83,7 @@ class SubclassTests(TestCase):
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
-        fo = open(filename)
-        data = fo.read()
-        fo.close()
+        data = open(filename, 'rb').read()
 
         self.assertEqual(data, short_reference_data)
 
@@ -153,9 +149,7 @@ class FailoverTests(TestCase):
         def cb(e, elist=elist): elist.append(e)
         self.mg.urlgrab(url, filename, failure_callback=cb)
 
-        fo = open(filename)
-        contents = fo.read()
-        fo.close()
+        contents = open(filename, 'rb').read()
 
         # first be sure that the first mirror failed and that the
         # callback was called
