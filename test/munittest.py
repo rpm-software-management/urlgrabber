@@ -106,6 +106,7 @@ import sys
 import traceback
 import os
 import types
+import unittest
 
 from six import class_types
 
@@ -206,7 +207,7 @@ class TestResult:
                 len(self.failures))
 
 
-class TestCase:
+class TestCase(unittest.TestCase):
     """A class whose instances are single test cases.
 
     By default, the test code itself should be placed in a method named
@@ -249,27 +250,6 @@ class TestCase:
 
     interrupt_skips = 0
 
-    def __init__(self, methodName='runTest'):
-        """Create an instance of the class that will use the named test
-           method when executed. Raises a ValueError if the instance does
-           not have a method with the specified name.
-        """
-        try:
-            self._testMethodName = methodName
-            testMethod = getattr(self, methodName)
-            self._testMethodDoc = testMethod.__doc__
-        except AttributeError:
-            raise ValueError("no such test method in %s: %s" % \
-                  (self.__class__, methodName))
-
-    def setUp(self):
-        "Hook method for setting up the test fixture before exercising it."
-        pass
-
-    def tearDown(self):
-        "Hook method for deconstructing the test fixture after testing it."
-        pass
-
     def countTestCases(self):
         return 1
 
@@ -295,9 +275,6 @@ class TestCase:
     def __repr__(self):
         return "<%s testMethod=%s>" % \
                (_strclass(self.__class__), self._testMethodName)
-
-    def run(self, result=None):
-        return self(result)
 
     def __call__(self, result=None):
         if result is None: result = self.defaultTestResult()
