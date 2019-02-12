@@ -599,7 +599,7 @@ class ProxyFTPAuthTests(ProxyHTTPAuthTests):
             self.skip()
         try:
             fo = urlopen(self.url).close()
-        except IOError:
+        except URLError:
             self.skip()
         self.g = URLGrabber()
 
