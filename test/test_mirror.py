@@ -112,8 +112,8 @@ class CallbackTests(TestCase):
             tl.append(str(cb_obj.exception))
         self.mg.failure_callback = failure_callback, (tricky_list, ), {}
         data = self.mg.urlread('reference')
-        self.assert_(data == reference_data)
-        self.assertEquals(tricky_list[0][:25],
+        self.assertTrue(data == reference_data)
+        self.assertEqual(tricky_list[0][:25],
                           '[Errno 14] HTTP Error 404')
 
     def test_callback_reraise(self):
@@ -200,8 +200,8 @@ class ActionTests(TestCase):
              'MAIN mirrors: [a b c d e f] 2',
              'MIRROR: trying somefile -> c/somefile']
 
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
 
     def test_instance_action(self):
         'test the effects of passed-in default_action'
@@ -220,8 +220,8 @@ class ActionTests(TestCase):
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
 
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
 
     def test_method_action(self):
         'test the effects of method-level default_action'
@@ -239,8 +239,8 @@ class ActionTests(TestCase):
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
 
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
 
 
     def callback(self, e): return {'fail': 1}
@@ -257,8 +257,8 @@ class ActionTests(TestCase):
                        'GR   mirrors: [b c d e f] 0',
                        'MAIN mirrors: [a b c d e f] 1']
 
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
 
 import threading, socket
 
@@ -319,14 +319,14 @@ class HttpReplyCode(TestCase):
 
         # single
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'foo')
-        self.assertEquals(self.code, 503); del self.code
+        self.assertEqual(self.code, 503); del self.code
 
         # multi
         err = []
         self.mg.urlgrab('foo', async_=True, failfunc=err.append)
         urlgrabber.grabber.parallel_wait()
-        self.assertEquals([e.exception.errno for e in err], [256])
-        self.assertEquals(self.code, 503); del self.code
+        self.assertEqual([e.exception.errno for e in err], [256])
+        self.assertEqual(self.code, 503); del self.code
 
     def test_range(self):
         'test client-side processing of HTTP ranges'
@@ -336,10 +336,10 @@ class HttpReplyCode(TestCase):
 
         # no range specified
         data = self.mg.urlread('foo')
-        self.assertEquals(data, b'ABCDEF')
+        self.assertEqual(data, b'ABCDEF')
 
         data = self.mg.urlread('foo', range = (3, 5))
-        self.assertEquals(data, b'DE')
+        self.assertEqual(data, b'DE')
 
     def test_retry_no_cache(self):
         'test bypassing proxy cache on failure'

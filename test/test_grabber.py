@@ -73,7 +73,7 @@ class FileObjectTests(TestCase):
         "PYCurlFileObject .read() method"
         s = self.wrapper.read()
         self.fo_output.write(s)
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.assertTrue(reference_data == self.fo_output.getvalue())
 
     def test_readline(self):
         "PyCurlFileObject .readline() method"
@@ -81,13 +81,13 @@ class FileObjectTests(TestCase):
             s = self.wrapper.readline()
             self.fo_output.write(s)
             if not s: break
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.assertTrue(reference_data == self.fo_output.getvalue())
 
     def test_readlines(self):
         "PyCurlFileObject .readlines() method"
         li = self.wrapper.readlines()
         self.fo_output.write(b''.join(li))
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.assertTrue(reference_data == self.fo_output.getvalue())
 
     def test_smallread(self):
         "PyCurlFileObject .read(N) with small N"
@@ -95,7 +95,7 @@ class FileObjectTests(TestCase):
             s = self.wrapper.read(23)
             self.fo_output.write(s)
             if not s: break
-        self.assert_(reference_data == self.fo_output.getvalue())
+        self.assertTrue(reference_data == self.fo_output.getvalue())
 
 class HTTPTests(TestCase):
     def test_reference_file(self):
@@ -105,7 +105,7 @@ class HTTPTests(TestCase):
 
         contents = open(filename, 'rb').read()
 
-        self.assert_(contents == reference_data)
+        self.assertTrue(contents == reference_data)
 
     def test_post(self):
         "do an HTTP post"
@@ -171,38 +171,38 @@ class URLGrabberTestCase(TestCase):
                         proxies={'http' : 'http://www.proxy.com:9090'},
                         opener=opener )
         opts = g.opts
-        self.assertEquals( opts.progress_obj, self.meter )
-        self.assertEquals( opts.throttle, 0.9 )
-        self.assertEquals( opts.bandwidth, 20 )
-        self.assertEquals( opts.retry, 20 )
-        self.assertEquals( opts.retrycodes, [5,6,7] )
-        self.assertEquals( opts.copy_local, 1 )
-        self.assertEquals( opts.close_connection, 1 )
-        self.assertEquals( opts.user_agent, 'test ua/1.0' )
-        self.assertEquals( opts.proxies, {'http' : 'http://www.proxy.com:9090'} )
-        self.assertEquals( opts.opener, opener )
+        self.assertEqual( opts.progress_obj, self.meter )
+        self.assertEqual( opts.throttle, 0.9 )
+        self.assertEqual( opts.bandwidth, 20 )
+        self.assertEqual( opts.retry, 20 )
+        self.assertEqual( opts.retrycodes, [5,6,7] )
+        self.assertEqual( opts.copy_local, 1 )
+        self.assertEqual( opts.close_connection, 1 )
+        self.assertEqual( opts.user_agent, 'test ua/1.0' )
+        self.assertEqual( opts.proxies, {'http' : 'http://www.proxy.com:9090'} )
+        self.assertEqual( opts.opener, opener )
 
         nopts = grabber.URLGrabberOptions(delegate=opts, throttle=0.5,
                                         copy_local=0)
-        self.assertEquals( nopts.progress_obj, self.meter )
-        self.assertEquals( nopts.throttle, 0.5 )
-        self.assertEquals( nopts.bandwidth, 20 )
-        self.assertEquals( nopts.retry, 20 )
-        self.assertEquals( nopts.retrycodes, [5,6,7] )
-        self.assertEquals( nopts.copy_local, 0 )
-        self.assertEquals( nopts.close_connection, 1 )
-        self.assertEquals( nopts.user_agent, 'test ua/1.0' )
-        self.assertEquals( nopts.proxies, {'http' : 'http://www.proxy.com:9090'} )
+        self.assertEqual( nopts.progress_obj, self.meter )
+        self.assertEqual( nopts.throttle, 0.5 )
+        self.assertEqual( nopts.bandwidth, 20 )
+        self.assertEqual( nopts.retry, 20 )
+        self.assertEqual( nopts.retrycodes, [5,6,7] )
+        self.assertEqual( nopts.copy_local, 0 )
+        self.assertEqual( nopts.close_connection, 1 )
+        self.assertEqual( nopts.user_agent, 'test ua/1.0' )
+        self.assertEqual( nopts.proxies, {'http' : 'http://www.proxy.com:9090'} )
         nopts.opener = None
-        self.assertEquals( nopts.opener, None )
+        self.assertEqual( nopts.opener, None )
 
     def test_make_callback(self):
         """grabber.URLGrabber._make_callback() tests"""
         def cb(e): pass
         tup_cb = (cb, ('stuff'), {'some': 'dict'})
         g = URLGrabber()
-        self.assertEquals(g._make_callback(cb),     (cb, (), {}))
-        self.assertEquals(g._make_callback(tup_cb), tup_cb)
+        self.assertEqual(g._make_callback(cb),     (cb, (), {}))
+        self.assertEqual(g._make_callback(tup_cb), tup_cb)
 
 class URLParserTestCase(TestCase):
     def setUp(self):
@@ -221,7 +221,7 @@ class URLParserTestCase(TestCase):
         for b in bases:
             g = URLGrabber(prefix=b)
             (url, parts) = g.opts.urlparser.parse(filename, g.opts)
-            self.assertEquals(url, target)
+            self.assertEqual(url, target)
 
     def _test_url(self, urllist):
         g = URLGrabber()
@@ -234,8 +234,8 @@ class URLParserTestCase(TestCase):
         (url, parts) = g.opts.urlparser.parse(url, g.opts)
 
         if 1:
-            self.assertEquals(url, expected_url)
-            self.assertEquals(parts, expected_parts)
+            self.assertEqual(url, expected_url)
+            self.assertEqual(parts, expected_parts)
         else:
             if url == urllist[1] and parts == urllist[2]:
                 print('OK: %s' % urllist[0])
@@ -317,7 +317,7 @@ class FailureTestCase(TestCase):
                                failure_callback=self._failure_callback)
         try: g.urlgrab(ref_404)
         except URLGrabError: pass
-        self.assertEquals(self.failure_callback_called, 1)
+        self.assertEqual(self.failure_callback_called, 1)
 
     def test_failure_callback_args(self):
         "failure callback is called with the proper args"
@@ -326,17 +326,17 @@ class FailureTestCase(TestCase):
                                failure_callback=fc)
         try: g.urlgrab(ref_404)
         except URLGrabError: pass
-        self.assert_(hasattr(self, 'obj'))
-        self.assert_(hasattr(self, 'args'))
-        self.assert_(hasattr(self, 'kwargs'))
-        self.assertEquals(self.args, ('foo',))
-        self.assertEquals(self.kwargs, {'bar': 'baz'})
-        self.assert_(isinstance(self.obj, CallbackObject))
+        self.assertTrue(hasattr(self, 'obj'))
+        self.assertTrue(hasattr(self, 'args'))
+        self.assertTrue(hasattr(self, 'kwargs'))
+        self.assertEqual(self.args, ('foo',))
+        self.assertEqual(self.kwargs, {'bar': 'baz'})
+        self.assertTrue(isinstance(self.obj, CallbackObject))
         url = self.obj.url
         if not isinstance(url, string_types):
             url = url.decode('utf8')
-        self.assertEquals(url, ref_404)
-        self.assert_(isinstance(self.obj.exception, URLGrabError))
+        self.assertEqual(url, ref_404)
+        self.assertTrue(isinstance(self.obj.exception, URLGrabError))
         del self.obj
 
 class InterruptTestCase(TestCase):
@@ -365,7 +365,7 @@ class InterruptTestCase(TestCase):
                                interrupt_callback=ic)
         try: g.urlgrab(ref_http)
         except KeyboardInterrupt: pass
-        self.assertEquals(self.interrupt_callback_called, 1)
+        self.assertEqual(self.interrupt_callback_called, 1)
 
     def test_interrupt_callback_raises(self):
         "interrupt callback raises an exception"
@@ -406,28 +406,28 @@ class CheckfuncTestCase(TestCase):
 
     def _check_common_args(self):
         "check the args that are common to both urlgrab and urlread"
-        self.assert_(hasattr(self, 'obj'))
-        self.assert_(hasattr(self, 'args'))
-        self.assert_(hasattr(self, 'kwargs'))
-        self.assertEquals(self.args, ('foo',))
-        self.assertEquals(self.kwargs, {'bar': 'baz'})
-        self.assert_(isinstance(self.obj, CallbackObject))
+        self.assertTrue(hasattr(self, 'obj'))
+        self.assertTrue(hasattr(self, 'args'))
+        self.assertTrue(hasattr(self, 'kwargs'))
+        self.assertEqual(self.args, ('foo',))
+        self.assertEqual(self.kwargs, {'bar': 'baz'})
+        self.assertTrue(isinstance(self.obj, CallbackObject))
         url = self.obj.url
         if not isinstance(url, string_types):
             url = url.decode()
-        self.assertEquals(url, short_ref_http)
+        self.assertEqual(url, short_ref_http)
 
     def test_checkfunc_urlgrab_args(self):
         "check for proper args when used with urlgrab"
         self.g.urlgrab(short_ref_http, self.filename)
         self._check_common_args()
-        self.assertEquals(self.obj.filename, self.filename)
+        self.assertEqual(self.obj.filename, self.filename)
 
     def test_checkfunc_urlread_args(self):
         "check for proper args when used with urlread"
         self.g.urlread(short_ref_http)
         self._check_common_args()
-        self.assertEquals(self.obj.data, short_reference_data)
+        self.assertEqual(self.obj.data, short_reference_data)
 
     def test_checkfunc_urlgrab_success(self):
         "check success with urlgrab checkfunc"
@@ -494,8 +494,8 @@ class FTPRegetTests(RegetTestBase, TestCase):
         self.grabber.urlgrab(self.url, self.filename, reget='simple')
         data = self._read_file()
 
-        self.assertEquals(data[:self.hl], b'0'*self.hl)
-        self.assertEquals(data[self.hl:], self.ref[self.hl:])
+        self.assertEqual(data[:self.hl], b'0'*self.hl)
+        self.assertEqual(data[self.hl:], self.ref[self.hl:])
 
 class HTTPRegetTests(FTPRegetTests):
     def setUp(self):
@@ -516,8 +516,8 @@ class HTTPRegetTests(FTPRegetTests):
 
         data = self._read_file()
 
-        self.assertEquals(data[:self.hl], b'0'*self.hl)
-        self.assertEquals(data[self.hl:], self.ref[self.hl:])
+        self.assertEqual(data[:self.hl], b'0'*self.hl)
+        self.assertEqual(data[self.hl:], self.ref[self.hl:])
 
     def test_newer_check_timestamp(self):
         # define this here rather than in the FTP tests because currently,
@@ -533,7 +533,7 @@ class HTTPRegetTests(FTPRegetTests):
 
         data = self._read_file()
 
-        self.assertEquals(data, self.ref)
+        self.assertEqual(data, self.ref)
 
 class FileRegetTests(HTTPRegetTests):
     def setUp(self):
