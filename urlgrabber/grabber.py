@@ -2030,10 +2030,10 @@ def retrygrab(url, filename=None, copy_local=0, close_connection=0,
 #
 #####################################################################
 
-_quoter_map = {}
-for c in '%[(,)] \n':
-    _quoter_map[c] = '%%%02x' % ord(c)
-del c
+def _quoter(c):
+    if c in '%[(,)] \n':
+        return '%%%02x' % ord(c)
+    return c
 
 def _dumps(v):
     if v is None: return 'None'
@@ -2044,13 +2044,12 @@ def _dumps(v):
     if isinstance(v, text_type):
         v = v.encode('UTF8')
     if isinstance(v, str):
-        def quoter(c): return _quoter_map.get(c, c)
-        return "'%s'" % ''.join(map(quoter, v))
+        return "'%s'" % ''.join(map(_quoter, v))
     if isinstance(v, tuple):
         return "(%s)" % ','.join(map(_dumps, v))
     if isinstance(v, list):
         return "[%s]" % ','.join(map(_dumps, v))
-    raise TypeError('Can\'t serialize %s' % v)
+    raise TypeError("Can't serialize %s" % v)
 
 def _loads(s):
     def decode(v):
