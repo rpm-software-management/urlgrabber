@@ -111,6 +111,7 @@ from .grabber import URLGrabError, CallbackObject, DEBUG, _to_utf8
 from .grabber import _run_callback, _do_raise
 from .grabber import exception2msg
 from .grabber import _TH
+from .grabber import _bytes_repr
 
 def _(st):
     return st
@@ -426,7 +427,7 @@ class MirrorGroup:
             # apply mirrorchoice kwargs on top of grabber.opts
             opts = grabber.opts.derive(**mirrorchoice.get('kwargs', {}))
             func_ref = getattr(grabber, func)
-            if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', url, fullurl)
+            if DEBUG: DEBUG.info('MIRROR: trying %s -> %s', _bytes_repr(url), _bytes_repr(fullurl))
             try:
                 return func_ref( *(fullurl,), opts=opts, **kw )
             except URLGrabError as e:

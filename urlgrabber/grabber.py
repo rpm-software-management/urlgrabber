@@ -562,6 +562,12 @@ try:
 except ImportError:
     xattr = None
 
+def _bytes_repr(s):
+    "A wrapper to avoid the b'' that python3 insists on when printing bytes"
+    if isinstance(s, string_types):
+        return s
+    else:
+        return repr(s)[2:-1]
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -1622,8 +1628,9 @@ class PyCurlFileObject(object):
                               }
                 errstr = str(e.args[1]) or pyerr2str.get(errcode, '<Unknown>')
                 if code and not 200 <= code <= 299:
-                    msg = '%s Error %d - %s' % (self.scheme.upper(), code,
-                                                self.scheme in ('http', 'https')
+                    scheme = _bytes_repr(self.scheme)
+                    msg = '%s Error %d - %s' % (scheme.upper(), code,
+                                                scheme in ('http', 'https')
                                                 and responses.get(code) or errstr)
                 else:
                     msg = 'curl#%s - "%s"' % (errcode, errstr)
