@@ -556,7 +556,7 @@ class TestLoader:
         instance_list = map(testCaseClass, name_list)
         description = getattr(testCaseClass, '__doc__') \
                       or testCaseClass.__name__
-        description = (description.splitlines()[0]).strip()
+        description = description.splitlines()[0].strip()
         suite = self.suiteClass(instance_list, description)
         return suite
 
@@ -611,8 +611,7 @@ class TestLoader:
             return obj.__self__.__class__(obj.__name__)
         elif callable(obj):
             test = obj()
-            if not isinstance(test, unittest.TestCase) and \
-               not isinstance(test, unittest.TestSuite):
+            if not isinstance(test, (unittest.TestCase, unittest.TestSuite)):
                 raise ValueError("calling %s returned %s, not a test" % (obj,test))
             return test
         else:
@@ -802,8 +801,8 @@ class TextTestRunner:
         self.stream.writeln()
         if not result.wasSuccessful():
             self.stream.write("FAILED (")
-            failed, errored, skipped = map(len, \
-                (result.failures, result.errors, result.skipped))
+            failed, errored, skipped = map(len,
+                                           (result.failures, result.errors, result.skipped))
             if failed:
                 self.stream.write("failures=%d" % failed)
             if errored:

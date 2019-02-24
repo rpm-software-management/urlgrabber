@@ -1002,8 +1002,8 @@ class URLGrabberOptions:
         if 'async' in kwargs:
             self.async_ = self.__dict__.pop('async')
         if not self.reget in [None, 'simple', 'check_timestamp']:
-            raise URLGrabError(11, _('Illegal reget mode: %s') \
-                               % (self.reget, ))
+            raise URLGrabError(11, _('Illegal reget mode: %s')
+                               % (self.reget,))
 
     def _set_defaults(self):
         """Set all options to their default values.
@@ -1757,8 +1757,8 @@ class PyCurlFileObject(object):
             raise err
 
         except HTTPException as e:
-            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
-                            (e.__class__.__name__, self.url, e))
+            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s')
+                               % (e.__class__.__name__, self.url, e))
             err.url = self.url
             raise err
 
@@ -1779,13 +1779,13 @@ class PyCurlFileObject(object):
             if self.append: mode = 'ab'
             else: mode = 'wb'
 
-            if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
-                                 (self.filename, mode))
+            if DEBUG: DEBUG.info('opening local file "%s" with mode %s'
+                                 % (self.filename, mode))
             try:
                 self.fo = open(self.filename, mode)
             except IOError as e:
-                err = URLGrabError(16, _(\
-                  'error opening local file from %s, IOError: %s') % (self.url, e))
+                err = URLGrabError(16, _('error opening local file from %s, IOError: %s')
+                                   % (self.url, e))
                 err.url = self.url
                 raise err
 
@@ -1826,17 +1826,16 @@ class PyCurlFileObject(object):
                 try:
                     os.utime(self.filename, (mod_time, mod_time))
                 except OSError as e:
-                    err = URLGrabError(16, _(\
-                      'error setting timestamp on file %s from %s, OSError: %s')
-                              % (self.filename, self.url, e))
+                    err = URLGrabError(16, _('error setting timestamp on file %s from %s, OSError: %s')
+                                       % (self.filename, self.url, e))
                     err.url = self.url
                     raise err
             # re open it
             try:
                 self.fo = open(self.filename, 'r')
             except IOError as e:
-                err = URLGrabError(16, _(\
-                  'error opening file from %s, IOError: %s') % (self.url, e))
+                err = URLGrabError(16, _('error opening file from %s, IOError: %s')
+                                   % (self.url, e))
                 err.url = self.url
                 raise err
 
@@ -2534,7 +2533,7 @@ class _TH:
 def _main_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print('usage:', sys.argv[0], \
+        print('usage:', sys.argv[0],
               '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
         sys.exit()
 
@@ -2560,7 +2559,7 @@ def _main_test():
 def _retry_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print('usage:', sys.argv[0], \
+        print('usage:', sys.argv[0],
               '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
         sys.exit()
 
