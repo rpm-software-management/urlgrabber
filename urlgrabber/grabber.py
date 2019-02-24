@@ -2535,7 +2535,7 @@ def _main_test():
     except ValueError:
         print('usage:', sys.argv[0],
               '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
-        sys.exit()
+        sys.exit(2)
 
     kwargs = {}
     for a in sys.argv[3:]:
@@ -2561,7 +2561,7 @@ def _retry_test():
     except ValueError:
         print('usage:', sys.argv[0],
               '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
-        sys.exit()
+        sys.exit(2)
 
     kwargs = {}
     for a in sys.argv[3:]:
