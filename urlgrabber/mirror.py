@@ -398,10 +398,8 @@ class MirrorGroup:
 
     def _join_url(self, base_url, rel_url):
         (scheme, netloc, path, query, fragid) = urlparse.urlsplit(base_url)
-        if path.endswith('/') or rel_url.startswith('/'):
-            return urlparse.urlunsplit((scheme, netloc, path + rel_url, query, fragid))
-        else:
-            return urlparse.urlunsplit((scheme, netloc, path + '/' + rel_url, query, fragid))
+        sep = '' if path.endswith('/') or rel_url.startswith('/') else '/'
+        return urlparse.urlunsplit((scheme, netloc, path + sep + rel_url, query, fragid))
 
     def _mirror_try(self, func, url, kw):
         gr = GrabRequest()
