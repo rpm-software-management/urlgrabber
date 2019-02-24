@@ -32,7 +32,7 @@ if sys.version_info >= (3,):
 else:
     import thread
 
-from six import integer_types
+from six import integer_types, string_types
 
 # Code from http://mail.python.org/pipermail/python-list/2000-May/033365.html
 def terminal_width(fd=1):
@@ -614,7 +614,7 @@ class TextMultiFileMeter(MultiFileMeter):
         try:
             format = "%-30.30s %6.6s %s"
             fn = meter.text or meter.basename
-            if type(message) in (type(''), type(u'')):
+            if isinstance(message, string_types):
                 message = message.splitlines()
             if not message: message = ['']
             out = '%-79s' % (format % (fn, 'FAILED', message[0] or ''))

@@ -946,7 +946,7 @@ class URLGrabberOptions:
         """
         if self.throttle <= 0:
             return 0
-        elif isinstance(self.throttle, type(0)):
+        elif isinstance(self.throttle, int):
             return float(self.throttle)
         else: # throttle is a float
             return self.bandwidth * self.throttle

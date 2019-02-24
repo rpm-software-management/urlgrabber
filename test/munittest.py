@@ -108,7 +108,7 @@ import os
 import types
 import unittest
 
-from six import class_types
+from six import class_types, string_types
 
 try:
     cmp
@@ -846,7 +846,7 @@ Examples:
 """
     def __init__(self, module='__main__', defaultTest=None,
                  argv=None, testRunner=None, testLoader=defaultTestLoader):
-        if isinstance(module, type('')):
+        if isinstance(module, string_types):
             self.module = __import__(module)
             for part in module.split('.')[1:]:
                 self.module = getattr(self.module, part)

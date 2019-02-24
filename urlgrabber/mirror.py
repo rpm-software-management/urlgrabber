@@ -324,7 +324,7 @@ class MirrorGroup:
         #                       the callback)
         cb = gr.kw.get('failure_callback') or self.failure_callback
         if cb:
-            if isinstance(cb, type( () )):
+            if isinstance(cb, tuple):
                 cb, args, kwargs = cb
             else:
                 args, kwargs = (), {}
