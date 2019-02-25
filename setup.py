@@ -35,7 +35,8 @@ data_files = [
     ('share/doc/' + name + '-' + version, ['README','LICENSE', 'TODO', 'ChangeLog']),
     ('libexec', ['scripts/urlgrabber-ext-down']),
 ]
-install_requires = ['pycurl']
+setup_requires = ['six']
+install_requires = ['pycurl', 'six']
 options = { 'clean' : { 'all' : 1 } }
 classifiers = [
         'Development Status :: 4 - Beta',
