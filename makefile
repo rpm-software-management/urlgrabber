@@ -10,14 +10,14 @@ CLEANFILES = MANIFEST *~ build dist export release daily reference nonexistent_f
              *.pyc urlgrabber/*.pyc scripts/*.pyc test/*.pyc test/nonexistent_file \
              test/reference test/reference.part urlgrabber/*~
 ##############################################################################
-VERSION = $(shell $(PYTHON) -c 'import $(PY_MODULE); print $(PY_MODULE).__version__')
-DATE    = $(shell $(PYTHON) -c 'import $(PY_MODULE); print $(PY_MODULE).__date__')
+VERSION = $(shell $(PYTHON) -c 'import $(PY_MODULE); print($(PY_MODULE).__version__)')
+DATE    = $(shell $(PYTHON) -c 'import $(PY_MODULE); print($(PY_MODULE).__date__)')
 SCM_TAG = release-$(shell echo $(VERSION) | sed -e 's/\./_/g')
-PYTHON22 = $(shell /usr/bin/which python2.2 2>/dev/null)
-PYTHON23 = $(shell /usr/bin/which python2.3 2>/dev/null)
-PYTHON24 = $(shell /usr/bin/which python2.4 2>/dev/null)
-PYTHON25 = $(shell /usr/bin/which python2.5 2>/dev/null)
-TESTPYTHONS = $(PYTHON22) $(PYTHON23) $(PYTHON24) $(PYTHON25)
+PYTHON26 = $(shell /usr/bin/which python2.6 2>/dev/null)
+PYTHON27 = $(shell /usr/bin/which python2.7 2>/dev/null)
+PYTHON36 = $(shell /usr/bin/which python3.6 2>/dev/null)
+PYTHON37 = $(shell /usr/bin/which python3.7 2>/dev/null)
+TESTPYTHONS = $(PYTHON26) $(PYTHON27) $(PYTHON36) $(PYTHON37)
 ##############################################################################
 
 default:
