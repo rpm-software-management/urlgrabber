@@ -9,14 +9,16 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 # Copyright 2009 Red Hat inc, pycurl code written by Seth Vidal
+
+from __future__ import print_function
 
 """A high-level cross-protocol url-grabber.
 
@@ -70,7 +72,7 @@ GENERAL ARGUMENTS (kwargs)
    are shown but there's no in-progress display.
 
   text = None
-  
+
     specifies alternative text to be passed to the progress meter
     object.  If not given, the default progress meter will use the
     basename of the file.
@@ -116,7 +118,7 @@ GENERAL ARGUMENTS (kwargs)
     the first 10 bytes of the file.
 
     If set to None, no range will be used.
-    
+
   reget = None   [None|'simple'|'check_timestamp']
 
     whether to attempt to reget a partially-downloaded file.  Reget
@@ -206,7 +208,7 @@ GENERAL ARGUMENTS (kwargs)
     option.  Note that python 2.2 handles the case of these
     badly and if you do not use the proper case (shown here), your
     values will be overridden with the defaults.
-    
+
   urlparser = URLParser()
 
     The URLParser class handles pre-processing of URLs, including
@@ -246,12 +248,12 @@ GENERAL ARGUMENTS (kwargs)
   ssl_context = None
 
     No-op when using the curl backend (default)
-   
+
 
   ssl_verify_peer = True
 
     Check the server's certificate to make sure it is valid with what our CA validates
-  
+
   ssl_verify_host = True
 
     Check the server's hostname to make sure it matches the certificate DN
@@ -263,7 +265,7 @@ GENERAL ARGUMENTS (kwargs)
   ssl_key_type = 'PEM'
 
     PEM or DER - format of key
-     
+
   ssl_cert = None
 
     Path to the ssl certificate the client should use to to authenticate with
@@ -271,26 +273,26 @@ GENERAL ARGUMENTS (kwargs)
   ssl_cert_type = 'PEM'
 
     PEM or DER - format of certificate
-    
+
   ssl_key_pass = None
 
     password to access the ssl_key
-    
+
   size = None
 
-    size (in bytes) or Maximum size of the thing being downloaded. 
+    size (in bytes) or Maximum size of the thing being downloaded.
     This is mostly to keep us from exploding with an endless datastream
-  
+
   max_header_size = 2097152
 
     Maximum size (in bytes) of the headers.
-    
+
   ip_resolve = 'whatever'
 
     What type of name to IP resolving to use, default is to do both IPV4 and
     IPV6.
 
-  async = (key, limit)
+  async_ = (key, limit)
 
     When this option is set, the urlgrab() is not processed immediately
     but queued.  parallel_wait() then processes grabs in parallel, limiting
@@ -347,7 +349,7 @@ RETRY RELATED ARGUMENTS
       retrycodes = urlgrabber.grabber.URLGrabberOptions().retrycodes
       if 12 not in retrycodes:
           retrycodes.append(12)
-      
+
   checkfunc = None
 
     a function to do additional checks. This defaults to None, which
@@ -378,7 +380,7 @@ RETRY RELATED ARGUMENTS
       function(obj, 'arg1', 2, kwarg=3)
       # obj.filename = '/tmp/stuff'
       # obj.url = 'http://foo.com/stuff'
-      
+
     NOTE: both the "args" tuple and "kwargs" dict must be present if
     you use this syntax, but either (or both) can be empty.
 
@@ -437,7 +439,7 @@ RETRY RELATED ARGUMENTS
     This callback is very similar to failure_callback.  They are
     passed the same arguments, so you could use the same function for
     both.
-      
+
   retry_no_cache = False
 
     When True, automatically enable no_cache for future retries if
@@ -515,26 +517,45 @@ BANDWIDTH THROTTLING
 
 """
 
-
-
 import os
 import sys
-import urlparse
 import time
 import string
 import urllib
-import urllib2
-from httplib import responses
-import mimetools
-import thread
 import types
 import stat
 import pycurl
 from ftplib import parse150
-from StringIO import StringIO
-from httplib import HTTPException
 import socket, select, fcntl
-from byterange import range_tuple_normalize, range_tuple_to_header, RangeError
+from io import BytesIO
+import numbers
+
+try:
+    import urllib.parse as urlparse
+    urlquote, urlunquote = urlparse.quote, urlparse.unquote
+    from urllib.request import HTTPError, url2pathname, pathname2url
+except ImportError:
+    import urlparse
+    from urllib2 import HTTPError
+    urlquote, urlunquote = urllib.quote, urllib.unquote
+    from urllib import url2pathname, pathname2url
+
+try:
+    from http.client import responses, HTTPException
+except ImportError:
+    from httplib import responses, HTTPException
+
+if sys.version_info >= (3,):
+    # We do an explicit version check here because because python2
+    # also has an io module with StringIO, but it is incompatible,
+    # and returns str instead of unicode somewhere.
+    from io import StringIO
+else:
+    from cStringIO import StringIO
+
+from six import text_type, string_types
+
+from .byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
     import xattr
@@ -543,6 +564,17 @@ try:
 except ImportError:
     xattr = None
 
+def _bytes_repr(s):
+    "A wrapper to avoid the b'' that python3 insists on when printing bytes"
+    if isinstance(s, string_types):
+        return s
+    else:
+        return repr(s)[2:-1]
+
+def _urlunquote_convert(s):
+    if not isinstance(s, text_type):
+        s = s.decode('utf8')
+    return urlunquote(s)
 
 ########################################################################
 #                     MODULE INITIALIZATION
@@ -555,9 +587,9 @@ except:
 try:
     # this part isn't going to do much - need to talk to gettext
     from i18n import _
-except ImportError, msg:
+except ImportError as msg:
     def _(st): return st
-    
+
 ########################################################################
 # functions for debugging output.  These functions are here because they
 # are also part of the module initialization.
@@ -587,7 +619,7 @@ def _init_default_logger(logspec=None):
     the form
 
       URLGRABBER_DEBUG=level,filename
-      
+
     where "level" can be either an integer or a log level from the
     logging module (DEBUG, INFO, etc).  If the integer is zero or
     less, logging will be disabled.  Filename is the filename where
@@ -600,7 +632,7 @@ def _init_default_logger(logspec=None):
       URLGRABBER_DEBUG=1,debug.txt   # log everything to debug.txt
       URLGRABBER_DEBUG=WARNING,-     # log warning and higher to stdout
       URLGRABBER_DEBUG=INFO          # log info and higher to stderr
-      
+
     This function is called during module initialization.  It is not
     intended to be called from outside.  The only reason it is a
     function at all is to keep the module-level namespace tidy and to
@@ -634,7 +666,7 @@ def _log_package_state():
     if not DEBUG: return
     DEBUG.debug('urlgrabber version  = %s' % __version__)
     DEBUG.debug('trans function "_"  = %s' % _)
-        
+
 _init_default_logger()
 _log_package_state()
 
@@ -656,7 +688,7 @@ def _(st):
 def _to_utf8(obj, errors='replace'):
     '''convert 'unicode' to an encoded utf-8 byte string '''
     # stolen from yum.i18n
-    if isinstance(obj, unicode):
+    if isinstance(obj, text_type):
         obj = obj.encode('utf-8', errors)
     return obj
 
@@ -665,7 +697,7 @@ def exception2msg(e):
         return str(e)
     except UnicodeEncodeError:
         # always use byte strings
-        return unicode(e).encode('utf8')
+        return text_type(e).encode('utf8')
 
 ########################################################################
 #                 END UTILITY FUNCTIONS
@@ -694,7 +726,7 @@ class URLGrabError(IOError):
         14   - HTTPError (includes .code and .exception attributes)
         15   - user abort
         16   - error writing to local file
-        
+
       MirrorGroup error codes (256 -- 511)
         256  - No more mirrors left to try
 
@@ -705,7 +737,7 @@ class URLGrabError(IOError):
         -1   - retry the download, unknown reason
 
     Note: to test which group a code is in, you can simply do integer
-    division by 256: e.errno / 256
+    division by 256: e.errno // 256
 
     Negative codes are reserved for use by functions passed in to
     retrygrab with checkfunc.  The value -1 is built in as a generic
@@ -749,7 +781,7 @@ def urlgrab(url, filename=None, **kwargs):
     If filename is none, the basename of the url is used.
     urlgrab returns the filename of the local file, which may be different
     from the passed-in filename if the copy_local kwarg == 0.
-    
+
     See module documentation for a description of possible kwargs.
     """
     return default_grabber.urlgrab(url, filename, **kwargs)
@@ -759,7 +791,7 @@ def urlopen(url, **kwargs):
     If a progress object or throttle specifications exist, then
     a special file object will be returned that supports them.
     The file object can be treated like any other file object.
-    
+
     See module documentation for a description of possible kwargs.
     """
     return default_grabber.urlopen(url, **kwargs)
@@ -769,7 +801,7 @@ def urlread(url, limit=None, **kwargs):
     If the limit is exceeded, an exception will be thrown.  Note that urlread
     is NOT intended to be used as a way of saying "I want the first N bytes"
     but rather 'read the whole file into memory, but don't use too much'
-    
+
     See module documentation for a description of possible kwargs.
     """
     return default_grabber.urlread(url, limit, **kwargs)
@@ -807,36 +839,39 @@ class URLParser:
         """
         url = _to_utf8(url)
         quote = opts.quote
-        
+
         if opts.prefix:
             url = self.add_prefix(url, opts.prefix)
-            
+
         parts = urlparse.urlparse(url)
         (scheme, host, path, parm, query, frag) = parts
 
         if not scheme or (len(scheme) == 1 and scheme in string.letters):
             # if a scheme isn't specified, we guess that it's "file:"
-            if url[0] not in '/\\': url = os.path.abspath(url)
-            url = 'file:' + urllib.pathname2url(url)
+            if url[0] not in b'/\\': url = os.path.abspath(url)
+            pathname = pathname2url(url)
+            if not isinstance(pathname, bytes):
+                pathname = pathname.encode('utf8')
+            url = b'file:' + pathname
             parts = urlparse.urlparse(url)
             quote = 0 # pathname2url quotes, so we won't do it again
-            
-        if scheme in ['http', 'https']:
+
+        if scheme in [b'http', b'https']:
             parts = self.process_http(parts, url)
-            
+
         if quote is None:
             quote = self.guess_should_quote(parts)
         if quote:
             parts = self.quote(parts)
-        
+
         url = urlparse.urlunparse(parts)
         return url, parts
 
     def add_prefix(self, url, prefix):
-        if prefix[-1] == '/' or url[0] == '/':
+        if prefix.endswith(b'/') or url.startswith(b'/'):
             url = prefix + url
         else:
-            url = prefix + '/' + url
+            url = prefix + b'/' + url
         return url
 
     def process_http(self, parts, url):
@@ -853,8 +888,10 @@ class URLParser:
         passing into urlgrabber.
         """
         (scheme, host, path, parm, query, frag) = parts
-        path = urllib.quote(path)
-        return (scheme, host, path, parm, query, frag)
+        newpath = urlquote(path, safe='/$')
+        if not isinstance(path, text_type) and isinstance(newpath, text_type):
+            newpath = newpath.encode('utf8')
+        return (scheme, host, newpath, parm, query, frag)
 
     hexvals = '0123456789ABCDEF'
     def guess_should_quote(self, parts):
@@ -868,9 +905,11 @@ class URLParser:
         else       ->  1
         """
         (scheme, host, path, parm, query, frag) = parts
+        if not isinstance(path, text_type):
+            path = path.decode('utf8')
         if ' ' in path:
             return 1
-        ind = string.find(path, '%')
+        ind = path.find('%')
         if ind > -1:
             while ind > -1:
                 if len(path) < ind+3:
@@ -879,10 +918,10 @@ class URLParser:
                 if     code[0] not in self.hexvals or \
                        code[1] not in self.hexvals:
                     return 1
-                ind = string.find(path, '%', ind+1)
+                ind = path.find('%', ind+1)
             return 0
         return 1
-    
+
 class URLGrabberOptions:
     """Class to ease kwargs handling."""
 
@@ -895,23 +934,23 @@ class URLGrabberOptions:
         if delegate is None:
             self._set_defaults()
         self._set_attributes(**kwargs)
-    
+
     def __getattr__(self, name):
         if self.delegate and hasattr(self.delegate, name):
             return getattr(self.delegate, name)
-        raise AttributeError, name
-    
+        raise AttributeError(name)
+
     def raw_throttle(self):
-        """Calculate raw throttle value from throttle and bandwidth 
+        """Calculate raw throttle value from throttle and bandwidth
         values.
         """
-        if self.throttle <= 0:  
+        if self.throttle <= 0:
             return 0
-        elif type(self.throttle) == type(0): 
+        elif isinstance(self.throttle, int):
             return float(self.throttle)
         else: # throttle is a float
             return self.bandwidth * self.throttle
-        
+
     def find_proxy(self, url, scheme):
         """Find the proxy to use for this URL.
         Use the proxies dictionary first, then libproxy.
@@ -953,19 +992,21 @@ class URLGrabberOptions:
         options specified in kwargs.
         """
         return URLGrabberOptions(delegate=self, **kwargs)
-        
+
     def _set_attributes(self, **kwargs):
         """Update object attributes with those provided in kwargs."""
         self.__dict__.update(kwargs)
-        if kwargs.has_key('range'):
+        if 'range' in kwargs:
             # normalize the supplied range value
             self.range = range_tuple_normalize(self.range)
+        if 'async' in kwargs:
+            self.async_ = self.__dict__.pop('async')
         if not self.reget in [None, 'simple', 'check_timestamp']:
-            raise URLGrabError(11, _('Illegal reget mode: %s') \
-                               % (self.reget, ))
+            raise URLGrabError(11, _('Illegal reget mode: %s')
+                               % (self.reget,))
 
     def _set_defaults(self):
-        """Set all options to their default values. 
+        """Set all options to their default values.
         When adding new options, make sure a default is
         provided here.
         """
@@ -1014,7 +1055,7 @@ class URLGrabberOptions:
         self.size = None # if we know how big the thing we're getting is going
                          # to be. this is ultimately a MAXIMUM size for the file
         self.max_header_size = 2097152 #2mb seems reasonable for maximum header size
-        self.async = None # blocking by default
+        self.async_ = None # blocking by default
         self.mirror_group = None
         self.max_connections = 5
         self.timedhosts = None
@@ -1023,10 +1064,10 @@ class URLGrabberOptions:
         self.ftp_disable_epsv = False
         self.no_cache = False
         self.retry_no_cache = False
-        
+
     def __repr__(self):
         return self.format()
-        
+
     def format(self, indent='  '):
         keys = self.__dict__.keys()
         if self.delegate is not None:
@@ -1034,8 +1075,7 @@ class URLGrabberOptions:
         keys.sort()
         s = '{\n'
         for k in keys:
-            s = s + indent + '%-15s: %s,\n' % \
-                (repr(k), repr(self.__dict__[k]))
+            s = s + indent + '%-15r: %r,\n' % (k, self.__dict__[k])
         if self.delegate:
             df = self.delegate.format(indent + '  ')
             s = s + indent + '%-15s: %s\n' % ("'delegate'", df)
@@ -1055,19 +1095,19 @@ def _run_callback(cb, obj):
 
 class URLGrabber(object):
     """Provides easy opening of URLs with a variety of options.
-    
+
     All options are specified as kwargs. Options may be specified when
     the class is created and may be overridden on a per request basis.
-    
+
     New objects inherit default values from default_grabber.
     """
-    
+
     def __init__(self, **kwargs):
         self.opts = URLGrabberOptions(**kwargs)
-    
+
     def _retry(self, opts, func, *args):
         tries = 0
-        while 1:
+        while True:
             # there are only two ways out of this loop.  The second has
             # several "sub-ways"
             #   1) via the return in the "try" block
@@ -1083,13 +1123,13 @@ class URLGrabber(object):
             if DEBUG: DEBUG.info('attempt %i/%s: %s',
                                  tries, opts.retry, args[0])
             try:
-                r = apply(func, (opts,) + args, {})
+                r = func(opts, *args)
                 if DEBUG: DEBUG.info('success')
                 return r
-            except URLGrabError, e:
+            except URLGrabError as e:
                 exception = e
                 callback = opts.failure_callback
-            except KeyboardInterrupt, e:
+            except KeyboardInterrupt as e:
                 exception = e
                 callback = opts.interrupt_callback
                 if not callback:
@@ -1105,62 +1145,62 @@ class URLGrabber(object):
 
             if (opts.retry is None) or (tries == opts.retry):
                 if DEBUG: DEBUG.info('retries exceeded, re-raising')
-                raise
+                raise exception
 
             retrycode = getattr(exception, 'errno', None)
             if (retrycode is not None) and (retrycode not in opts.retrycodes):
                 if DEBUG: DEBUG.info('retrycode (%i) not in list %s, re-raising',
                                      retrycode, opts.retrycodes)
-                raise
+                raise exception
             if retrycode is not None and retrycode < 0 and opts.retry_no_cache:
                 opts.no_cache = True
-    
+
     def urlopen(self, url, opts=None, **kwargs):
         """open the url and return a file object
-        If a progress object or throttle value specified when this 
-        object was created, then  a special file object will be 
-        returned that supports them. The file object can be treated 
+        If a progress object or throttle value specified when this
+        object was created, then  a special file object will be
+        returned that supports them. The file object can be treated
         like any other file object.
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
-        (url,parts) = opts.urlparser.parse(url, opts) 
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
+        (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
         def retryfunc(opts, url):
             return PyCurlFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
-    
+
     def urlgrab(self, url, filename=None, opts=None, **kwargs):
         """grab the file at <url> and make a local copy at <filename>
         If filename is none, the basename of the url is used.
-        urlgrab returns the filename of the local file, which may be 
+        urlgrab returns the filename of the local file, which may be
         different from the passed-in filename if copy_local == 0.
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
-        (url,parts) = opts.urlparser.parse(url, opts) 
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
+        (url,parts) = opts.urlparser.parse(url, opts)
         (scheme, host, path, parm, query, frag) = parts
         opts.find_proxy(url, scheme)
         if filename is None:
-            filename = os.path.basename( urllib.unquote(path) )
+            filename = os.path.basename(_urlunquote_convert(path))
             if not filename:
                 # This is better than nothing.
                 filename = 'index.html'
         if scheme == 'file' and not opts.copy_local:
-            # just return the name of the local file - don't make a 
+            # just return the name of the local file - don't make a
             # copy currently
-            path = urllib.url2pathname(path)
+            path = url2pathname(path)
             if host:
                 path = os.path.normpath('//' + host + path)
             if not os.path.exists(path):
-                err = URLGrabError(2, 
+                err = URLGrabError(2,
                       _('Local file does not exist: %s') % (path, ))
                 err.url = url
                 raise err
             elif not os.path.isfile(path):
-                err = URLGrabError(3, 
+                err = URLGrabError(3,
                                  _('Not a normal file: %s') % (path, ))
                 err.url = url
                 raise err
@@ -1170,8 +1210,8 @@ class URLGrabber(object):
                     obj = CallbackObject(filename=path, url=url)
                     _run_callback(opts.checkfunc, obj)
                 return path
-        
-        if opts.async:
+
+        if opts.async_:
             opts.url = url
             opts.filename = filename
             opts.size = int(opts.size or 0)
@@ -1192,29 +1232,29 @@ class URLGrabber(object):
             finally:
                 fo.close()
             return filename
-        
+
         try:
             return self._retry(opts, retryfunc, url, filename)
-        except URLGrabError, e:
+        except URLGrabError as e:
             _TH.update(url, 0, 0, e)
             opts.exception = e
             return _run_callback(opts.failfunc, opts)
-    
+
     def urlread(self, url, limit=None, opts=None, **kwargs):
         """read the url into a string, up to 'limit' bytes
         If the limit is exceeded, an exception will be thrown.  Note
-        that urlread is NOT intended to be used as a way of saying 
-        "I want the first N bytes" but rather 'read the whole file 
+        that urlread is NOT intended to be used as a way of saying
+        "I want the first N bytes" but rather 'read the whole file
         into memory, but don't use too much'
         """
         url = _to_utf8(url)
         opts = (opts or self.opts).derive(**kwargs)
-        if DEBUG: DEBUG.debug('combined options: %s' % repr(opts))
-        (url,parts) = opts.urlparser.parse(url, opts) 
+        if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
+        (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
         if limit is not None:
             limit = limit + 1
-            
+
         def retryfunc(opts, url, limit):
             fo = PyCurlFileObject(url, filename=None, opts=opts)
             s = ''
@@ -1232,16 +1272,16 @@ class URLGrabber(object):
             finally:
                 fo.close()
             return s
-            
+
         s = self._retry(opts, retryfunc, url, limit)
         if limit and len(s) > limit:
-            err = URLGrabError(8, 
+            err = URLGrabError(8,
                                _('Exceeded limit (%i): %s') % (limit, url))
             err.url = url
             raise err
 
         return s
-        
+
     def _make_callback(self, callback_obj):
         # not used, left for compatibility
         if callable(callback_obj):
@@ -1257,7 +1297,7 @@ default_grabber = URLGrabber()
 class PyCurlFileObject(object):
     def __init__(self, url, filename, opts):
         self.fo = None
-        self._hdr_dump = ''
+        self._hdr_dump = b''
         self._parsed_hdr = None
         self.url = url
         self.scheme = urlparse.urlsplit(self.url)[0]
@@ -1266,9 +1306,9 @@ class PyCurlFileObject(object):
         self.reget_time = None
         self.opts = opts
         if self.opts.reget == 'check_timestamp':
-            raise NotImplementedError, "check_timestamp regets are not implemented in this ver of urlgrabber. Please report this."
+            raise NotImplementedError("check_timestamp regets are not implemented in this ver of urlgrabber. Please report this.")
         self._complete = False
-        self._rbuf = ''
+        self._rbuf = b''
         self._rbufsize = 1024*8
         self._ttime = time.time()
         self._tsize = 0
@@ -1282,7 +1322,7 @@ class PyCurlFileObject(object):
         self._tm_first = None
         self._tm_last = None
         self._do_open()
-        
+
 
     def __getattr__(self, name):
         """This effectively allows us to wrap at the instance level.
@@ -1291,7 +1331,7 @@ class PyCurlFileObject(object):
 
         if hasattr(self.fo, name):
             return getattr(self.fo, name)
-        raise AttributeError, name
+        raise AttributeError(name)
 
     def _retrieve(self, buf):
         try:
@@ -1304,9 +1344,9 @@ class PyCurlFileObject(object):
             if not self._prog_running:
                 if self.opts.progress_obj:
                     size  = self.size + self._reget_length
-                    self.opts.progress_obj.start(self._prog_reportname, 
-                                                 urllib.unquote(self.url), 
-                                                 self._prog_basename, 
+                    self.opts.progress_obj.start(self._prog_reportname,
+                                                 _urlunquote_convert(self.url),
+                                                 self._prog_basename,
                                                  size=size,
                                                  text=self.opts.text)
                     self._prog_running = True
@@ -1323,31 +1363,31 @@ class PyCurlFileObject(object):
                         self.fo.write(buf[max(start, 0):stop])
                 else:
                     self.fo.write(buf)
-            except IOError, e:
+            except IOError as e:
                 self._cb_error = URLGrabError(16, exception2msg(e))
                 return -1
             return len(buf)
         except KeyboardInterrupt:
             return -1
-            
+
     def _hdr_retrieve(self, buf):
         if self._hdr_ended:
-            self._hdr_dump = ''
+            self._hdr_dump = b''
             self.size = 0
             self._hdr_ended = False
 
-        if self._over_max_size(cur=len(self._hdr_dump), 
+        if self._over_max_size(cur=len(self._hdr_dump),
                                max_size=self.opts.max_header_size):
             return -1
         try:
             # we have to get the size before we do the progress obj start
             # but we can't do that w/o making it do 2 connects, which sucks
             # so we cheat and stuff it in here in the hdr_retrieve
-            if self.scheme in ['http','https']:
-                if buf.lower().find('content-length:') != -1:
-                    length = buf.split(':')[1]
+            if self.scheme in [b'http', b'https']:
+                if buf.lower().find(b'content-length:') != -1:
+                    length = buf.split(b':')[1]
                     self.size = int(length)
-                elif (self.append or self.opts.range) and self._hdr_dump == '' and ' 200 ' in buf:
+                elif (self.append or self.opts.range) and not self._hdr_dump and b' 200 ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
@@ -1356,28 +1396,28 @@ class PyCurlFileObject(object):
                     self._reget_length = 0
                     self._range = self.opts.range
                     self.fo.truncate(0)
-            elif self.scheme in ['ftp']:
+            elif self.scheme in [b'ftp']:
                 s = None
-                if buf.startswith('213 '):
+                if buf.startswith(b'213 '):
                     s = buf[3:].strip()
                     if len(s) >= 14:
                         s = None # ignore MDTM responses
-                elif buf.startswith('150 '):
+                elif buf.startswith(b'150 '):
                     s = parse150(buf)
                 if s:
                     self.size = int(s)
-                    
-            if buf.lower().find('location') != -1:
-                location = ':'.join(buf.split(':')[1:])
+
+            if buf.lower().find(b'location') != -1:
+                location = b':'.join(buf.split(b':')[1:])
                 location = location.strip()
                 self.scheme = urlparse.urlsplit(location)[0]
                 self.url = location
-                
+
             self._hdr_dump += buf
-            if len(self._hdr_dump) != 0 and buf == '\r\n':
+            if len(self._hdr_dump) != 0 and buf == b'\r\n':
                 self._hdr_ended = True
                 if DEBUG: DEBUG.debug('header ended:')
-                
+
             return len(buf)
         except KeyboardInterrupt:
             return pycurl.READFUNC_ABORT
@@ -1385,14 +1425,14 @@ class PyCurlFileObject(object):
     def _return_hdr_obj(self):
         if self._parsed_hdr:
             return self._parsed_hdr
-        statusend = self._hdr_dump.find('\n')
+        statusend = self._hdr_dump.find(b'\n')
         statusend += 1 # ridiculous as it may seem.
         hdrfp = StringIO()
         hdrfp.write(self._hdr_dump[statusend:])
         hdrfp.seek(0)
-        self._parsed_hdr =  mimetools.Message(hdrfp)
+        self._parsed_hdr =  email.message_from_string(hdrfp)
         return self._parsed_hdr
-    
+
     hdr = property(_return_hdr_obj)
     http_code = property(fget=
                  lambda self: self.curl_obj.getinfo(pycurl.RESPONSE_CODE))
@@ -1415,7 +1455,7 @@ class PyCurlFileObject(object):
         self.curl_obj.setopt(pycurl.FAILONERROR, True)
         self.curl_obj.setopt(pycurl.OPT_FILETIME, True)
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
-        
+
         if DEBUG and DEBUG.level <= 10:
             self.curl_obj.setopt(pycurl.VERBOSE, True)
         if opts.user_agent:
@@ -1429,11 +1469,11 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.IPRESOLVE, pycurl.IPRESOLVE_V4)
             if ipr == 'ipv6':
                 self.curl_obj.setopt(pycurl.IPRESOLVE, pycurl.IPRESOLVE_V6)
-        
+
         # maybe to be options later
         self.curl_obj.setopt(pycurl.FOLLOWLOCATION, True)
         self.curl_obj.setopt(pycurl.MAXREDIRS, 5)
-        
+
         # timeouts
         timeout = 300
         if hasattr(opts, 'timeout'):
@@ -1443,7 +1483,7 @@ class PyCurlFileObject(object):
         self.curl_obj.setopt(pycurl.LOW_SPEED_TIME, timeout)
 
         # ssl options
-        if self.scheme == 'https':
+        if self.scheme == b'https':
             if opts.ssl_ca_cert: # this may do ZERO with nss  according to curl docs
                 self.curl_obj.setopt(pycurl.CAPATH, opts.ssl_ca_cert)
                 self.curl_obj.setopt(pycurl.CAINFO, opts.ssl_ca_cert)
@@ -1458,13 +1498,13 @@ class PyCurlFileObject(object):
                 self.curl_obj.setopt(pycurl.SSLCERT, opts.ssl_cert)
                 # if we have a client side cert - turn off reuse b/c nss is odd
                 self.curl_obj.setopt(pycurl.FORBID_REUSE, 1)
-            if opts.ssl_cert_type:                
+            if opts.ssl_cert_type:
                 self.curl_obj.setopt(pycurl.SSLCERTTYPE, opts.ssl_cert_type)
             if opts.ssl_key_pass:
                 self.curl_obj.setopt(pycurl.SSLKEYPASSWD, opts.ssl_key_pass)
 
         #headers:
-        if self.scheme in ('http', 'https'):
+        if self.scheme in (b'http', b'https'):
             headers = []
             if opts.http_headers is not None:
                 for (tag, content) in opts.http_headers:
@@ -1479,11 +1519,11 @@ class PyCurlFileObject(object):
             range_str = self._build_range()
             if range_str:
                 self.curl_obj.setopt(pycurl.RANGE, range_str)
-            
+
         # throttle/bandwidth
         if hasattr(opts, 'raw_throttle') and opts.raw_throttle():
             self.curl_obj.setopt(pycurl.MAX_RECV_SPEED_LARGE, int(opts.raw_throttle()))
-            
+
         # proxy
         if opts.proxy is not None:
             self.curl_obj.setopt(pycurl.PROXY, opts.proxy)
@@ -1492,7 +1532,7 @@ class PyCurlFileObject(object):
                 pycurl.HTTPAUTH_ANY - pycurl.HTTPAUTH_GSSNEGOTIATE)
 
         if opts.username and opts.password:
-            if self.scheme in ('http', 'https'):
+            if self.scheme in (b'http', b'https'):
                 self.curl_obj.setopt(pycurl.HTTPAUTH, pycurl.HTTPAUTH_ANY)
 
             if opts.username and opts.password:
@@ -1511,50 +1551,50 @@ class PyCurlFileObject(object):
 
         # our url
         self.curl_obj.setopt(pycurl.URL, self.url)
-        
-    
+
+
     def _do_perform(self):
         if self._complete:
             return
-        
+
         try:
             self.curl_obj.perform()
-        except pycurl.error, e:
+        except pycurl.error as e:
             # XXX - break some of these out a bit more clearly
-            # to other URLGrabErrors from 
+            # to other URLGrabErrors from
             # http://curl.haxx.se/libcurl/c/libcurl-errors.html
             # this covers e.args[0] == 22 pretty well - which will be common
-            
+
             code = self.http_code
             errcode = e.args[0]
-            errurl = urllib.unquote(self.url)
-            
+            errurl = _urlunquote_convert(self.url)
+
             if self._error[0]:
                 errcode = self._error[0]
-                
+
             if errcode == 23 and 200 <= code <= 299:
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
                 # since we cannot know what it is -I'm banking on it being
-                # a ctrl-c. XXXX - if there's a way of going back two raises to 
+                # a ctrl-c. XXXX - if there's a way of going back two raises to
                 # figure out what aborted the pycurl process FIXME
                 raise getattr(self, '_cb_error', KeyboardInterrupt)
-            
+
             elif errcode == 28:
                 err = URLGrabError(12, _('Timeout on %s: %s') % (errurl, e))
                 err.url = errurl
                 raise err
-                
+
             elif errcode == 42:
                 # this is probably wrong but ultimately this is what happens
                 # we have a legit http code and a pycurl 'writer failed' code
                 # which almost always means something aborted it from outside
                 # since we cannot know what it is -I'm banking on it being
-                # a ctrl-c. XXXX - if there's a way of going back two raises to 
+                # a ctrl-c. XXXX - if there's a way of going back two raises to
                 # figure out what aborted the pycurl process FIXME
                 raise KeyboardInterrupt
-                
+
             else:
                 pyerr2str = { 5 : _("Couldn't resolve proxy"),
                               6 : _("Couldn't resolve host"),
@@ -1602,8 +1642,9 @@ class PyCurlFileObject(object):
                               }
                 errstr = str(e.args[1]) or pyerr2str.get(errcode, '<Unknown>')
                 if code and not 200 <= code <= 299:
-                    msg = '%s Error %d - %s' % (self.scheme.upper(), code,
-                                                self.scheme in ('http', 'https')
+                    scheme = _bytes_repr(self.scheme)
+                    msg = '%s Error %d - %s' % (scheme.upper(), code,
+                                                scheme in ('http', 'https')
                                                 and responses.get(code) or errstr)
                 else:
                     msg = 'curl#%s - "%s"' % (errcode, errstr)
@@ -1618,7 +1659,7 @@ class PyCurlFileObject(object):
             if self._error[1]:
                 msg = self._error[1]
                 err = URLGrabError(14, msg)
-                err.url = urllib.unquote(self.url)
+                err.url = _urlunquote_convert(self.url)
                 raise err
 
     def _do_open(self):
@@ -1631,11 +1672,11 @@ class PyCurlFileObject(object):
 
     def _add_headers(self):
         pass
-        
+
     def _build_range(self):
         reget_length = 0
         rt = None
-        if self.opts.reget and type(self.filename) in types.StringTypes:
+        if self.opts.reget and isinstance(self.filename, string_types):
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1646,19 +1687,19 @@ class PyCurlFileObject(object):
                 reget_length = s[stat.ST_SIZE]
 
                 # Set initial length when regetting
-                self._amount_read = reget_length    
+                self._amount_read = reget_length
                 self._reget_length = reget_length # set where we started from, too
 
                 rt = reget_length, ''
                 self.append = 1
-                
+
         if self.opts.range:
             rt = self.opts.range
-            
+
             if rt[0] is None:
                 rt = (0, rt[1])
             rt = (rt[0] + reget_length, rt[1])
-            
+
 
         if rt:
             header = range_tuple_to_header(rt)
@@ -1670,10 +1711,10 @@ class PyCurlFileObject(object):
     def _make_request(self, req, opener):
         #XXXX
         # This doesn't do anything really, but we could use this
-        # instead of do_open() to catch a lot of crap errors as 
+        # instead of do_open() to catch a lot of crap errors as
         # mstenner did before here
         return (self.fo, self.hdr)
-        
+
         try:
             if self.opts.timeout:
                 old_to = socket.getdefaulttimeout()
@@ -1685,22 +1726,22 @@ class PyCurlFileObject(object):
             else:
                 fo = opener.open(req)
             hdr = fo.info()
-        except ValueError, e:
+        except ValueError as e:
             err = URLGrabError(1, _('Bad URL: %s : %s') % (self.url, e, ))
             err.url = self.url
             raise err
 
-        except RangeError, e:
+        except RangeError as e:
             err = URLGrabError(9, _('%s on %s') % (e, self.url))
             err.url = self.url
             raise err
-        except urllib2.HTTPError, e:
+        except HTTPError as e:
             new_e = URLGrabError(14, _('%s on %s') % (e, self.url))
             new_e.code = e.code
             new_e.exception = e
             new_e.url = self.url
             raise new_e
-        except IOError, e:
+        except IOError as e:
             if hasattr(e, 'reason') and isinstance(e.reason, socket.timeout):
                 err = URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
@@ -1710,41 +1751,41 @@ class PyCurlFileObject(object):
                 err.url = self.url
                 raise err
 
-        except OSError, e:
+        except OSError as e:
             err = URLGrabError(5, _('%s on %s') % (e, self.url))
             err.url = self.url
             raise err
 
-        except HTTPException, e:
-            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s') % \
-                            (e.__class__.__name__, self.url, e))
+        except HTTPException as e:
+            err = URLGrabError(7, _('HTTP Exception (%s) on %s: %s')
+                               % (e.__class__.__name__, self.url, e))
             err.url = self.url
             raise err
 
         else:
             return (fo, hdr)
-        
+
     def _do_grab(self):
         """dump the file to a filename or StringIO buffer"""
 
         if self._complete:
             return
         _was_filename = False
-        if type(self.filename) in types.StringTypes and self.filename:
+        if isinstance(self.filename, string_types) and self.filename:
             _was_filename = True
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
-            
+
             if self.append: mode = 'ab'
             else: mode = 'wb'
 
-            if DEBUG: DEBUG.info('opening local file "%s" with mode %s' % \
-                                 (self.filename, mode))
+            if DEBUG: DEBUG.info('opening local file "%s" with mode %s'
+                                 % (self.filename, mode))
             try:
                 self.fo = open(self.filename, mode)
-            except IOError, e:
-                err = URLGrabError(16, _(\
-                  'error opening local file from %s, IOError: %s') % (self.url, e))
+            except IOError as e:
+                err = URLGrabError(16, _('error opening local file from %s, IOError: %s')
+                                   % (self.url, e))
                 err.url = self.url
                 raise err
 
@@ -1752,20 +1793,20 @@ class PyCurlFileObject(object):
             self._prog_reportname = 'MEMORY'
             self._prog_basename = 'MEMORY'
 
-            
-            self.fo = StringIO()
+
+            self.fo = BytesIO()
             # if this is to be a tempfile instead....
             # it just makes crap in the tempdir
             #fh, self._temp_name = mkstemp()
             #self.fo = open(self._temp_name, 'wb')
 
-        try:            
+        try:
             self._do_perform()
-        except URLGrabError, e:
+        except URLGrabError as e:
             self.fo.flush()
             self.fo.close()
             raise e
-    
+
         if _was_filename:
             # close it up
             self.fo.flush()
@@ -1784,27 +1825,26 @@ class PyCurlFileObject(object):
             if mod_time != -1:
                 try:
                     os.utime(self.filename, (mod_time, mod_time))
-                except OSError, e:
-                    err = URLGrabError(16, _(\
-                      'error setting timestamp on file %s from %s, OSError: %s') 
-                              % (self.filename, self.url, e))
+                except OSError as e:
+                    err = URLGrabError(16, _('error setting timestamp on file %s from %s, OSError: %s')
+                                       % (self.filename, self.url, e))
                     err.url = self.url
                     raise err
             # re open it
             try:
                 self.fo = open(self.filename, 'r')
-            except IOError, e:
-                err = URLGrabError(16, _(\
-                  'error opening file from %s, IOError: %s') % (self.url, e))
+            except IOError as e:
+                err = URLGrabError(16, _('error opening file from %s, IOError: %s')
+                                   % (self.url, e))
                 err.url = self.url
                 raise err
-                
+
         else:
             #self.fo = open(self._temp_name, 'r')
             self.fo.seek(0)
 
         self._complete = True
-    
+
     def _fill_buffer(self, amt=None):
         """fill the buffer to contain at least 'amt' bytes by reading
         from the underlying file object.  If amt is None, then it will
@@ -1821,9 +1861,9 @@ class PyCurlFileObject(object):
 
         # if we've made it here, then we don't have enough in the buffer
         # and we need to read more.
-        
+
         if not self._complete: self._do_grab() #XXX cheater - change on ranges
-        
+
         buf = [self._rbuf]
         bufsize = len(self._rbuf)
         while amt is None or amt:
@@ -1833,23 +1873,23 @@ class PyCurlFileObject(object):
                        (time.time() - self._ttime)
                 if diff > 0: time.sleep(diff)
                 self._ttime = time.time()
-                
+
             # now read some data, up to self._rbufsize
             if amt is None: readamount = self._rbufsize
             else:           readamount = min(amt, self._rbufsize)
             try:
                 new = self.fo.read(readamount)
-            except socket.error, e:
+            except socket.error as e:
                 err = URLGrabError(4, _('Socket Error on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
 
-            except socket.timeout, e:
+            except socket.timeout as e:
                 raise URLGrabError(12, _('Timeout on %s: %s') % (self.url, e))
                 err.url = self.url
                 raise err
 
-            except IOError, e:
+            except IOError as e:
                 raise URLGrabError(4, _('IOError on %s: %s') %(self.url, e))
                 err.url = self.url
                 raise err
@@ -1865,7 +1905,7 @@ class PyCurlFileObject(object):
             #if self.opts.progress_obj:
             #    self.opts.progress_obj.update(self._amount_read)
 
-        self._rbuf = string.join(buf, '')
+        self._rbuf = b''.join(buf)
         return
 
     def _progress_update(self, download_total, downloaded, upload_total, uploaded):
@@ -1878,7 +1918,7 @@ class PyCurlFileObject(object):
                 self.opts.progress_obj.update(downloaded)
         except (KeyboardInterrupt, IOError):
             return -1
-    
+
     def _over_max_size(self, cur, max_size=None):
 
         if not max_size:
@@ -1896,11 +1936,11 @@ class PyCurlFileObject(object):
             self._error = (pycurl.E_FILESIZE_EXCEEDED, msg)
             return True
         return False
-        
+
     def read(self, amt=None):
         self._fill_buffer(amt)
         if amt is None:
-            s, self._rbuf = self._rbuf, ''
+            s, self._rbuf = self._rbuf, b''
         else:
             s, self._rbuf = self._rbuf[:amt], self._rbuf[amt:]
         return s
@@ -1908,13 +1948,13 @@ class PyCurlFileObject(object):
     def readline(self, limit=-1):
         if not self._complete: self._do_grab()
         return self.fo.readline()
-        
-        i = string.find(self._rbuf, '\n')
+
+        i = self._rbuf.find('\n')
         while i < 0 and not (0 < limit <= len(self._rbuf)):
             L = len(self._rbuf)
             self._fill_buffer(L + self._rbufsize)
             if not len(self._rbuf) > L: break
-            i = string.find(self._rbuf, '\n', L)
+            i = self._rbuf.find('\n', L)
 
         if i < 0: i = len(self._rbuf)
         else: i = i+1
@@ -1927,12 +1967,12 @@ class PyCurlFileObject(object):
         if self._prog_running:
             self.opts.progress_obj.end(self._amount_read)
         self.fo.close()
-        
+
     def geturl(self):
         """ Provide the geturl() method, used to be got from
             urllib.addinfourl, via. urllib.URLopener.* """
         return self.url
-        
+
 if hasattr(pycurl, 'GLOBAL_ACK_EINTR'):
     # fail immediately on ctrl-c
     pycurl.global_init(pycurl.GLOBAL_DEFAULT | pycurl.GLOBAL_ACK_EINTR)
@@ -1945,7 +1985,7 @@ def reset_curl_obj():
     _curl_cache = pycurl.Curl()
 
 _libproxy_cache = None
-    
+
 
 #####################################################################
 # DEPRECATED FUNCTIONS
@@ -1964,23 +2004,23 @@ def set_progress_obj(new_progress_obj):
 def set_user_agent(new_user_agent):
     """Deprecated. Use: default_grabber.user_agent = new_user_agent"""
     default_grabber.user_agent = new_user_agent
-    
+
 def retrygrab(url, filename=None, copy_local=0, close_connection=0,
               progress_obj=None, throttle=None, bandwidth=None,
               numtries=3, retrycodes=[-1,2,4,5,6,7], checkfunc=None):
     """Deprecated. Use: urlgrab() with the retry arg instead"""
-    kwargs = {'copy_local' :  copy_local, 
+    kwargs = {'copy_local' :  copy_local,
               'close_connection' : close_connection,
-              'progress_obj' : progress_obj, 
-              'throttle' : throttle, 
+              'progress_obj' : progress_obj,
+              'throttle' : throttle,
               'bandwidth' : bandwidth,
               'retry' : numtries,
               'retrycodes' : retrycodes,
-              'checkfunc' : checkfunc 
+              'checkfunc' : checkfunc
               }
     return urlgrab(url, filename, **kwargs)
 
-        
+
 #####################################################################
 #  Serializer + parser: A replacement of the rather bulky Json code.
 #
@@ -1989,27 +2029,31 @@ def retrygrab(url, filename=None, copy_local=0, close_connection=0,
 #
 #####################################################################
 
-_quoter_map = {}
-for c in '%[(,)] \n':
-    _quoter_map[c] = '%%%02x' % ord(c)
-del c
+def _quoter(c):
+    if c in '%[(,)] \n':
+        return '%%%02x' % ord(c)
+    return c
 
 def _dumps(v):
     if v is None: return 'None'
     if v is True: return 'True'
     if v is False: return 'False'
-    if type(v) in (int, long, float):
+    if isinstance(v, numbers.Number):
         return str(v)
-    if type(v) == unicode:
-        v = v.encode('UTF8')
-    if type(v) == str:
-        def quoter(c): return _quoter_map.get(c, c)
-        return "'%s'" % ''.join(map(quoter, v))
-    if type(v) == tuple:
+    if isinstance(v, (str, text_type, bytes)):
+        # standarize to str on both py2 to py3
+        if sys.version_info < (3,):
+            if isinstance(v, text_type):
+                v = v.encode('utf8')
+        else:
+            if isinstance(v, bytes):
+                v = v.decode('utf8')
+        return "'%s'" % ''.join(map(_quoter, v))
+    if isinstance(v, tuple):
         return "(%s)" % ','.join(map(_dumps, v))
-    if type(v) == list:
+    if isinstance(v, list):
         return "[%s]" % ','.join(map(_dumps, v))
-    raise TypeError, 'Can\'t serialize %s' % v
+    raise TypeError("Can't serialize %s" % v)
 
 def _loads(s):
     def decode(v):
@@ -2063,16 +2107,18 @@ def _readlines(fd):
     buf = os.read(fd, 4096)
     if not buf: return None
     # whole lines only, no buffering
-    while buf[-1] != '\n':
+    while not buf.endswith(b'\n'):
         buf += os.read(fd, 4096)
-    return buf[:-1].split('\n')
+    return buf[:-1].split(b'\n')
 
 import subprocess
 
 class _ExternalDownloader:
     def __init__(self):
+        urlgrabber_path = (os.getenv('URLGRABBER_EXT_DOWN', None)
+                           or '/usr/libexec/urlgrabber-ext-down')
         self.popen = subprocess.Popen(
-            '/usr/libexec/urlgrabber-ext-down',
+            urlgrabber_path,
             stdin = subprocess.PIPE,
             stdout = subprocess.PIPE,
         )
@@ -2111,7 +2157,7 @@ class _ExternalDownloader:
 
         self.cnt += 1
         self.running[self.cnt] = opts
-        os.write(self.stdin, arg +'\n')
+        os.write(self.stdin, (arg +'\n').encode('utf8'))
 
     def perform(self):
         ret = []
@@ -2121,22 +2167,22 @@ class _ExternalDownloader:
             raise KeyboardInterrupt
         for line in lines:
             # parse downloader output
-            line = line.split(' ', 6)
+            line = line.split(b' ', 6)
             _id, size = map(int, line[:2])
             if len(line) == 2:
                 self.running[_id]._progress.update(size)
                 continue
             # job done
             opts = self.running.pop(_id)
-            if line[4] == 'OK':
+            if line[4] == b'OK':
                 ug_err = None
                 if DEBUG: DEBUG.info('success')
             else:
                 ug_err = URLGrabError(int(line[4]), line[6])
-                if line[5] != '0':
+                if line[5] != b'0':
                     ug_err.code = int(line[5])
                 if DEBUG: DEBUG.info('failure: %s', ug_err)
-            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async[0])
+            _TH.update(opts.url, int(line[2]), float(line[3]), ug_err, opts.async_[0])
             ret.append((opts, size, ug_err))
         return ret
 
@@ -2220,13 +2266,13 @@ def parallel_wait(meter=None):
         opts.tries = tries
         try:
             dl.start(opts)
-        except OSError, e:
+        except OSError as e:
             # can't spawn downloader, give up immediately
             opts.exception = URLGrabError(5, exception2msg(e))
             _run_callback(opts.failfunc, opts)
             return
 
-        key, limit = opts.async
+        key, limit = opts.async_
         host_con[key] = host_con.get(key, 0) + 1
         if opts.progress_obj:
             if opts.multi_progress_obj:
@@ -2237,13 +2283,15 @@ def parallel_wait(meter=None):
 
     def perform():
         for opts, size, ug_err in dl.perform():
-            key, limit = opts.async
+            key, limit = opts.async_
             host_con[key] -= 1
 
             if ug_err is None:
                 if opts.checkfunc:
-                    try: _run_callback(opts.checkfunc, opts)
-                    except URLGrabError, ug_err: pass
+                    try:
+                        _run_callback(opts.checkfunc, opts)
+                    except URLGrabError as e:
+                        ug_err = e
 
             if opts.progress_obj:
                 if opts.multi_progress_obj:
@@ -2273,8 +2321,10 @@ def parallel_wait(meter=None):
             retry = opts.retry or 0
             if opts.failure_callback:
                 opts.exception = ug_err
-                try: _run_callback(opts.failure_callback, opts)
-                except URLGrabError, ug_err:
+                try:
+                    _run_callback(opts.failure_callback, opts)
+                except URLGrabError as e:
+                    ug_err = e
                     retry = 0 # no retries
             if opts.tries < retry and ug_err.errno in opts.retrycodes:
                 if ug_err.errno < 0 and opts.retry_no_cache:
@@ -2364,7 +2414,7 @@ def parallel_wait(meter=None):
                 # update the current mirror and limit
                 key = best['mirror']
                 limit = best.get('kwargs', {}).get('max_connections')
-                opts.async = key, limit
+                opts.async_ = key, limit
 
                 # update URL and proxy
                 url = mg._join_url(key, opts.relative_url)
@@ -2373,7 +2423,7 @@ def parallel_wait(meter=None):
                 opts.url = url
 
             # check host limit, then start
-            key, limit = opts.async
+            key, limit = opts.async_
             if key in single:
                 limit = 1
             while host_con.get(key, 0) >= (limit or 2):
@@ -2382,7 +2432,7 @@ def parallel_wait(meter=None):
                 DEBUG.info('max_connections(%s): %d/%s', key, host_con.get(key, 0), limit)
 
             start(opts, 1)
-    except IOError, e:
+    except IOError as e:
         if e.errno != 4: raise
         raise KeyboardInterrupt
 
@@ -2435,7 +2485,7 @@ class _TH:
     def update(url, dl_size, dl_time, ug_err, baseurl=None):
         # Use hostname from URL.  If it's a file:// URL, use baseurl.
         # If no baseurl, do not update timedhosts.
-        host = urlparse.urlsplit(url).netloc.split('@')[-1] or baseurl
+        host = urlparse.urlsplit(url).netloc.split(b'@')[-1] or baseurl
         if not host: return
 
         _TH.load()
@@ -2467,7 +2517,7 @@ class _TH:
         _TH.load()
 
         # Use just the hostname, unless it's a file:// baseurl.
-        host = urlparse.urlsplit(baseurl).netloc.split('@')[-1] or baseurl
+        host = urlparse.urlsplit(baseurl).netloc.split(b'@')[-1] or baseurl
 
         default_speed = default_grabber.opts.default_speed
         try: speed, fail, ts = _TH.hosts[host]
@@ -2483,68 +2533,67 @@ class _TH:
 def _main_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print 'usage:', sys.argv[0], \
-              '<url> <filename> [copy_local=0|1] [close_connection=0|1]'
-        sys.exit()
+        print('usage:', sys.argv[0],
+              '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
+        sys.exit(2)
 
     kwargs = {}
     for a in sys.argv[3:]:
-        k, v = string.split(a, '=', 1)
+        k, v = a.split('=', 1)
         kwargs[k] = int(v)
 
     set_throttle(1.0)
     set_bandwidth(32 * 1024)
-    print "throttle: %s,  throttle bandwidth: %s B/s" % (default_grabber.throttle, 
-                                                        default_grabber.bandwidth)
+    print("throttle: %s,  throttle bandwidth: %s B/s" % (default_grabber.throttle,
+                                                        default_grabber.bandwidth))
 
-    try: from progress import text_progress_meter
-    except ImportError, e: pass
+    try: from .progress import text_progress_meter
+    except ImportError as e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
-    try: name = apply(urlgrab, (url, filename), kwargs)
-    except URLGrabError, e: print e
-    else: print 'LOCAL FILE:', name
+    try: name = urlgrab(url, filename, **kwargs)
+    except URLGrabError as e: print(e)
+    else: print('LOCAL FILE:', name)
 
 
 def _retry_test():
     try: url, filename = sys.argv[1:3]
     except ValueError:
-        print 'usage:', sys.argv[0], \
-              '<url> <filename> [copy_local=0|1] [close_connection=0|1]'
-        sys.exit()
+        print('usage:', sys.argv[0],
+              '<url> <filename> [copy_local=0|1] [close_connection=0|1]')
+        sys.exit(2)
 
     kwargs = {}
     for a in sys.argv[3:]:
-        k, v = string.split(a, '=', 1)
+        k, v = a.split('=', 1)
         kwargs[k] = int(v)
 
-    try: from progress import text_progress_meter
-    except ImportError, e: pass
+    try: from .progress import text_progress_meter
+    except ImportError as e: pass
     else: kwargs['progress_obj'] = text_progress_meter()
 
     def cfunc(filename, hello, there='foo'):
-        print hello, there
+        print(hello, there)
         import random
         rnum = random.random()
         if rnum < .5:
-            print 'forcing retry'
+            print('forcing retry')
             raise URLGrabError(-1, 'forcing retry')
         if rnum < .75:
-            print 'forcing failure'
+            print('forcing failure')
             raise URLGrabError(-2, 'forcing immediate failure')
-        print 'success'
+        print('success')
         return
-        
+
     kwargs['checkfunc'] = (cfunc, ('hello',), {'there':'there'})
-    try: name = apply(retrygrab, (url, filename), kwargs)
-    except URLGrabError, e: print e
-    else: print 'LOCAL FILE:', name
+    try: name = retrygrab(url, filename, **kwargs)
+    except URLGrabError as e: print(e)
+    else: print('LOCAL FILE:', name)
 
 def _file_object_test(filename=None):
-    import cStringIO
     if filename is None:
         filename = __file__
-    print 'using file "%s" for comparisons' % filename
+    print('using file "%s" for comparisons' % filename)
     fo = open(filename)
     s_input = fo.read()
     fo.close()
@@ -2553,17 +2602,17 @@ def _file_object_test(filename=None):
                      _test_file_object_readall,
                      _test_file_object_readline,
                      _test_file_object_readlines]:
-        fo_input = cStringIO.StringIO(s_input)
-        fo_output = cStringIO.StringIO()
+        fo_input = StringIO(s_input)
+        fo_output = StringIO()
         wrapper = PyCurlFileObject(fo_input, None, 0)
-        print 'testing %-30s ' % testfunc.__name__,
+        print('testing %-30s ' % testfunc.__name__, end=' ')
         testfunc(wrapper, fo_output)
         s_output = fo_output.getvalue()
-        if s_output == s_input: print 'passed'
-        else: print 'FAILED'
-            
+        if s_output == s_input: print('passed')
+        else: print('FAILED')
+
 def _test_file_object_smallread(wrapper, fo_output):
-    while 1:
+    while True:
         s = wrapper.read(23)
         fo_output.write(s)
         if not s: return
@@ -2573,14 +2622,14 @@ def _test_file_object_readall(wrapper, fo_output):
     fo_output.write(s)
 
 def _test_file_object_readline(wrapper, fo_output):
-    while 1:
+    while True:
         s = wrapper.readline()
         fo_output.write(s)
         if not s: return
 
 def _test_file_object_readlines(wrapper, fo_output):
     li = wrapper.readlines()
-    fo_output.write(string.join(li, ''))
+    fo_output.write(''.join(li))
 
 if __name__ == '__main__':
     _main_test()

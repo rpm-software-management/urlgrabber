@@ -9,22 +9,30 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
 
+from __future__ import print_function
 
 import sys
 import time
 import math
-import thread
 import fcntl
 import struct
 import termios
+
+if sys.version_info >= (3,):
+    # We use a version check because python2 also has _thread
+    import _thread as thread
+else:
+    import thread
+
+from six import integer_types, string_types
 
 # Code from http://mail.python.org/pipermail/python-list/2000-May/033365.html
 def terminal_width(fd=1):
@@ -107,7 +115,7 @@ class BaseMeter:
         self.last_amount_read = 0
         self.last_update_time = None
         self.re = RateEstimator()
-        
+
     def start(self, filename=None, url=None, basename=None,
               size=None, now=None, text=None):
         self.filename = filename
@@ -125,7 +133,7 @@ class BaseMeter:
         self.last_amount_read = 0
         self.last_update_time = now
         self._do_start(now)
-        
+
     def _do_start(self, now=None):
         pass
 
@@ -152,7 +160,7 @@ class BaseMeter:
 
     def _do_end(self, amount_read, now=None):
         pass
-        
+
 #  This is kind of a hack, but progress is gotten from grabber which doesn't
 # know about the total size to download. So we do this so we can get the data
 # out of band here. This will be "fixed" one way or anther soon.
@@ -167,7 +175,7 @@ def text_meter_total_size(size, downloaded=0):
 #
 #       update: No size (minimal: 17 chars)
 #       -----------------------------------
-# <text>                          <rate> | <current size> <elapsed time> 
+# <text>                          <rate> | <current size> <elapsed time>
 #  8-48                          1    8  3             6 1            9 5
 #
 # Order: 1. <text>+<current size> (17)
@@ -202,7 +210,7 @@ def text_meter_total_size(size, downloaded=0):
 #
 #       end
 #       ---
-# <text>                                 | <current size> <elapsed time> 
+# <text>                                 | <current size> <elapsed time>
 #  8-56                                  3             6 1            9 5
 #
 # Order: 1. <text>                ( 8)
@@ -360,7 +368,7 @@ class MultiFileMeter:
         else:
             self._lock = _FakeLock()
         self.update_period = 0.3 # seconds
-        
+
         self.numfiles         = None
         self.finished_files   = 0
         self.failed_files     = 0
@@ -393,7 +401,7 @@ class MultiFileMeter:
         if now is None: now = time.time()
         self.re.update(self._amount_read(), now)
         self._do_end(now)
-        
+
     def _do_end(self, now):
         pass
 
@@ -406,10 +414,10 @@ class MultiFileMeter:
         newmeter = self.helperclass(self)
         self.meters.append(newmeter)
         return newmeter
-    
+
     def removeMeter(self, meter):
         self.meters.remove(meter)
-        
+
     ###########################################################
     # child functions - these should only be called by helpers
     def start_meter(self, meter, now):
@@ -423,10 +431,10 @@ class MultiFileMeter:
         finally:
             self._lock.release()
         self._do_start_meter(meter, now)
-        
+
     def _do_start_meter(self, meter, now):
         pass
-        
+
     def update_meter(self, meter, now):
         if not meter in self.meters:
             raise ValueError('attempt to use orphaned meter')
@@ -507,7 +515,7 @@ class TextMultiFileMeter(MultiFileMeter):
 #                          8-22 1 3-4 1 6-12 1   8 3     6 1       7-9 1  3 1
 #       end
 #       ---
-# <text>                                 | <file size> <file elapsed time> 
+# <text>                                 | <file size> <file elapsed time>
 #  8-56                                  3          6 1                 9 5
     def _do_update_meter(self, meter, now):
         self._lock.acquire()
@@ -606,7 +614,7 @@ class TextMultiFileMeter(MultiFileMeter):
         try:
             format = "%-30.30s %6.6s %s"
             fn = meter.text or meter.basename
-            if type(message) in (type(''), type(u'')):
+            if isinstance(message, string_types):
                 message = message.splitlines()
             if not message: message = ['']
             out = '%-79s' % (format % (fn, 'FAILED', message[0] or ''))
@@ -622,7 +630,7 @@ class TextMultiFileMeter(MultiFileMeter):
             pass
         finally:
             self._lock.release()
-        
+
 ######################################################################
 # support classes and functions
 
@@ -637,7 +645,7 @@ class RateEstimator:
         self.last_update_time = now
         self.last_amount_read = 0
         self.ave_rate = None
-        
+
     def update(self, amount_read, now=None):
         if now is None: now = time.time()
         # libcurl calls the progress callback when fetching headers
@@ -657,11 +665,11 @@ class RateEstimator:
         # First update, on reget is the file size
         if self.last_amount_read:
             self.last_update_time = now
-            self.ave_rate = self._temporal_rolling_ave(\
+            self.ave_rate = self._temporal_rolling_ave(
                 time_diff, read_diff, self.ave_rate, self.timescale)
         self.last_amount_read = amount_read
         #print 'results', time_diff, read_diff, self.ave_rate
-        
+
     #####################################################################
     # result methods
     def average_rate(self):
@@ -697,14 +705,14 @@ class RateEstimator:
         epsilon = time_diff / timescale
         if epsilon > 1: epsilon = 1.0
         return self._rolling_ave(time_diff, read_diff, last_ave, epsilon)
-    
+
     def _rolling_ave(self, time_diff, read_diff, last_ave, epsilon):
         """perform a "rolling average" iteration
         a rolling average "folds" new data into an existing average with
         some weight, epsilon.  epsilon must be between 0.0 and 1.0 (inclusive)
         a value of 0.0 means only the old value (initial value) counts,
         and a value of 1.0 means only the newest value is considered."""
-        
+
         try:
             recent_rate = read_diff / time_diff
         except ZeroDivisionError:
@@ -733,7 +741,7 @@ class RateEstimator:
         rt = int(rt)
         if shift <= 0: return rt
         return float(int(rt) >> shift << shift)
-        
+
 
 def format_time(seconds, use_hours=0):
     if seconds is None or seconds < 0:
@@ -743,15 +751,15 @@ def format_time(seconds, use_hours=0):
         return 'Infinite'
     else:
         seconds = int(seconds)
-        minutes = seconds / 60
+        minutes = seconds // 60
         seconds = seconds % 60
         if use_hours:
-            hours = minutes / 60
+            hours = minutes // 60
             minutes = minutes % 60
             return '%02i:%02i:%02i' % (hours, minutes, seconds)
         else:
             return '%02i:%02i' % (minutes, seconds)
-            
+
 def format_number(number, SI=0, space=' '):
     """Turn numbers into human-readable metric-like numbers"""
     symbols = ['',  # (none)
@@ -763,14 +771,14 @@ def format_number(number, SI=0, space=' '):
                'E', # exa
                'Z', # zetta
                'Y'] # yotta
-    
+
     if SI: step = 1000.0
     else: step = 1024.0
 
     thresh = 999
     depth = 0
     max_depth = len(symbols) - 1
-    
+
     # we want numbers between 0 and thresh, but don't exceed the length
     # of our list.  In that event, the formatting will be screwed up,
     # but it'll still show the right number.
@@ -778,7 +786,7 @@ def format_number(number, SI=0, space=' '):
         depth  = depth + 1
         number = number / step
 
-    if type(number) == type(1) or type(number) == type(1L):
+    if isinstance(number, integer_types):
         # it's an int or a long, which means it didn't get divided,
         # which means it's already short enough
         format = '%i%s%s'
@@ -788,7 +796,7 @@ def format_number(number, SI=0, space=' '):
         format = '%.1f%s%s'
     else:
         format = '%.0f%s%s'
-        
+
     return(format % (float(number or 0), space, symbols[depth]))
 
 def _tst(fn, cur, tot, beg, size, *args):
@@ -806,7 +814,7 @@ def _tst(fn, cur, tot, beg, size, *args):
     tm.end(size)
 
 def _mtst(datas, *args):
-    print '-' * 79
+    print('-' * 79)
     tm = TextMultiFileMeter(threaded=False)
 
     dl_sizes = {}
@@ -850,8 +858,8 @@ def _mtst(datas, *args):
     assert not tm.meters
 
 if __name__ == "__main__":
-    # (1/2): subversion-1.4.4-7.x86_64.rpm               2.4 MB /  85 kB/s    00:28     
-    # (2/2): mercurial-0.9.5-6.fc8.x86_64.rpm            924 kB / 106 kB/s    00:08     
+    # (1/2): subversion-1.4.4-7.x86_64.rpm               2.4 MB /  85 kB/s    00:28
+    # (2/2): mercurial-0.9.5-6.fc8.x86_64.rpm            924 kB / 106 kB/s    00:08
     if len(sys.argv) >= 2 and sys.argv[1] == 'multi':
         _mtst((("sm-1.0.0-1.fc8.i386.rpm", 1000),
                ("s-1.0.1-1.fc8.i386.rpm",  5000),

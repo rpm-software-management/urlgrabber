@@ -11,9 +11,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -21,11 +21,9 @@
 
 """mirror.py tests"""
 
-# $Id: test_mirror.py,v 1.12 2005/10/22 21:57:27 mstenner Exp $
-
 import sys
 import os
-import string, tempfile, random, cStringIO, os
+import tempfile, random, os
 
 import urlgrabber.grabber
 from urlgrabber.grabber import URLGrabber, URLGrabError, URLGrabberOptions
@@ -53,9 +51,7 @@ class BasicTests(TestCase):
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
-        fo = open(filename)
-        data = fo.read()
-        fo.close()
+        data = open(filename, 'rb').read()
 
         self.assertEqual(data, short_reference_data)
 
@@ -87,9 +83,7 @@ class SubclassTests(TestCase):
         url = 'short_reference'
         self.mg.urlgrab(url, filename)
 
-        fo = open(filename)
-        data = fo.read()
-        fo.close()
+        data = open(filename, 'rb').read()
 
         self.assertEqual(data, short_reference_data)
 
@@ -110,7 +104,7 @@ class CallbackTests(TestCase):
             # test assumes mirrors are not re-ordered
             urlgrabber.grabber._TH.hosts.clear()
         self.mg = MirrorGroup(self.g, fullmirrors)
-    
+
     def test_failure_callback(self):
         "test that MG executes the failure callback correctly"
         tricky_list = []
@@ -118,9 +112,9 @@ class CallbackTests(TestCase):
             tl.append(str(cb_obj.exception))
         self.mg.failure_callback = failure_callback, (tricky_list, ), {}
         data = self.mg.urlread('reference')
-        self.assert_(data == reference_data)
-        self.assertEquals(tricky_list[0][:25],
-                          '[Errno 14] HTTP Error 403')
+        self.assertTrue(data == reference_data)
+        self.assertEqual(tricky_list[0][:25],
+                          '[Errno 14] HTTP Error 404')
 
     def test_callback_reraise(self):
         "test that the callback can correctly re-raise the exception"
@@ -155,10 +149,8 @@ class FailoverTests(TestCase):
         def cb(e, elist=elist): elist.append(e)
         self.mg.urlgrab(url, filename, failure_callback=cb)
 
-        fo = open(filename)
-        contents = fo.read()
-        fo.close()
-        
+        contents = open(filename, 'rb').read()
+
         # first be sure that the first mirror failed and that the
         # callback was called
         self.assertEqual(len(elist), 1)
@@ -172,7 +164,7 @@ class FakeGrabber:
         self.index = 0
         self.calls = []
         self.opts = URLGrabberOptions()
-        
+
     def urlgrab(self, url, filename=None, **kwargs):
         self.calls.append( (url, filename) )
         res = self.resultlist[self.index]
@@ -191,11 +183,11 @@ class ActionTests(TestCase):
 
     def tearDown(self):
         urlgrabber.mirror.DEBUG = self.db
-        
+
     def test_defaults(self):
         'test default action policy'
         self.mg.urlgrab('somefile')
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -207,15 +199,15 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [a b c d e f] 2',
              'MIRROR: trying somefile -> c/somefile']
-            
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
+
     def test_instance_action(self):
         'test the effects of passed-in default_action'
         self.mg.default_action = {'remove_master': 1}
         self.mg.urlgrab('somefile')
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -227,14 +219,14 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
-            
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
+
     def test_method_action(self):
         'test the effects of method-level default_action'
         self.mg.urlgrab('somefile', default_action={'remove_master': 1})
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:3] ]
         expected_logs = \
             ['MIRROR: trying somefile -> a/somefile',
@@ -246,18 +238,18 @@ class ActionTests(TestCase):
              'GR   mirrors: [c d e f] 0',
              'MAIN mirrors: [c d e f] 0',
              'MIRROR: trying somefile -> c/somefile']
-            
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
+
 
     def callback(self, e): return {'fail': 1}
-    
+
     def test_callback_action(self):
         'test the effects of a callback-returned action'
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'somefile',
                           failure_callback=self.callback)
-        expected_calls = [ (m + '/' + 'somefile', None) \
+        expected_calls = [ (m.encode('utf8') + b'/somefile', None)
                            for m in self.mirrors[:1] ]
         expected_logs = \
                       ['MIRROR: trying somefile -> a/somefile',
@@ -265,35 +257,38 @@ class ActionTests(TestCase):
                        'GR   mirrors: [b c d e f] 0',
                        'MAIN mirrors: [a b c d e f] 1']
 
-        self.assertEquals(self.g.calls, expected_calls)
-        self.assertEquals(urlgrabber.mirror.DEBUG.logs, expected_logs)
-                
+        self.assertEqual(self.g.calls, expected_calls)
+        self.assertEqual(urlgrabber.mirror.DEBUG.logs, expected_logs)
+
 import threading, socket
-LOCALPORT = 'localhost', 2000
 
 class HttpReplyCode(TestCase):
     def setUp(self):
         # start the server
         self.exit = False
         self.process = lambda data: None
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('localhost', 0)); s.listen(1)
+        self.port = s.getsockname()[1]
+
         def server():
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(LOCALPORT); s.listen(1)
-            while 1:
+            while True:
                 c, a = s.accept()
                 if self.exit: c.close(); break
-                data = ''
-                while not data.endswith('\r\n\r\n'):
+                data = b''
+                while not data.endswith(b'\r\n\r\n'):
                     data = c.recv(4096)
                 self.process(data)
-                c.sendall('HTTP/1.1 %d %s\r\n' % self.reply)
+                c.sendall(b'HTTP/1.1 %d %s\r\n' % self.reply)
                 if self.content is not None:
-                    c.sendall('Content-Length: %d\r\n\r\n' % len(self.content))
+                    c.sendall(b'Content-Length: %d\r\n\r\n' % len(self.content))
                     c.sendall(self.content)
                 c.close()
             s.close()
             self.exit = False
+
         self.thread = threading.Thread(target=server)
         self.thread.start()
 
@@ -302,52 +297,57 @@ class HttpReplyCode(TestCase):
             self.code = getattr(obj.exception, 'code', None)
             return {}
         self.g  = URLGrabber()
-        self.mg = MirrorGroup(self.g, ['http://%s:%d' % LOCALPORT],
+        self.mg = MirrorGroup(self.g, ['http://localhost:%d' % self.port],
                               failure_callback = failure)
 
     def tearDown(self):
         # shut down the server
         self.exit = True
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(LOCALPORT); s.close() # wake it up
+        try:
+            s.connect(('localhost', self.port)) # wake it up
+        except ConnectionRefusedError:
+            # already gone?
+            pass
+        s.close()
         self.thread.join()
 
     def test_grab(self):
         'tests the propagation of HTTP reply code'
-        self.reply = 503, "Busy"
+        self.reply = 503, b'Busy'
         self.content = None
 
         # single
         self.assertRaises(URLGrabError, self.mg.urlgrab, 'foo')
-        self.assertEquals(self.code, 503); del self.code
+        self.assertEqual(self.code, 503); del self.code
 
         # multi
         err = []
-        self.mg.urlgrab('foo', async = True, failfunc = err.append)
+        self.mg.urlgrab('foo', async_=True, failfunc=err.append)
         urlgrabber.grabber.parallel_wait()
-        self.assertEquals([e.exception.errno for e in err], [256])
-        self.assertEquals(self.code, 503); del self.code
+        self.assertEqual([e.exception.errno for e in err], [256])
+        self.assertEqual(self.code, 503); del self.code
 
     def test_range(self):
         'test client-side processing of HTTP ranges'
         # server does not process ranges
-        self.reply = 200, "OK"
-        self.content = 'ABCDEF'
+        self.reply = 200, b'OK'
+        self.content = b'ABCDEF'
 
         # no range specified
         data = self.mg.urlread('foo')
-        self.assertEquals(data, 'ABCDEF')
+        self.assertEqual(data, b'ABCDEF')
 
         data = self.mg.urlread('foo', range = (3, 5))
-        self.assertEquals(data, 'DE')
+        self.assertEqual(data, b'DE')
 
     def test_retry_no_cache(self):
         'test bypassing proxy cache on failure'
         def process(data):
-            if 'Pragma:no-cache' in data:
-                self.content = 'version2'
+            if b'Pragma:no-cache' in data:
+                self.content = b'version2'
             else:
-                self.content = 'version1'
+                self.content = b'version1'
 
         def checkfunc_read(obj):
             if obj.data == 'version1':
@@ -359,7 +359,7 @@ class HttpReplyCode(TestCase):
                     raise URLGrabError(-1, 'Outdated version of foo')
 
         self.process = process
-        self.reply = 200, "OK"
+        self.reply = 200, b'OK'
 
         opts = self.g.opts
         opts.retry = 3
@@ -374,7 +374,7 @@ class HttpReplyCode(TestCase):
 
         # multi
         opts.checkfunc = checkfunc_grab
-        self.mg.urlgrab('foo', async=True)
+        self.mg.urlgrab('foo', async_=True)
         try:
             urlgrabber.grabber.parallel_wait()
         except URLGrabError as e:
@@ -387,4 +387,3 @@ def suite():
 if __name__ == '__main__':
     runner = TextTestRunner(stream=sys.stdout,descriptions=1,verbosity=2)
     runner.run(suite())
-     

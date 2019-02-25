@@ -1,20 +1,20 @@
 #!/usr/bin/python
 
+from __future__ import print_function
+
 """Usage: python runtests.py [OPTIONS]
-Quick script to run all unit tests from source directory 
+Quick script to run all unit tests from source directory
 (e.g. without having to install.)
 
 OPTIONS:
-  
-  -d, --descriptions=NUM Set to 0 to turn off printing 
+
+  -d, --descriptions=NUM Set to 0 to turn off printing
                          test doc strings as descriptions.
   -v, --verbosity=NUM    Output verbosity level. Defaults to
-                         2 which is one line of info per test. Set 
+                         2 which is one line of info per test. Set
                          to 1 to get one char of info per test
                          or 0 to disable status output completely.
 """
-  
-# $Id: runtests.py,v 1.7 2004/03/31 17:02:00 mstenner Exp $
 
 import sys
 from os.path import dirname, join as joinpath
@@ -31,7 +31,7 @@ def main():
     # it's okay to import now that sys.path is setup.
     import test_grabber, test_byterange, test_mirror
     suite = TestSuite( (test_grabber.suite(),
-                        test_byterange.suite(), 
+                        test_byterange.suite(),
                         test_mirror.suite()) )
     suite.description = 'urlgrabber tests'
     runner = TextTestRunner(stream=sys.stdout,
@@ -52,9 +52,9 @@ def parse_args():
         elif o in ('-v', '--verbosity'):
             verbosity = int(a)
     return (descriptions,verbosity)
-    
+
 def usage():
-    print __doc__
-     
+    print(__doc__)
+
 if __name__ == '__main__':
     main()

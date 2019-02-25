@@ -5,3 +5,6 @@ build
 *.kdev*
 *.kateproject
 ipython.log*
+
+# virtualenv
+sandbox/*
