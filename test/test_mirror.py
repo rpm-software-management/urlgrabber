@@ -350,7 +350,7 @@ class HttpReplyCode(TestCase):
                 self.content = b'version1'
 
         def checkfunc_read(obj):
-            if obj.data == 'version1':
+            if obj.data == b'version1':
                 raise URLGrabError(-1, 'Outdated version of foo')
 
         def checkfunc_grab(obj):
