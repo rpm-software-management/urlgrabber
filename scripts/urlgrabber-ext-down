@@ -22,7 +22,7 @@ import time, os, errno, sys
 import six
 from urlgrabber.grabber import \
     _readlines, URLGrabberOptions, _loads, \
-    PyCurlFileObject, URLGrabError
+    PyCurlFileObject, URLGrabError, _to_utf8
 
 def write(fmt, *arg):
     buf = fmt % arg
@@ -65,7 +65,7 @@ def main():
 
             dlsz = dltm = 0
             try:
-                fo = PyCurlFileObject(opts.url, opts.filename, opts)
+                fo = PyCurlFileObject(_to_utf8(opts.url), opts.filename, opts)
                 fo._do_grab()
                 fo.fo.close()
                 size = fo._amount_read
