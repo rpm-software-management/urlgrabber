@@ -352,11 +352,16 @@ class HttpReplyCode(TestCase):
         def checkfunc_read(obj):
             if obj.data == b'version1':
                 raise URLGrabError(-1, 'Outdated version of foo')
+            elif obj.data != b'version2':
+                self.fail('Unexpected file content')
 
         def checkfunc_grab(obj):
             with open('foo') as f:
-                if f.read() == 'version1':
+                data = f.read()
+                if data == 'version1':
                     raise URLGrabError(-1, 'Outdated version of foo')
+                elif data != 'version2':
+                    self.fail('Unexpected file content')
 
         self.process = process
         self.reply = 200, b'OK'
