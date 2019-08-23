@@ -1406,7 +1406,7 @@ class PyCurlFileObject(object):
                 if buf.lower().find(b'content-length:') != -1:
                     length = buf.split(b':')[1]
                     self.size = int(length)
-                elif (self.append or self.opts.range) and not self._hdr_dump and b' 200 ' in buf:
+                elif (self.append or self.opts.range) and not self._hdr_dump and b' 200 OK ' in buf:
                     # reget was attempted but server sends it all
                     # undo what we did in _build_range()
                     self.append = False
