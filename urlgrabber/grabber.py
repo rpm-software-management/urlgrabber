@@ -664,8 +664,8 @@ def _init_default_logger(logspec=None):
         if sys.version_info.major == 2:
             level = logging._levelNames.get(dbinfo[0], None)
         else:
-            level = logging._levelToName.get(dbinfo[0], None)
-        if level is None: level = int(dbinfo[0])
+            level = logging.getLevelName(dbinfo[0])
+        if level is None or not isinstance(level, int): level = int(dbinfo[0])
         if level < 1: raise ValueError()
 
         formatter = logging.Formatter('%(asctime)s %(message)s')
