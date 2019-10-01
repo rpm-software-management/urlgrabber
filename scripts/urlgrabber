@@ -302,7 +302,7 @@ class ugclient:
             except URLGrabError as e:
                 print(e)
                 sys.exit(1)
-        
+
     def set_debug_logger(self, dbspec):
         try:
             dbinfo = dbspec.split(',')
@@ -310,10 +310,10 @@ class ugclient:
             if sys.version_info.major == 2:
                 level = logging._levelNames.get(dbinfo[0], None)
             else:
-                level = logging._levelToName.get(dbinfo[0], None)
-            if level is None: level = int(dbinfo[0])
+                level = logging.getLevelName(dbinfo[0])
+            if level is None or not isinstance(level, int): level = int(dbinfo[0])
             if level < 1: raise ValueError()
-            
+
             formatter = logging.Formatter('%(asctime)s %(message)s')
             if len(dbinfo) > 1: filename = dbinfo[1]
             else: filename = ''
