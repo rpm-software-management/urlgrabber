@@ -46,12 +46,17 @@ following features:
     automatically switching mirrors if there is a failure.
 """
 
-__version__ = '4.0.0'
-__date__    = '2019/02/25'
-__author__  = 'Michael D. Stenner <mstenner@linux.duke.edu>, ' \
-              'Ryan Tomayko <rtomayko@naeblis.cx>' \
-              'Seth Vidal <skvidal@fedoraproject.org>' \
-              'Zdenek Pavlas <zpavlas@redhat.com>'
-__url__     = 'http://urlgrabber.baseurl.org/'
+try:
+    from email import message_from_string
+    from pkg_resources import get_distribution
+    pkgInfo = get_distribution(__package__).get_metadata('PKG-INFO')
+    __metadata__ = message_from_string(pkgInfo)
+    del pkgInfo
+
+    __version__ = __metadata__['Version']
+    __author__  = __metadata__['Author']
+    __url__     = __metadata__['Home-page']
+except:
+    __author__ = __version__ = __url__ = '<see setup.cfg>'
 
 from .grabber import urlgrab, urlopen, urlread
