@@ -12,7 +12,7 @@ setup(
     # From https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
         # Development status
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         # Target audience
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
