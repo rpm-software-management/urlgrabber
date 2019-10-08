@@ -1,7 +1,7 @@
 from setuptools import setup
 
 pkg_name = "urlgrabber"
-pkg_version = "4.0.0"
+pkg_version = "4.1.0"
 
 setup(
     name=pkg_name,
