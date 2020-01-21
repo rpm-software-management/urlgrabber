@@ -720,6 +720,14 @@ def exception2msg(e):
         # always use byte strings
         return text_type(e).encode('utf8')
 
+def bytes_to_string(b):
+    if sys.version_info < (3,):
+        # in python 2 strings are bytes
+        return b
+    else:
+        # python 3, will ignore any non-ascii characters if the encoding isn't utf8
+        return b.decode('utf8', 'ignore')
+
 ########################################################################
 #                 END UTILITY FUNCTIONS
 ########################################################################
@@ -1425,7 +1433,7 @@ class PyCurlFileObject(object):
                     if len(s) >= 14:
                         s = None # ignore MDTM responses
                 elif buf.startswith(b'150 '):
-                    s = parse150(buf)
+                    s = parse150(bytes_to_string(buf))
                 if s:
                     self.size = int(s)
 
