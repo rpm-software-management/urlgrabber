@@ -220,7 +220,7 @@ def text_meter_total_size(size, downloaded=0):
 #
 
 def _term_add_bar(tl, bar_max_length, pc):
-    blen = bar_max_length
+    blen = int(bar_max_length)
     bar  = '='*int(blen * pc)
     if (blen * pc) - int(blen * pc) >= 0.5:
         bar += '-'
@@ -644,7 +644,7 @@ class RateEstimator:
         self.start_time = now
         self.last_update_time = now
         self.last_amount_read = 0
-        self.ave_rate = None
+        self.ave_rate = 0
 
     def update(self, amount_read, now=None):
         if now is None: now = time.time()
