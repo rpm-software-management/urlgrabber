@@ -37,7 +37,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
-    url="http://urlgrabber.baseurl.org/",
+    url="https://github.com/rpm-software-management/urlgrabber",
     author="Michael D. Stenner, Ryan Tomayko, Seth Vidal, Zdenek Pavlas",
     author_email="mstenner@linux.duke.edu, rtomayko@naeblis.cx, skvidal@fedoraproject.org, zpavlas@redhat.com",
     maintainer="Neal Gompa",
