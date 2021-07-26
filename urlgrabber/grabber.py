@@ -1520,6 +1520,8 @@ class PyCurlFileObject(object):
             self.curl_obj.setopt(pycurl.SSL_VERIFYPEER, opts.ssl_verify_peer)
             if opts.ssl_verify_host: # 1 is meaningless to curl
                 self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, 2)
+            else:
+                self.curl_obj.setopt(pycurl.SSL_VERIFYHOST, 0)
             if opts.ssl_key:
                 self.curl_obj.setopt(pycurl.SSLKEY, opts.ssl_key)
             if opts.ssl_key_type:
