@@ -1867,7 +1867,7 @@ class PyCurlFileObject(object):
                     raise err
             # re open it
             try:
-                self.fo = open(self.filename, 'r')
+                self.fo = open(self.filename, 'rb')
             except IOError as e:
                 err = URLGrabError(16, _('error opening file from %s, IOError: %s')
                                    % (self.url, e))
