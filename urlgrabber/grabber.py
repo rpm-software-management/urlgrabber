@@ -1099,7 +1099,7 @@ class URLGrabberOptions:
         return self.format()
 
     def format(self, indent='  '):
-        keys = self.__dict__.keys()
+        keys = list(self.__dict__.keys())
         if self.delegate is not None:
             keys.remove('delegate')
         keys.sort()
