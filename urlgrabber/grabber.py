@@ -571,8 +571,6 @@ if sys.version_info >= (3,):
 else:
     from cStringIO import StringIO
 
-from six import text_type, string_types
-
 from .byterange import range_tuple_normalize, range_tuple_to_header, RangeError
 
 try:
@@ -584,13 +582,13 @@ except ImportError:
 
 def _bytes_repr(s):
     "A wrapper to avoid the b'' that python3 insists on when printing bytes"
-    if isinstance(s, string_types):
+    if isinstance(s, str):
         return s
     else:
         return repr(s)[2:-1]
 
 def _urlunquote_convert(s):
-    if not isinstance(s, text_type):
+    if not isinstance(s, str):
         s = s.decode('utf8')
     return urlunquote(s)
 
@@ -709,7 +707,7 @@ def _(st):
 def _to_utf8(obj, errors='replace'):
     '''convert 'unicode' to an encoded utf-8 byte string '''
     # stolen from yum.i18n
-    if isinstance(obj, text_type):
+    if isinstance(obj, str):
         obj = obj.encode('utf-8', errors)
     return obj
 
@@ -718,7 +716,7 @@ def exception2msg(e):
         return str(e)
     except UnicodeEncodeError:
         # always use byte strings
-        return text_type(e).encode('utf8')
+        return str(e).encode('utf8')
 
 def bytes_to_string(b):
     if sys.version_info < (3,):
@@ -918,7 +916,7 @@ class URLParser:
         """
         (scheme, host, path, parm, query, frag) = parts
         newpath = urlquote(path, safe='/$')
-        if not isinstance(path, text_type) and isinstance(newpath, text_type):
+        if not isinstance(path, str) and isinstance(newpath, str):
             newpath = newpath.encode('utf8')
         return (scheme, host, newpath, parm, query, frag)
 
@@ -934,7 +932,7 @@ class URLParser:
         else       ->  1
         """
         (scheme, host, path, parm, query, frag) = parts
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             path = path.decode('utf8')
         if ' ' in path:
             return 1
@@ -1711,7 +1709,7 @@ class PyCurlFileObject(object):
     def _build_range(self):
         reget_length = 0
         rt = None
-        if self.opts.reget and isinstance(self.filename, string_types):
+        if self.opts.reget and isinstance(self.filename, str):
             # we have reget turned on and we're dumping to a file
             try:
                 s = os.stat(self.filename)
@@ -1806,7 +1804,7 @@ class PyCurlFileObject(object):
         if self._complete:
             return
         _was_filename = False
-        if isinstance(self.filename, string_types) and self.filename:
+        if isinstance(self.filename, str) and self.filename:
             _was_filename = True
             self._prog_reportname = str(self.filename)
             self._prog_basename = os.path.basename(self.filename)
@@ -2075,10 +2073,10 @@ def _dumps(v):
     if v is False: return 'False'
     if isinstance(v, numbers.Number):
         return str(v)
-    if isinstance(v, (str, text_type, bytes)):
+    if isinstance(v, (str, str, bytes)):
         # standarize to str on both py2 to py3
         if sys.version_info < (3,):
-            if isinstance(v, text_type):
+            if isinstance(v, str):
                 v = v.encode('utf8')
         else:
             if isinstance(v, bytes):

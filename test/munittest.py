@@ -108,8 +108,6 @@ import os
 import types
 import unittest
 
-from six import class_types, string_types
-
 try:
     cmp
 except NameError:
@@ -565,7 +563,7 @@ class TestLoader:
         tests = []
         for name in dir(module):
             obj = getattr(module, name)
-            if (isinstance(obj, class_types) and
+            if (isinstance(obj, type) and
                 issubclass(obj, TestCase) and
                 not obj in [TestCase, FunctionTestCase]):
                 tests.append(self.loadTestsFromTestCase(obj))
@@ -604,7 +602,7 @@ class TestLoader:
         import unittest
         if isinstance(obj, types.ModuleType):
             return self.loadTestsFromModule(obj)
-        elif (isinstance(obj, class_types) and
+        elif (isinstance(obj, type) and
               issubclass(obj, unittest.TestCase)):
             return self.loadTestsFromTestCase(obj)
         elif isinstance(obj, types.UnboundMethodType):
@@ -845,7 +843,7 @@ Examples:
 """
     def __init__(self, module='__main__', defaultTest=None,
                  argv=None, testRunner=None, testLoader=defaultTestLoader):
-        if isinstance(module, string_types):
+        if isinstance(module, str):
             self.module = __import__(module)
             for part in module.split('.')[1:]:
                 self.module = getattr(self.module, part)
