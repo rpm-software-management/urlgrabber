@@ -28,7 +28,6 @@ import os
 import tempfile, random, os
 import socket
 from io import BytesIO
-from six import string_types
 
 if sys.version_info >= (3,):
     # We do an explicit version check here because because python2
@@ -333,7 +332,7 @@ class FailureTestCase(TestCase):
         self.assertEqual(self.kwargs, {'bar': 'baz'})
         self.assertTrue(isinstance(self.obj, CallbackObject))
         url = self.obj.url
-        if not isinstance(url, string_types):
+        if not isinstance(url, str):
             url = url.decode('utf8')
         self.assertEqual(url, ref_404)
         self.assertTrue(isinstance(self.obj.exception, URLGrabError))
@@ -413,7 +412,7 @@ class CheckfuncTestCase(TestCase):
         self.assertEqual(self.kwargs, {'bar': 'baz'})
         self.assertTrue(isinstance(self.obj, CallbackObject))
         url = self.obj.url
-        if not isinstance(url, string_types):
+        if not isinstance(url, str):
             url = url.decode()
         self.assertEqual(url, short_ref_http)
 

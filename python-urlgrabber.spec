@@ -36,7 +36,6 @@ Summary:        %{summary}
 BuildRequires:  python3-devel
 BuildRequires:  python3dist(setuptools)
 BuildRequires:  python3dist(pycurl)
-BuildRequires:  python3dist(six)
 
 %description -n python3-%{pypi_name} %{_description}
 

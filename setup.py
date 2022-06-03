@@ -47,7 +47,6 @@ setup(
     include_package_data=True,
     install_requires=[
         "pycurl",
-        "six",
         "setuptools",
     ],
     scripts = ['scripts/urlgrabber'],

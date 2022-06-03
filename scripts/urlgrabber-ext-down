@@ -19,15 +19,13 @@
 #      Boston, MA  02111-1307  USA
 
 import time, os, errno, sys
-import six
 from urlgrabber.grabber import \
     _readlines, URLGrabberOptions, _loads, \
     PyCurlFileObject, URLGrabError, _to_utf8
 
 def write(fmt, *arg):
     buf = fmt % arg
-    if six.PY3:
-        buf = buf.encode()
+    buf = buf.encode()
     try:
         os.write(1, buf)
     except OSError as e:
@@ -51,7 +49,7 @@ def main():
         lines = _readlines(0)
         if not lines: break
         for line in lines:
-            if not isinstance(line, six.string_types):
+            if not isinstance(line, str):
                 line = line.decode('utf-8')
             cnt += 1
             opts = URLGrabberOptions()
