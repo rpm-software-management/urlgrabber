@@ -983,20 +983,20 @@ class URLGrabberOptions:
         Use the proxies dictionary first, then libproxy.
         """
         self.proxy = None
-        if scheme not in (b'ftp', b'http', b'https'):
+        if isinstance(scheme, bytes):
+            scheme = scheme.decode('utf-8')
+        if scheme not in ('ftp', 'http', 'https'):
             return
 
         if self.proxies:
             proxy = self.proxies.get(scheme)
             if proxy is None:
-                if scheme == b'http':
-                    proxy = self.proxies.get('http')
-                elif scheme == b'https':
+                if scheme == 'http':
                     proxy = self.proxies.get('https')
-                elif scheme == b'ftp':
-                    proxy = self.proxies.get('ftp')
+                elif scheme == 'https':
+                    proxy = self.proxies.get('http')
             if proxy == '_none_':
-                proxy = ''
+                proxy = None
             self.proxy = proxy
             return
 
