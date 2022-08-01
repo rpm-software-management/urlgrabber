@@ -996,7 +996,7 @@ class URLGrabberOptions:
                 elif scheme == 'https':
                     proxy = self.proxies.get('http')
             if proxy == '_none_':
-                proxy = None
+                proxy = ''
             self.proxy = proxy
             return
 
