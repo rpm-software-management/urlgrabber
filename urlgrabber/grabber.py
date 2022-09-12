@@ -657,7 +657,11 @@ def _init_default_logger(logspec=None):
     try:
         if logspec is None:
             logspec = os.environ['URLGRABBER_DEBUG']
-        dbinfo = logspec.split(',')
+        if "," in logspec:
+            dbinfo = logspec.split(',')
+        if isinstance(logspec, list):
+            dbinfo = logspec
+
         import logging
         if sys.version_info.major == 2:
             level = logging._levelNames.get(dbinfo[0], None)
@@ -978,6 +982,10 @@ class URLGrabberOptions:
         else: # throttle is a float
             return self.bandwidth * self.throttle
 
+    def set_loglevel(self, logspec):
+        self.logspec = logspec
+        _init_default_logger(self.logspec)
+
     def find_proxy(self, url, scheme):
         """Find the proxy to use for this URL.
         Use the proxies dictionary first, then libproxy.
@@ -1094,6 +1102,7 @@ class URLGrabberOptions:
         self.ftp_disable_epsv = False
         self.no_cache = False
         self.retry_no_cache = False
+        self.logspec = None
 
     def __repr__(self):
         return self.format()
@@ -1197,6 +1206,8 @@ class URLGrabber(object):
         if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
         (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
+        if opts.logspec is not None:
+            opts.set_loglevel(opts.logspec)
         def retryfunc(opts, url):
             return PyCurlFileObject(url, filename=None, opts=opts)
         return self._retry(opts, retryfunc, url)
@@ -1213,6 +1224,10 @@ class URLGrabber(object):
         (url,parts) = opts.urlparser.parse(url, opts)
         (scheme, host, path, parm, query, frag) = parts
         opts.find_proxy(url, scheme)
+        
+        if opts.logspec is not None:
+            opts.set_loglevel(opts.logspec)
+            
         if filename is None:
             filename = os.path.basename(_urlunquote_convert(path))
             if not filename:
@@ -1282,6 +1297,8 @@ class URLGrabber(object):
         if DEBUG: DEBUG.debug('combined options: %r' % (opts,))
         (url,parts) = opts.urlparser.parse(url, opts)
         opts.find_proxy(url, parts[0])
+        if opts.logspec is not None:
+            opts.set_loglevel(opts.logspec)
         if limit is not None:
             limit = limit + 1
 
