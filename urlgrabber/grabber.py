@@ -1233,7 +1233,7 @@ class URLGrabber(object):
             if not filename:
                 # This is better than nothing.
                 filename = 'index.html'
-        if scheme == 'file' and not opts.copy_local:
+        if scheme == b'file' and not opts.copy_local:
             # just return the name of the local file - don't make a
             # copy currently
             path = url2pathname(path)
