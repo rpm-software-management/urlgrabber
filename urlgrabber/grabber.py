@@ -1236,9 +1236,9 @@ class URLGrabber(object):
         if scheme == b'file' and not opts.copy_local:
             # just return the name of the local file - don't make a
             # copy currently
-            path = url2pathname(path)
+            path = url2pathname(_urlunquote_convert(path))
             if host:
-                path = os.path.normpath('//' + host + path)
+                path = os.path.normpath('//' + _urlunquote_convert(host) + path)
             if not os.path.exists(path):
                 err = URLGrabError(2,
                       _('Local file does not exist: %s') % (path, ))
